@@ -179,7 +179,6 @@ function taxonomy_access_admin($edit = array()) {
            '<select name="edit[vocab]['.$vocab->vid.'][create]"><option value="0">--</option><option value="1">Add</option><option value="2">Remove</option></select>');
       $rows[] = array('&nbsp;','&nbsp;','&nbsp;','&nbsp;','&nbsp;');
       $rows[] = array('Default',
-           '<input type="hidden" name="vids[]" value="'.$vocab->vid.'">'.
            '<input type="checkbox" name="edit[default]['.$vocab->vid.'][view]" '. (($default[$vocab->vid]['view']) ? 'checked>' : '>'),
            '<input type="checkbox" name="edit[default]['.$vocab->vid.'][update]" '. (($default[$vocab->vid]['update']) ? 'checked>' : '>'),
            '<input type="checkbox" name="edit[default]['.$vocab->vid.'][delete]" '. (($default[$vocab->vid]['delete']) ? 'checked>' : '>'),
