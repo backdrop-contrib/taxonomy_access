@@ -262,12 +262,12 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
     case 'insert':
       // Determine the category/categories the new node was assigned to
       $tids = $node->taxonomy;
-       
+      db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'term_access\'', $node->nid);
       // For nodes not assigned to a category
       if(!$tids) {
-      	$query = db_query('SELECT * FROM term_access where tid = 0');
-      	while($result = db_fetch_array($query)) {
-      		db_query('REPLACE INTO node_access (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, $result->grant_view, $result->grant_update, $result->grant_delete);
+      	$query = db_query("SELECT * FROM term_access where tid = '0'");
+      	while($result = db_fetch_object($query)) {
+      		db_query('INSERT INTO node_access (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, $result->grant_view, $result->grant_update, $result->grant_delete);
       	}
       }
       // For nodes assigned to a category
@@ -276,7 +276,7 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
 	      // then make appropriate changes to the node_access table.
 	      $result = db_query("SELECT * from term_access where tid in ('" . implode("','",array_values($tids)) . "')");
 	      while($row = db_fetch_object($result)) {
-	      	db_query('REPLACE INTO node_access (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
+	      	db_query('INSERT INTO node_access (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
 	      }
 	    }	    
 	    break;
