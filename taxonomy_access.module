@@ -547,7 +547,7 @@ function _refresh_node_access_table() {
 	}
 	
 	// Determine which nodes don't belong to a category
-	$query = db_query("SELECT nid FROM {node} WHERE nid not IN (SELECT nid from term_node)");
+	$query = db_query("SELECT n.nid FROM node n LEFT JOIN term_node t ON t.nid=n.nid WHERE t.nid IS NULL");
 	while($result = db_fetch_array($query)) {
 	  $no_cat[] = $result['nid'];
 	}
