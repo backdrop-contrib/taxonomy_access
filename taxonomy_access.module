@@ -74,9 +74,9 @@ function taxonomy_access_admin($edit = array()) {
     // Render role/permission overview:
     $header = array("Role","Category Permissions");
     // Default settings for categories
-    $rows[] = array(t('Default'),array('data'=>"<a href=\"admin/user/configure/category/0\">Edit</a>",'align'=>'right'));
+    $rows[] = array(t('Default'),array('data'=>l(t("edit"),"admin/user/configure/category/0"),'align'=>'right'));
     foreach ($role_names as $rid => $name) {
-     $rows[] = array($name,array('data'=>"<a href=\"admin/user/configure/category/$rid\">Edit</a>", 'align'=>'right'));
+     $rows[] = array($name,array('data'=>l(t("edit"),"admin/user/configure/category/$rid"), 'align'=>'right'));
     }
   }
 
