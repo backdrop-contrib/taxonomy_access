@@ -587,12 +587,10 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       }
  //     $current_rids[] = 0; no default non-roled access
     }
-
-    if (!$current_vids)  {
-      $query = db_query('SELECT vid FROM {vocabulary}');
-      while($result = db_fetch_array($query))  {
-        $current_vids[] = $result['vid'];
-      }
+    $current_vids = array();
+    $query = db_query('SELECT vid FROM {vocabulary}');
+    while($result = db_fetch_array($query))  {
+      $current_vids[] = $result['vid'];
     }
     
     // Get old list of term and role ids from when term_access was disabled
