@@ -315,9 +315,11 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
 
   $sql = "SELECT count(*) from {term_access} where ";
   if (isset($user) && is_array($user->roles)) {
-    $sql .="rid in ('". implode("','",array_keys($user_object->roles)) . "')";
+    $sql .="rid in ('". implode("','",array_keys($user_object->roles)) . "') and ";
+  } else {
+    $sql .="rid='1' and ";
   }
-  $sql .= " and tid='$tid' and grant_". $op . "=1";
+  $sql .= "tid='$tid' and grant_". $op . "=1";
 
   return db_result(db_query($sql)) ? TRUE : FALSE;
 }
@@ -413,7 +415,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
 		  while($result = db_fetch_array($query)) {
     	  $current_rids[] = $result['rid'];
       }
-      $current_rids[] = 0;
+ //     $current_rids[] = 0; no default non-roled access
     }
     
     // Get old list of term and role ids from when term_access was disabled
@@ -429,7 +431,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
   		while($result = db_fetch_array($query)) {
       	$old_rids[] = $result['rid'];
       }
-      $old_rids[] = 0;
+//      $old_rids[] = 0; no non-roled access anymore
       $old_rids = array_unique($old_rids);
     }
     
