@@ -661,7 +661,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     
     // Set permissions for nodes without categories if they aren't already set
     $query = db_query('SELECT tid FROM {term_access} where tid = 0');
-    if(!db_fetch_array($query) && is_array($current_rids)) {
+    if(!db_result($query) && is_array($current_rids)) {
     	foreach($current_rids as $rid) {
     		db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0, 1)', $rid);
     	}
