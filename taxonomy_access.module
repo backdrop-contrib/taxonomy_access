@@ -348,7 +348,7 @@ function taxonomy_access_taxonomy($op, $type, $edit)  {
         break;
       case 'insert':  // add new default entries for the new category, don't have to touch node_access since no posts are in there yet
         foreach(user_roles() as $rid => $role)
-          db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1)', $edit['tid'], $rid);
+          db_query('INSERT INTO {term_access} VALUES (\'%d\', \'%d\', 1, 0, 0, 1)', $edit['tid'], $rid);
         break;
       case 'delete': // delete everything from term_access and node_access
         db_query("DELETE FROM {node_access} WHERE gid='%d' AND realm='term_access'",$edit['tid']);
@@ -441,12 +441,15 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       	$old_rids[] = $result['rid'];
       }
 //      $old_rids[] = 0; no non-roled access anymore
-      $old_rids = array_unique($old_rids);
+      if (is_array($old_rids))  
+        $old_rids = array_unique($old_rids);
     }
     
     // Get the difference between old and current
-    $delete_tids = array_diff($old_tids, $current_tids);
-    $delete_rids = array_diff($old_rids, $current_rids);
+    if (is_array($old_tids))
+      $delete_tids = array_diff($old_tids, $current_tids);
+    if (is_array($old_rids))  
+      $delete_rids = array_diff($old_rids, $current_rids);
     
     // Delete all rows with role and term ids that no longer exist from the term_access table
     foreach($delete_rids as $rid) {
@@ -458,7 +461,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     
     // Set permissions for nodes without categories if they aren't already set
     $query = db_query('SELECT tid FROM {term_access} where tid = 0');
-    if(!db_fetch_array($query)) {
+    if(!db_fetch_array($query) && is_array($current_rids)) {
     	foreach($current_rids as $rid) {
     		db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0)', $rid);
     	}
@@ -467,8 +470,10 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // Add new role and term ids to term_access table since module was last disabled and assign them default permissions
     $all_rids = $add_tids = $add_rids = array();
     $add_tids = array_diff($current_tids, $old_tids);
-    $add_rids = array_diff($current_rids, $old_rids);
-    $all_rids = array_merge($add_rids, $current_rids);
+    if (is_array($current_rids))  {
+      $add_rids = array_diff($current_rids, $old_rids);
+      $all_rids = array_merge($add_rids, $current_rids);
+    }
     
     // Add role permissions for each new taxonomy terms.
     // nysus : Default permissions assume all users can not read content in the new taxonomy
