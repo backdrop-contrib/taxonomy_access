@@ -11,10 +11,3 @@ CREATE TABLE term_access (
   grant_create tinyint(1) unsigned NOT NULL default '0',
   PRIMARY KEY  (tid,rid)
 ) TYPE=MyISAM;
-
-#
-# Adding default 'read all' access to access tables
-#
-
-INSERT INTO term_access VALUES (0, 0, 1, 0, 0);
-INSERT INTO node_access VALUES (0, 0,'taxonomy', 1, 0, 0);
