@@ -329,7 +329,7 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
   if (isset($user) && is_array($user->roles)) {
     $sql .=" OR rid in ('". implode("','",array_keys($user_object->roles)) . "')";
   }
-  $sql .= ") and (tid='$tid' OR tid=0) and grant_". $op . "=1";
+  $sql .= ") and (tid='$tid') and grant_". $op . "=1";
 
   return db_result(db_query($sql)) ? TRUE : FALSE;
 }
