@@ -87,7 +87,7 @@
        if ($term) {
 -        db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
 +        if (function_exists('taxonomy_access'))  {
-+           if (taxonomy_access('update',$term))
++           if (taxonomy_access('create',$term))
 +             db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
 +        } else db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
        }
