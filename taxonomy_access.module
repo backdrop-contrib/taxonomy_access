@@ -524,7 +524,7 @@ function _refresh_node_access_table() {
 	
 	// Use the array structure of permissions we just created to make the updates to the node_access table
 	// for nodes that are in a category.
-	$result = db_query("SELECT term_node.nid, term_node.tid FROM {term_node}, term_data WHERE term_data.tid = term_node.tid");
+	$result = db_query("SELECT tn.nid, tn.tid FROM {term_node} as tn, {term_data} as td WHERE td.tid = tn.tid");
 	$category_nids = array();
 	while($row = db_fetch_object($result)) {
  		$nid = $row->nid;
