@@ -299,6 +299,9 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
     $tid = $taxonomy;
   else if ($taxonomy->tid)
     $tid = $taxonomy->tid;
+  else if ($op == 'create')
+  // if you're creating with no taxonomy information, it should grant access
+    return TRUE;
   else return FALSE;
 
   global $user;
