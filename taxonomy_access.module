@@ -251,7 +251,7 @@ function taxonomy_access_grant_update($tid, $role = null, $grants = null)  {
     $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
   }
   
-  $ta_sql = "REPLACE INTO {term_access} (tid";
+  $ta_sql = "INSERT INTO {term_access} (tid";
   $ta_sql_values = " VALUES ($tid";
   if (isset($role)) {
     $ta_sql .= ",rid";
@@ -293,7 +293,7 @@ function taxonomy_access_defaults_update($vid, $role = null, $grants = null)  {
     $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
   }
   
-  $ta_sql = "REPLACE INTO {term_access_defaults} (vid";
+  $ta_sql = "INSERT INTO {term_access_defaults} (vid";
   $ta_sql_values = " VALUES ($vid";
   if (isset($role)) {
     $ta_sql .= ",rid";
@@ -314,6 +314,7 @@ function taxonomy_access_defaults_update($vid, $role = null, $grants = null)  {
   }
   $ta_sql .= $sql . $ta_sql_values;
 
+  db_query("DELETE FROM {term_access} WHERE tid=%d AND rid=%d", $tid, (isset($role) ? $role : 0));
   db_query($ta_sql);  // insert into term_access
 }
 /**
@@ -432,7 +433,8 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
       if(!$tids) {
       	$query = db_query("SELECT * FROM {term_access} where tid = '0'");
       	while($result = db_fetch_object($query)) {
-      		db_query('REPLACE {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, $result->grant_view, $result->grant_update, $result->grant_delete);
+	        db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $node->nid, $result->rid);
+      		db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, $result->grant_view, $result->grant_update, $result->grant_delete);
       	}
       }
       // For nodes assigned to a category
@@ -441,7 +443,8 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
 	      // then make appropriate changes to the node_access table.
 	      $result = db_query("SELECT * from {term_access} where tid in ('" . implode("','",array_values($tids)) . "')");
 	      while($row = db_fetch_object($result)) {
-	      	db_query('REPLACE {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
+	        db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $node->nid, $row->rid);
+	      	db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
 	      }
 	    }	    
 	    break;
@@ -525,7 +528,8 @@ function taxonomy_access_taxonomy($op, $type, $edit)  {
       case 'insert':  // add new default entries for the new category, don't have to touch node_access since no posts are in there yet
         foreach(user_roles() as $rid => $role)  {
           $grants = db_fetch_object(db_query("SELECT * FROM {term_access_defaults} WHERE vid='%d' AND rid='%d'",$edit['vid'], $rid));
-          db_query('REPLACE INTO {term_access} VALUES (\'%d\', \'%d\', %d, %d, %d, %d)', $edit['tid'], $rid, $grants->grant_view,$grants->grant_update,$grants->grant_delete,$grants->grant_create);
+	  db_query("DELETE FROM {term_access} WHERE tid='%d' AND rid='%d'",$edit['tid'],$rid);
+          db_query('INSERT INTO {term_access} VALUES (\'%d\', \'%d\', %d, %d, %d, %d)', $edit['tid'], $rid, $grants->grant_view,$grants->grant_update,$grants->grant_delete,$grants->grant_create);
         }
         break;
       case 'delete': // delete everything from term_access and node_access
@@ -533,7 +537,7 @@ function taxonomy_access_taxonomy($op, $type, $edit)  {
         db_query("DELETE FROM {term_access} WHERE tid='%d'",$edit['tid']);
         break;
     }
-	}
+        }
 }
 
 /**
@@ -571,10 +575,11 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
   variable_set('taxonomy_access_settings_changed', FALSE);
   
   if (!variable_get('taxonomy_access_enabled', FALSE)) {
-    // We use the replace statement to avoid inserting a duplicate entry into the database.
+    // We delete before insert to avoid inserting a duplicate entry into the database.
     // Without the DELETE query, this can happen when a site admin has already enabled the modules
     // from the settings page and goes back to it and resaves the enabled setting.
-    db_query('REPLACE INTO {node_access} VALUES (0, 0, \'all\', 1, 0, 0)');
+    db_query("DELETE FROM {node_access} WHERE nid=0 AND gid=0 AND realm='all'");
+    db_query("INSERT INTO {node_access} VALUES (0, 0, 'all', 1, 0, 0)");
   }
   else { // the module was just enabled; node_access table must initialized or updated to reflect the changes since it was disabled:
          // Check for new nodes and assign them permissions in node_access table;
@@ -733,7 +738,8 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       foreach($current_vids as $vid)  {
         if (is_array($add_rids))  {
           foreach($add_rids as $rid)  {
-            db_query("REPLACE INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
+	    db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
+            db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
           }
         }
       }
@@ -743,7 +749,8 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       foreach($add_vids as $vid)  {
         if (is_array($current_rids))  {
           foreach($current_rids as $rid)  {
-            db_query("REPLACE INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
+	    db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
+            db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
           }
         }
       }
@@ -759,7 +766,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
 // Update the node_access table to reflect any changes made to the term_access table
 function _refresh_node_access_table() {
 	// Load term_access table data into memory and put it into an array structure for easy use by second half of function
-	$result = db_query("SELECT * FROM {term_access} WHERE 1");
+	$result = db_query("SELECT * FROM {term_access}");
 	while($term_access_row = db_fetch_array($result)) {
 		$term_access[] = $term_access_row;
 	}
@@ -779,7 +786,8 @@ function _refresh_node_access_table() {
  		$category_nids[] = $nid; // created now for use later on in code handling nodes without categories
  		if(array_key_exists($tid, $permissions)) {
  			foreach($permissions[$tid] as $key => $value) {
-			  db_query('REPLACE {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
+			  db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $nid, $key);
+			  db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
  			}
  		}
 	}
@@ -793,7 +801,8 @@ function _refresh_node_access_table() {
   	// Update or insert permission data for nodes without categories
 	  foreach($no_cat as $nid) {
 	    foreach($permissions[0] as $key => $value) {
-		    db_query('REPLACE {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
+		    db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $nid, $key);
+		    db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
   		}
 	  }
   }
