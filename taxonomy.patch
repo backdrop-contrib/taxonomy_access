@@ -1,5 +1,5 @@
 --- /root/drupal-4.5.0/modules/taxonomy.module	Mon Oct 18 12:46:19 2004
-+++ /var/www/modules/taxonomy.module	Sun Oct 31 08:47:26 2004
++++ /var/www/modules/taxonomy.module	Mon Nov  8 00:14:33 2004
 @@ -106,7 +106,11 @@
      $result = db_query("SELECT d.tid, d.name, MAX(n.created) AS updated, COUNT(*) AS count FROM {term_data} d INNER JOIN {term_node} USING (tid) INNER JOIN {node} n USING (nid) WHERE n.status = 1 GROUP BY d.tid, d.name ORDER BY updated DESC, d.name");
      $items = array();
@@ -139,18 +139,17 @@
    }
  
    return $result;
-@@ -728,6 +768,10 @@
+@@ -728,6 +768,9 @@
   * Return the term object matching a term ID.
   */
  function taxonomy_get_term($tid) {
 +    if (function_exists('taxonomy_access'))
-+       if (!taxonomy_access('view',$term->tid))
++       if (!taxonomy_access('view',$tid))
 +        return FALSE;
-+
    // simple cache using a static var?
    return db_fetch_object(db_query('SELECT * FROM {term_data} WHERE tid = %d', $tid));
  }
-@@ -893,6 +937,19 @@
+@@ -893,6 +936,19 @@
    }
    else {
      drupal_not_found();

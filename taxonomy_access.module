@@ -307,7 +307,7 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
     $user_object = $user;
   }
 
-  $sql = "SELECT tid from {term_access} where (rid=0";
+  $sql = "SELECT count(*) from {term_access} where (rid=0";
       if (isset($user) && is_array($user->roles)) $sql .=" OR rid in ('". implode("','",array_keys($user_object->roles)) . "')";
       $sql .= ") and (tid='$tid' OR tid=0) and grant_". $op . "=1";
 
@@ -315,5 +315,39 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
     return TRUE;
   else return FALSE;
 }
+
+function taxonomy_access_settings() {
+  if (variable_get('taxonomy_access_settings_changed', FALSE)) {
+    _taxonomy_access_update_db();
+  }
+
+  $formitems = '';
+  $taxonomy_access_enabled = variable_get('taxonomy_access_enabled', FALSE);
+  $formitems .= form_hidden('taxonomy_access_settings_changed', 1);
+  $formitems .= form_radio(t('Enable the taxonomy_access module.'), 'taxonomy_access_enabled', 1,variable_get('taxonomy_access_enabled', FALSE) );
+  $formitems .= form_radio(t('Disable the taxonomy_access module.'), 'taxonomy_access_enabled', 0, !variable_get('taxonomy_access_enabled', FALSE) );
+
+  return $formitems;
+}
+
+function _taxonomy_access_update_db() {
+  variable_set('taxonomy_access_settings_changed', FALSE);
+
+  if (!variable_get('taxonomy_access_enabled', FALSE)) {
+    db_query('REPLACE INTO {node_access} VALUES (0, 0, \'all\', 1, 0, 0)');
+    db_query('DELETE FROM {node_access} WHERE realm=\'taxonomy\'');
+    db_query('DELETE FROM {term_access}');
+  }
+  else { // the module was just enabled; provide default view access to everyone for nodes that were created
+         // between the previous disabling of the module and the current enabling of the module;
+         // nodes that were created during a previous enabled period are left-alone.
+         // Permissions for those nodes will be the same as when the module was previously enabled.
+    db_query('DELETE from {node_access} where nid=0 AND gid=0 AND realm=\'all\' AND grant_view=1 AND grant_update=0 AND grant_delete=0');
+    db_query('INSERT INTO {term_access} VALUES (0, 0, 1, 0, 0)');
+    db_query('REPLACE INTO {node_access} VALUES (0, 0,\'taxonomy\', 1, 0, 0)');
+
+      }
+}
+
 
 ?>
