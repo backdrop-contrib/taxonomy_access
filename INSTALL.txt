@@ -1,0 +1,9 @@
+To install, simply add the database and activate the module, in these steps.
+
+1) From the command line, type 'mysql -u username -p drupal < taxonomy_access.mysql' where drupal is your drupal database and username is your mysql username
+
+2) Copy taxonomy_access.module to your drupal installation's module directory
+
+3) Activate the module from administer >> modules
+
+4) Configure the access to the various categories from administer >> users >> configure >> category permissions
