@@ -5,10 +5,12 @@ function taxonomy_access_help($section) {
     
     // Brief message for administrators to explain what this module does
     case 'admin/user/configure/category':
-      return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete and create permissions set for each user role.  Alternately, you can set the permission next to the vocabulary to set that permission for all categories in that vocabulary.  The <a href="%default">Default</a> role allows you to set the default category permissions for all roles.', array('%role' => url('admin/user/configure/role'), '%default' => url('admin/user/configure/category/0')));
+      return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete and create permissions set for each user role.', array('%role' => url('admin/user/configure/role'), '%default' => url('admin/user/configure/category/0')));
       
     case 'admin/modules#description': 
-      return t('Allows users to specify which categories and viewed by various roles.');
+      return t('Allows users to specify how each category can be used by various roles.');
+
+    
       
     // Creates the header content for the taxonomy_access settings page dependent upon
     // whether the node is enabled or disabled.
@@ -29,6 +31,10 @@ function taxonomy_access_help($section) {
       $message = t($message, array('%module_page_link' => l(t('modules admin page'), 'admin/modules', array('title' => t('View more.')))   ));
       }
       return $message;
+      
+    default:
+      if (strpos($section,'admin/user/configure/category') !== FALSE)
+        return t('<b>Vocabulary Settings</b> - Next to each vocabulary is a dropdown with "Add" and "Remove" settings.  Select the "Add" setting for a permission to add that permission to all the categories in that vocabulary for the current role, likewise select the "Remove" setting to remove it.  "--" leaves that permission alone.<p><b>Default</b>: This permission, just underneath the vocabulary title, allows you to set the default permissions to apply for the current role to new categories added to this vocabulary.');
   }
 }
 
