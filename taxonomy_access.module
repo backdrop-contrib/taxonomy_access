@@ -118,11 +118,12 @@ function taxonomy_access_help($section)  {
  * Gives access to taxonomies based on the taxonomy_access table
  */
 function taxonomy_access_node_grants($user, $op)  {
-    if ($user == NULL || !is_array($user->roles))
-      return array('taxonomy'=>'0');
+//    if (user_access('administer nodes'))
+//      return array('taxonomy'=>'0');
 
-    $sql = "SELECT tid from {term_access} where (rid=0 OR rid in ('"
-      . implode("','",array_keys($user->roles)) . "')) and grant_". $op . "=1";
+    $sql = "SELECT tid from {term_access} where (rid=0 ";
+    if (isset($user) && is_array($user->roles)) $sql .= "OR rid in ('". implode("','",array_keys($user->roles)) . "')";
+    $sql .= ") and grant_". $op . "=1";
     $result = db_query($sql);
     $nids = array();
     $i=0;
@@ -306,8 +307,9 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
     $user_object = $user;
   }
 
-  $sql = "SELECT tid from {term_access} where (rid=0 OR rid in ('"
-    . implode("','",array_keys($user_object->roles)) . "')) and (tid='$tid' OR tid=0) and grant_". $op . "=1";
+  $sql = "SELECT tid from {term_access} where (rid=0";
+      if (isset($user) && is_array($user->roles)) $sql .=" OR rid in ('". implode("','",array_keys($user_object->roles)) . "')";
+      $sql .= ") and (tid='$tid' OR tid=0) and grant_". $op . "=1";
 
   if (db_result(db_query($sql)))
     return TRUE;
