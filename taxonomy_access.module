@@ -513,8 +513,10 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       $delete_rids = array_diff($old_rids, $current_rids);
     
     // Delete all rows with role and term ids that no longer exist from the term_access table
-    foreach($delete_rids as $rid) {
-    	db_query('DELETE from {term_access} where rid = %d', $rid);
+    if (is_array($delete_rids))  {
+      foreach($delete_rids as $rid) {
+      	db_query('DELETE from {term_access} where rid = %d', $rid);
+      }
     }
     foreach($delete_tids as $tid) {
     	db_query('DELETE from {term_access} where tid = %d', $tid);
@@ -524,14 +526,14 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     $query = db_query('SELECT tid FROM {term_access} where tid = 0');
     if(!db_fetch_array($query) && is_array($current_rids)) {
     	foreach($current_rids as $rid) {
-    		db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0)', $rid);
+    		db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0, 1)', $rid);
     	}
     } 
 
     // Add new role and term ids to term_access table since module was last disabled and assign them default permissions
     $all_rids = $add_tids = $add_rids = array();
     $add_tids = array_diff($current_tids, $old_tids);
-    if (is_array($current_rids))  {
+    if (is_array($current_rids) && is_array($old_rids))  {
       $add_rids = array_diff($current_rids, $old_rids);
       $all_rids = array_merge($add_rids, $current_rids);
     }
@@ -549,8 +551,10 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // nysus : Default permissions assume new role does not have access to content in any category
     // pyromanfo : Drupal default is actually view only, as is the case with node_access
     foreach($current_tids as $tid) {
-      foreach($add_rids as $rid) {
-        db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
+      if (is_array($add_rids))  {
+        foreach($add_rids as $rid) {
+          db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
+        }
       }
     } 
     // END: term_access table housekeeping
@@ -593,9 +597,11 @@ function _refresh_node_access_table() {
 	while($term_access_row = db_fetch_array($result)) {
 		$term_access[] = $term_access_row;
 	}
-	foreach($term_access as $key => $value) {
-		$permissions[$value['tid']][$value['rid']] = array('grant_view' => $value['grant_view'], 'grant_update' => $value['grant_update'], 'grant_delete' => $value['grant_delete'], 'grant_create' => $value['grant_create']);
-	}
+  if (is_array($term_access))  {
+  	foreach($term_access as $key => $value) {
+	  	$permissions[$value['tid']][$value['rid']] = array('grant_view' => $value['grant_view'], 'grant_update' => $value['grant_update'], 'grant_delete' => $value['grant_delete'], 'grant_create' => $value['grant_create']);
+  	} 
+  }
 	
 	// Use the array structure of permissions we just created to make the updates to the node_access table
 	// for nodes that are in a category.
