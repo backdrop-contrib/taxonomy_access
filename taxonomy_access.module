@@ -548,7 +548,7 @@ function taxonomy_access_taxonomy($op, $type, $edit)  {
  * instead.  However, that hook doesn't exist so we rely on the _user hook to determine if new roles have been added.
  *
 **/
-function taxonomy_access_user($op, &$edit, &$user, $category) {
+function taxonomy_access_user($op, &$edit, &$user, $category = NULL) {
   if($op == 'update' || $op == 'insert') {
     // Get list of existing roles
     $query = db_query('SELECT rid FROM {role}');
