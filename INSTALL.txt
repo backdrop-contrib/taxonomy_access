@@ -6,13 +6,7 @@ To install, simply add the database and activate the module, in these steps.
 
 3) Activate the module from administer >> modules
 
-4) Remove the default 'view all' permission if you plan on hiding certain categories from users.  Execute the following SQL
-
-DELETE FROM node_access where nid=0 AND gid=0 AND realm='all' AND grant_view=1 AND grant_update=0 AND grant_delete=0;
+4) Go to administer >> settings >> taxonomy_access and enable the module 
 
 5) Configure the access to the various categories from administer >> users >> configure >> category permissions
 
-
-Note:  When removing this module, you'll need to reinstall the default 'view all' permission.  Execute the following to restore the system to the default value
-
-INSERT INTO node_access VALUES (0, 0, 'all', 1, 0, 0)
