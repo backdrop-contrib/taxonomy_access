@@ -610,6 +610,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       if (is_array($old_rids))  
         $old_rids = array_unique($old_rids);
     }
+    $old_vids = array();
     $query = db_query('SELECT vid FROM {term_access_defaults}');
     while($result = db_fetch_array($query)) {
     	$old_vids[] = $result['vid'];
