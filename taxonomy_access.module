@@ -139,10 +139,12 @@ function taxonomy_access_admin($edit = array()) {
     // Clear the cache, as we might have changed the anonymous user's
     // permissions.
     cache_clear_all();
+    // redirect to main category permissions menu
+    drupal_goto('admin/user/configure/category');
   }
   
   // Output the permission matrix user form
-  if (!$save && $rid)  {
+  if ($rid)  {
     // Get name of role
     if ($rid == 0) {
       $role_name = t('no role');
@@ -470,22 +472,33 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
 
   global $user;
 
-  if (isset($uid)) {
+  if (isset($user)) {
     $user_object = user_load(array('uid' => $uid));
   }
   else {
     $user_object = $user;
   }
 
-  $sql = "SELECT count(*) from {term_access} where ";
-  if (isset($user) && is_array($user->roles)) {
-    $sql .="rid in ('". implode("','",array_keys($user_object->roles)) . "') and ";
+  // let's cache
+  static $taxonomy_access_perms;
+  $access = null;
+  $user_roles_key = implode("','",array_keys($user_object->roles));
+  if (!isset($taxonomy_access_perms))
+    $taxonomy_access_perms = array();
+  if (!isset($taxonomy_access_perms[$user_roles_key][$tid]))  {
+   $sql = "SELECT count(*) from {term_access} where ";
+    if (isset($user) && is_array($user->roles)) {
+      $sql .="rid in ('". $user_roles_key . "') and ";
+   } else {
+      $sql .="rid='1' and ";
+   }
+    $sql .= "tid='$tid' and grant_". $op . "=1";
+    $access = db_result(db_query($sql)) ? TRUE : FALSE;
+    $taxonomy_access_perms[$user_roles_key][$tid] = $access;
   } else {
-    $sql .="rid='1' and ";
+    $access = $taxonomy_access_perms[$user_roles_key][$tid];
   }
-  $sql .= "tid='$tid' and grant_". $op . "=1";
-
-  return db_result(db_query($sql)) ? TRUE : FALSE;
+  return $access;
 }
 
 function taxonomy_access_settings() {
