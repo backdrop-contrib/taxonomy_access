@@ -45,23 +45,21 @@ function taxonomy_access_menu()  {
   $access = user_access('administer users');
 
   $items[] = array('path' => 'admin/user/configure/category', 'title' => t('category permissions'),
-    'callback' => 'taxonomy_access_configure', 'access' => $access,
+    'callback' => 'taxonomy_access_admin', 'access' => $access,
     'type' => MENU_LOCAL_TASK);
   return $items;
 }
  
 function taxonomy_access_admin($edit = array()) {
+  $edit = $_POST['edit'];
   $tids = $_POST['tids'];
+  $save = $_POST['save'];
   $rid = arg(4);
   $output = '';
   $grant_types = array('view', 'update', 'delete');
   
   // Code to handle user supplied changes to permission configuration
-  if (isset($edit)) {
-    if (!isset($rid)) {
-      return t('Please select a role to update');
-    }
-    
+  if ($save) {
     // Process input data and use it to make changes to the database.
     foreach($tids as $tid) {
       // The $edit array is filled out with zeroes here to
@@ -98,7 +96,7 @@ function taxonomy_access_admin($edit = array()) {
   }
   
   // Output the permission matrix user form
-  if (isset($rid))  {
+  if (!$save && $rid)  {
     // Get name of role
     if ($rid == 0) {
       $role_name = t('no role');
@@ -133,6 +131,8 @@ function taxonomy_access_admin($edit = array()) {
            '<input type="checkbox" name="edit['.$term->tid.'][delete]" '. (($perm[$term->tid]['delete']) ? 'checked>' : '>'));
       }
     }
+    $output .= theme('table', $header, $rows);
+    $output .= form_submit(t('Save category permissions'), 'save');
   } else {
 
     // Compile role array:
@@ -155,32 +155,16 @@ function taxonomy_access_admin($edit = array()) {
     foreach ($role_names as $rid => $name) {
      $rows[] = array($name,array('data'=>l(t("edit"),"admin/user/configure/category/$rid"), 'align'=>'right'));
     }
+    $rid = arg(4);
+    if($save) {
+      $row = db_fetch_object(db_query('SELECT r.name FROM {role} r WHERE rid = %d', $rid));
+      drupal_set_message('Your permission settings for users in the \'' . $row->name . '\' role have been saved.', 'status');
+      $output = theme_status_messages();
+    }
+    $output .= theme('table', $header, $rows);
   }
-
-  $output .= theme('table', $header, $rows);
-  $output .= form_submit(t('Save category permissions'));
-
-  return form($output);
-}
-
-function taxonomy_access_configure() {
-  $op = $_POST['op'];
-  $edit = $_POST['edit'];
-
-  if (empty($op)) {
-    $op = arg(3);
-  }
-
-  switch($op)  {
-    case t('Save category permissions'):
-      drupal_set_message(t('the user\'s category permissions have been saved.'));
-      $edit['update'] = true;
-    default:
-      $output = taxonomy_access_admin($edit);
-      break;
-  }
+  $output = form($output);
   print theme('page', $output);
-
 }
 
 /**
