@@ -343,9 +343,18 @@ function taxonomy_access_settings() {
 **/
 function taxonomy_access_taxonomy($op, $type, $edit)  {
 	if($type = 'term') {
-		// Using this function is a lazy, expensive way of taking care of changes to the taxonomy data.
-    // More efficient code could be written to handle specific kinds of changes to the taxonomy.
-		_taxonomy_access_update_db();
+    switch($op)  {
+      case 'update':  // don't do anything, nothing on our end has changed
+        break;
+      case 'insert':  // add new default entries for the new category, don't have to touch node_access since no posts are in there yet
+        foreach(user_roles() as $rid => $role)
+          db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1)', $edit['tid'], $rid);
+        break;
+      case 'delete': // delete everything from term_access and node_access
+        db_query("DELETE FROM {node_access} WHERE gid='%d' AND realm='term_access'",$edit['tid']);
+        db_query("DELETE FROM {term_access} WHERE tid='%d'",$edit['tid']);
+        break;
+    }
 	}
 }
 
@@ -538,21 +547,18 @@ function _refresh_node_access_table() {
 	}
 	
 	// Determine which nodes don't belong to a category
-	$query = db_query("SELECT nid FROM {node} where 1");
-  $all_nids = array();
+	$query = db_query("SELECT nid FROM {node} WHERE nid not IN (SELECT nid from term_node)");
 	while($result = db_fetch_array($query)) {
-	  $all_nids[] = $result['nid'];
+	  $no_cat[] = $result['nid'];
 	}
-	$category_nids = array_unique($category_nids);
-  $no_cat = array();
-	$no_cat = array_diff($all_nids, $category_nids);
-
-	// Update or insert permission data for nodes without categories
-	foreach($no_cat as $nid) {
-	  foreach($permissions[0] as $key => $value) {
-		  db_query('REPLACE {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
-		}
-	}
+  if ($no_cat)  {
+  	// Update or insert permission data for nodes without categories
+	  foreach($no_cat as $nid) {
+	    foreach($permissions[0] as $key => $value) {
+		    db_query('REPLACE {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
+  		}
+	  }
+  }
 }
 
 
