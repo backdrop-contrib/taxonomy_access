@@ -471,18 +471,20 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     $all_rids = array_merge($add_rids, $current_rids);
     
     // Add role permissions for each new taxonomy terms.
-    // Default permissions assume all users can not read content in the new taxonomy
+    // nysus : Default permissions assume all users can not read content in the new taxonomy
+    // pyromanfo : Drupal default is actually view only, as is the case with node_access
     foreach($add_tids as $tid) {
       foreach($all_rids as $rid) {
-        db_query('INSERT INTO term_access VALUES (%d, %d, 0, 0, 0)', $tid, $rid);
+        db_query('INSERT INTO term_access VALUES (%d, %d, 1, 0, 0)', $tid, $rid);
       }
     }
     
     // Add role permissions for all old taxonomy terms.
-    // Default permissions assume new role does not have access to content in any category
+    // nysus : Default permissions assume new role does not have access to content in any category
+    // pyromanfo : Drupal default is actually view only, as is the case with node_access
     foreach($current_tids as $tid) {
       foreach($add_rids as $rid) {
-        db_query('INSERT INTO term_access VALUES (%d, %d, 0, 0, 0)', $tid, $rid);
+        db_query('INSERT INTO term_access VALUES (%d, %d, 1, 0, 0)', $tid, $rid);
       }
     } 
     // END: term_access table housekeeping
