@@ -78,7 +78,7 @@
 +       if (taxonomy_access($access,$term->tid))
 +        $terms[$nid][$term->$key] = $term;
 +     } else $terms[$nid][$term->$key] = $term;
-       $terms[$nid][$term->$key] = $term;
+-      $terms[$nid][$term->$key] = $term;
      }
    }
 @@ -474,7 +492,10 @@
