@@ -4,8 +4,8 @@ function taxonomy_access_help($section) {
   switch ($section) {
     
     // Brief message for administrators to explain what this module does
-    case 'admin/user/configure/category':
-      return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete and create permissions set for each user role.', array('%role' => url('admin/user/configure/role'), '%default' => url('admin/user/configure/category/0')));
+    case 'admin/access/category':
+      return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete and create permissions set for each user role.', array('%role' => url('admin/access/roles'), '%default' => url('admin/access/category/0')));
       
     case 'admin/modules#description': 
       return t('Allows users to specify how each category can be used by various roles.');
@@ -33,7 +33,7 @@ function taxonomy_access_help($section) {
       return $message;
       
     default:
-      if (strpos($section,'admin/user/configure/category') !== FALSE)
+      if (strpos($section,'admin/access/category') !== FALSE)
         return t('<b>Vocabulary Settings</b> - Next to each vocabulary is a dropdown with "Add" and "Remove" settings.  Select the "Add" setting for a permission to add that permission to all the categories in that vocabulary for the current role, likewise select the "Remove" setting to remove it.  "--" leaves that permission alone.<p><b>Default</b>: This permission, just underneath the vocabulary title, allows you to set the default permissions to apply for the current role to new categories added to this vocabulary.');
   }
 }
@@ -49,7 +49,7 @@ function taxonomy_access_node_grants($user, $op)  {
 function taxonomy_access_menu()  {
   $access = user_access('administer users');
 
-  $items[] = array('path' => 'admin/user/configure/category', 'title' => t('category permissions'),
+  $items[] = array('path' => 'admin/access/category', 'title' => t('category permissions'),
     'callback' => 'taxonomy_access_admin', 'access' => $access,
     'type' => MENU_LOCAL_TASK);
   return $items;
@@ -60,7 +60,7 @@ function taxonomy_access_admin($edit = array()) {
   $tids = $_POST['tids'];
   $vids = $_POST['vids'];
   $save = $_POST['save'];
-  $rid = arg(4);
+  $rid = arg(3);
   $output = '';
   $grant_types = array('view', 'update', 'delete', 'create');
   
@@ -140,7 +140,7 @@ function taxonomy_access_admin($edit = array()) {
     // permissions.
     cache_clear_all();
     // redirect to main category permissions menu
-    drupal_goto('admin/user/configure/category');
+    drupal_goto('admin/access/category');
   }
   
   // Output the permission matrix user form
@@ -216,9 +216,9 @@ function taxonomy_access_admin($edit = array()) {
     // Render role/permission overview:
     $header = array("Role","Category Permissions");
     // Default settings for categories
-    //$rows[] = array(t('no role'), array('data'=>l(t("edit"),"admin/user/configure/category/0"),'align'=>'right'));
+    //$rows[] = array(t('no role'), array('data'=>l(t("edit"),"admin/access/category/0"),'align'=>'right'));
     foreach ($role_names as $rid => $name) {
-     $rows[] = array($name,array('data'=>l(t("edit"),"admin/user/configure/category/$rid"), 'align'=>'right'));
+     $rows[] = array($name,array('data'=>l(t("edit"),"admin/access/category/$rid"), 'align'=>'right'));
     }
     $rid = arg(4);
     if($save) {

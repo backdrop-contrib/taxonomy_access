@@ -1,34 +1,51 @@
-Index: modules/taxonomy.module
-===================================================================
-RCS file: /cvs/drupal/drupal/modules/taxonomy.module,v
-retrieving revision 1.185
-diff -u -r1.185 taxonomy.module
---- modules/taxonomy.module	15 Mar 2005 21:18:19 -0000	1.185
-+++ modules/taxonomy.module	16 Mar 2005 01:52:46 -0000
-@@ -390,7 +390,7 @@
+--- drupal-4.5.1/modules/taxonomy.module	Mon Nov 29 06:53:46 2004
++++ /var/www/modules/taxonomy.module	Wed Dec 15 08:03:57 2004
+@@ -106,7 +106,11 @@
+     $result = db_query("SELECT d.tid, d.name, MAX(n.created) AS updated, COUNT(*) AS count FROM {term_data} d INNER JOIN {term_node} USING (tid) INNER JOIN {node} n USING (nid) WHERE n.status = 1 GROUP BY d.tid, d.name ORDER BY updated DESC, d.name");
+     $items = array();
+     while ($category = db_fetch_object($result)) {
+-      $items[] = l($category->name .' ('. $category->count .')', 'taxonomy/term/'. $category->tid) .'<br />'. t('%time ago', array('%time' => format_interval(time() - $category->updated)));
++      if (function_exists('taxonomy_access'))  {
++        if (taxonomy_access('view',$category->tid))
++          $items[] = l($category->name .' ('. $category->count .')', 'taxonomy/term/'. $category->tid) .'<br />'. t('%time ago', array('%time' => format_interval(time() - $category->updated)));
++      } else // if taxonomy_access isn't installed
++        $items[] = l($category->name .' ('. $category->count .')', 'taxonomy/term/'. $category->tid) .'<br />'. t('%time ago', array('%time' => format_interval(time() - $category->updated)));        
+     }
+ 
+     $block['subject'] = t('Categories');
+@@ -381,7 +385,7 @@
      $blank = '<'. t('none') .'>';
    }
  
 -  return _taxonomy_term_select($vocabulary->name, $name, $value, $vid, $help, intval($vocabulary->multiple), $blank);
-+  return _taxonomy_term_select($vocabulary->name, $name, $value, $vid, $help, intval($vocabulary->multiple), $blank, array(), 'create');
++  return _taxonomy_term_select($vocabulary->name, $name, $value, $vid, $help, intval($vocabulary->multiple), $blank, array(),'create');
  }
  
  /**
-@@ -444,7 +444,12 @@
+@@ -411,7 +415,11 @@
  function taxonomy_node_form($type, $node = '', $help = NULL, $name = 'taxonomy') {
    if (!$node->taxonomy) {
      if ($node->nid) {
 -      $terms = array_keys(taxonomy_node_get_terms($node->nid));
-+      if (function_exists('taxonomy_access')) {
-+        $terms = array_keys(taxonomy_node_get_terms($node->nid, 'tid', 'create'));
-+      } 
-+      else {
++      if (function_exists('taxonomy_access'))  {
++        $terms = array_keys(taxonomy_node_get_terms($node->nid,'tid','create'));
++      } else {
 +        $terms = array_keys(taxonomy_node_get_terms($node->nid));
 +      }
      }
      else {
        $terms = 0;
-@@ -464,11 +469,18 @@
+@@ -432,6 +440,9 @@
+  * Determine whether a node mentions the name of a term.
+  */
+ function taxonomy_node_has_term($nid, $tid) {
++  if (function_exists('taxonomy_access'))
++    if (!taxonomy_access('view',$tid))
++      return FALSE;
+   $term_name = db_result(db_query('SELECT name FROM {term_data} WHERE tid = %d', $tid));
+ 
+   return db_result(db_query("SELECT COUNT(n.nid) FROM {node} n WHERE n.nid = %d AND ((n.title LIKE '%%%s%%') OR (n.body LIKE '%%%s%%'))", $nid, $term_name, $term_name));
+@@ -440,11 +451,14 @@
  /**
   * Find all terms associated to the given node, within one vocabulary.
   */
@@ -38,18 +55,14 @@ diff -u -r1.185 taxonomy.module
    $terms = array();
    while ($term = db_fetch_object($result)) {
 -    $terms[$term->$key] = $term;
-+    if (function_exists('taxonomy_access')) {
-+      if (taxonomy_access($access, $term->tid)) {
++    if (function_exists('taxonomy_access'))  {
++      if (taxonomy_access($access,$term->tid))
 +        $terms[$term->$key] = $term;
-+      }
-+    } 
-+    else {
-+      $terms[$term->$key] = $term;
-+    }
++    } else $terms[$term->$key] = $term;
    }
    return $terms;
  }
-@@ -476,14 +488,21 @@
+@@ -452,14 +466,17 @@
  /**
   * Find all terms associated to the given node.
   */
@@ -62,82 +75,62 @@ diff -u -r1.185 taxonomy.module
      $terms[$nid] = array();
      while ($term = db_fetch_object($result)) {
 -      $terms[$nid][$term->$key] = $term;
-+      if (function_exists('taxonomy_access')) {
-+        if (taxonomy_access($access, $term->tid)) {
-+          $terms[$nid][$term->$key] = $term;
-+	}
-+      } 
-+      else {
++     if (function_exists('taxonomy_access'))  {
++       if (taxonomy_access($access,$term->tid))
 +        $terms[$nid][$term->$key] = $term;
-+      }
++     } else $terms[$nid][$term->$key] = $term;
      }
    }
    return $terms[$nid];
-@@ -505,7 +524,14 @@
-         }
-       }
-       else if ($term) {
+@@ -474,7 +491,10 @@
+   if ($terms) {
+     foreach ($terms as $term) {
+       if ($term) {
 -        db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
-+        if (function_exists('taxonomy_access')) {
-+	  if (taxonomy_access('create', $term)) {
-+            db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
-+	  }
-+	}
-+	else {
-+          db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
-+	}
++        if (function_exists('taxonomy_access'))  {
++           if (taxonomy_access('create',$term))
++             db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
++        } else db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
        }
      }
    }
-@@ -526,7 +552,14 @@
+@@ -495,7 +515,10 @@
      $result = db_query('SELECT t.*, tid1, tid2 FROM {term_relation}, {term_data} t WHERE (t.tid = tid1 OR t.tid = tid2) AND (tid1 = %d OR tid2 = %d) AND t.tid != %d ORDER BY weight, name', $tid, $tid, $tid);
      $related = array();
      while ($term = db_fetch_object($result)) {
 -      $related[$term->$key] = $term;
-+        if (function_exists('taxonomy_access')) {
-+           if (taxonomy_access('view', $term->tid)) {
-+             $related[$term->$key] = $term;
-+	   }
-+        } 
-+	else {
-+	  $related[$term->$key] = $term;
-+	}
++        if (function_exists('taxonomy_access'))  {
++           if (taxonomy_access('view',$term->tid))
++            $related[$term->$key] = $term;
++        } else $related[$term->$key] = $term;
      }
      return $related;
    }
-@@ -543,7 +576,14 @@
+@@ -512,7 +535,10 @@
      $result = db_query('SELECT t.* FROM {term_hierarchy} h, {term_data} t WHERE h.parent = t.tid AND h.tid = %d ORDER BY weight, name', $tid);
      $parents = array();
      while ($parent = db_fetch_object($result)) {
 -      $parents[$parent->$key] = $parent;
-+        if (function_exists('taxonomy_access')) {
-+          if (taxonomy_access('view', $parent->tid)) {
++        if (function_exists('taxonomy_access'))  {
++           if (taxonomy_access('view',$parent->tid))
 +            $parents[$parent->$key] = $parent;
-+	  }
-+        } 
-+	else {
-+	  $parents[$parent->$key] = $parent;
-+	}
++        } else $parents[$parent->$key] = $parent;
      }
      return $parents;
    }
-@@ -580,7 +620,14 @@
+@@ -549,7 +575,10 @@
    }
    $children = array();
    while ($term = db_fetch_object($result)) {
 -    $children[$term->$key] = $term;
-+    if (function_exists('taxonomy_access')) {
-+      if (taxonomy_access('view', $term->tid)) {
++    if (function_exists('taxonomy_access'))  {
++       if (taxonomy_access('view',$term->tid))
 +        $children[$term->$key] = $term;
-+      }
-+    } 
-+    else {
-+      $children[$term->$key] = $term;
-+    }
++    } else $children[$term->$key] = $term;
    }
    return $children;
  }
-@@ -605,24 +652,44 @@
+@@ -574,24 +603,42 @@
   *   An array of all term objects in the tree. Each term object is extended
   *   to have "depth" and "parents" attributes in addition to its normal ones.
   */
@@ -150,23 +143,21 @@ diff -u -r1.185 taxonomy.module
    // We cache trees, so it's not CPU-intensive to call get_tree() on a term
    // and its children, too.
 +  // pyromanfo: Cache based on user role and access
-+  if (function_exists('taxonomy_access')) {
++  if (function_exists('taxonomy_access'))  {
 +    global $user;
 +    if (isset($uid)) {
 +      $user_object = user_load(array('uid' => $uid));
-+    } 
++    }
 +    else {
 +      $user_object = $user;
 +    }
 +    $real_vid = $vid;
 +    if (isset($user) && is_array($user->roles)) {
-+      $vid = $vid.implode("','", array_keys($user_object->roles)).$access;
-+    } 
-+    else {
++      $vid = $vid.implode("','",array_keys($user_object->roles)).$access;
++    } else {
 +      $vid = $vid.'1'.$access;
 +    }
-+  } 
-+  else {
++  } else {
 +    $real_vid = $vid;
 +  }
 +
@@ -185,7 +176,7 @@ diff -u -r1.185 taxonomy.module
    $max_depth = (is_null($max_depth)) ? count($children[$vid]) : $max_depth;
    if ($children[$vid][$parent]) {
      foreach ($children[$vid][$parent] as $child) {
-@@ -633,11 +700,22 @@
+@@ -602,11 +649,22 @@
          $terms[$vid][$child]->parents = $parents[$vid][$child];
          $tree[] = $terms[$vid][$child];
  
@@ -196,10 +187,10 @@ diff -u -r1.185 taxonomy.module
    }
  
 +  // strip out entries where the user doesn't have proper access
-+  if (function_exists('taxonomy_access') && is_array($tree)) {
++  if (function_exists('taxonomy_access') && is_array($tree))  {
 +    $newtree = array();
-+    foreach ($tree as $term) {
-+      if (taxonomy_access($access, $term->tid)) {
++    foreach ($tree as $term)  {
++      if (taxonomy_access($access,$term->tid))  {
 +        $newtree[] = $term;
 +      }
 +    }
@@ -209,47 +200,37 @@ diff -u -r1.185 taxonomy.module
    return $tree ? $tree : array();
  }
  
-@@ -698,7 +776,14 @@
+@@ -667,7 +725,10 @@
    if (!isset($children)) {
      $result = db_query('SELECT tid, parent FROM {term_hierarchy}');
      while ($term = db_fetch_object($result)) {
 -      $children[$term->parent][] = $term->tid;
-+      if (function_exists('taxonomy_access')) {
-+         if (taxonomy_access('view', $term->tid)) {
++      if (function_exists('taxonomy_access'))  {
++         if (taxonomy_access('view',$term->tid))
 +           $children[$term->parent][] = $term->tid;
-+	 }
-+      } 
-+      else {
-+        $children[$term->parent][] = $term->tid;
-+      }
++      } else $children[$term->parent][] = $term->tid;
      }
    }
    return $children[$tid] ? $children[$tid] : array();
-@@ -720,7 +805,14 @@
+@@ -711,7 +772,10 @@
    $db_result = db_query("SELECT * FROM {term_data} WHERE LOWER('%s') LIKE LOWER(name)", trim($name));
    $result = array();
    while ($term = db_fetch_object($db_result)) {
 -    $result[] = $term;
-+    if (function_exists('taxonomy_access')) {
-+      if (taxonomy_access('view', $term->tid)) {
-+         $result[] = $term;
-+      }
-+    } 
-+    else {
-+      $result[] = $term;
-+    }
++    if (function_exists('taxonomy_access'))  {
++       if (taxonomy_access('view',$term->tid))
++        $result[] = $term;
++    } else $result[] = $term;
    }
  
    return $result;
-@@ -746,12 +838,17 @@
+@@ -728,12 +792,15 @@
   * Return the term object matching a term ID.
   */
  function taxonomy_get_term($tid) {
-+  if (function_exists('taxonomy_access')) {
-+    if (!taxonomy_access('view', $tid)) {
-+      return FALSE;
-+    }
-+  }
++    if (function_exists('taxonomy_access'))
++       if (!taxonomy_access('view',$tid))
++        return FALSE;
    // simple cache using a static var?
    return db_fetch_object(db_query('SELECT * FROM {term_data} WHERE tid = %d', $tid));
  }
@@ -258,29 +239,26 @@ diff -u -r1.185 taxonomy.module
 -  $tree = taxonomy_get_tree($vocabulary_id);
 +function _taxonomy_term_select($title, $name, $value, $vocabulary_id, $description, $multiple, $blank, $exclude = array(), $access = 'view') {
 +  $tree = taxonomy_get_tree($vocabulary_id,0,-1,NULL,$access);
-   $options = array();
- 
    if ($blank) {
-@@ -917,6 +1014,22 @@
-     drupal_not_found();
+     $options[] = array('tid' => 0, 'name' => $blank);
    }
- 
-+  if (function_exists('taxonomy_access')) {
+@@ -893,6 +960,19 @@
+   }
+   else {
+     drupal_not_found();
++  }
++
++  if (function_exists('taxonomy_access'))  {
 +    $access_tids = array();
-+    foreach($tids as $tid) {
-+      if (taxonomy_access('view', $tid)) {
++    foreach($tids as $tid)
++      if (taxonomy_access('view',$tid))
 +        $access_tids[] = $tid;
-+      }
-+    }
-+    if ($access_tids) {
++    if ($access_tids)
 +      $tids = $access_tids;
-+    } 
 +    else {
 +      drupal_access_denied();
 +      return;
 +    }
-+  }
-+
+   }
+ 
    if ($tids) {
-     // Build title:
-     $result = db_query('SELECT name FROM {term_data} WHERE tid IN (%s)', implode(',', $tids));
