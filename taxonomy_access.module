@@ -1,0 +1,318 @@
+<?  
+function taxonomy_access_menu()  {
+  $access = user_access('administer users');
+
+  $items[] = array('path' => 'admin/user/configure/category', 'title' => t('category permissions'),
+    'callback' => 'taxonomy_access_configure', 'access' => $access,
+    'type' => MENU_LOCAL_TASK);
+  return $items;
+}
+ 
+function taxonomy_access_admin($edit = array()) {
+  $tids = $_POST['tids'];
+  $rid = arg(4);
+  $output = '';
+  if (isset($edit)) {
+    if (!isset($rid)) return t('Please select a role to update');
+    // Save permissions:
+    foreach ($tids as $tid)  {
+	if (isset($edit[$tid]))
+          foreach($edit[$tid] as $key => $val)  {
+            ($val == 'on') ? $edit[$tid][$key]=1 : $edit[$tid][$key]=0;
+	   }
+      taxonomy_access_grant_update($tid,$rid,$edit[$tid]);
+    }
+
+    // Clear the cache, as we might have changed the anonymous user's
+    // permissions.
+    cache_clear_all();
+  }
+  if (isset($rid))  {
+    // Get name of role
+    if ($rid == 0) $role_name = t('Default');
+    else $role_name = db_result(db_query('select name from {role} where rid='.$rid));
+    $output = '<h2>Permissions for \''.$role_name.'\'</h2><p>';
+    // Get all category permissions
+    $perm = taxonomy_access_get_grants($rid);
+    // Compile category permission overview
+    $term_list = array();
+    $header = array('Category','View','Update','Delete');
+    // Do the default row
+    $rows[] = array('Default Permissions',
+           '<input type="hidden" name="tids[]" value="0">'.
+           '<input type="checkbox" name="edit[0][view]" '. (($perm[0]['view']) ? 'checked>' : '>'),
+           '<input type="checkbox" name="edit[0][update]" '. (($perm[0]['update']) ? 'checked>' : '>'),
+           '<input type="checkbox" name="edit[0][delete]" '. (($perm[0]['delete']) ? 'checked>' : '>'));
+    $vocabs = taxonomy_get_vocabularies();
+    foreach($vocabs as $vocab)  {
+      $rows[] = array('<b>'.t($vocab->name).'</b>','&nbsp','&nbsp','&nbsp');
+      $terms = array();
+      $terms = taxonomy_get_tree($vocab->vid);
+      foreach($terms as $term)  {
+        $rows[] = array(str_repeat('-',$term->depth).$term->name,
+           '<input type="hidden" name="tids[]" value="'.$term->tid.'">'.
+	   '<input type="checkbox" name="edit['.$term->tid.'][view]" '. (($perm[$term->tid]['view']) ? 'checked>' : '>'),
+           '<input type="checkbox" name="edit['.$term->tid.'][update]" '. (($perm[$term->tid]['update']) ? 'checked>' : '>'),
+           '<input type="checkbox" name="edit['.$term->tid.'][delete]" '. (($perm[$term->tid]['delete']) ? 'checked>' : '>'));
+      }
+    }
+  } else {
+
+    // Compile role array:
+    $result = db_query('SELECT r.rid, p.perm FROM {role} r LEFT JOIN {permission} p ON r.rid = p.rid ORDER BY name');
+    $roles = array();
+    while ($role = db_fetch_object($result)) {
+      $role_perms[$role->rid] = $role->perm;
+    }
+
+    $result = db_query('SELECT rid, name FROM {role} ORDER BY name');
+    $role_names = array();
+    while ($role = db_fetch_object($result)) {
+      $role_names[$role->rid] = $role->name;
+    }
+
+    // Render role/permission overview:
+    $header = array("Role","Category Permissions");
+    // Default settings for categories
+    $rows[] = array(t('Default'),array('data'=>"<a href=\"admin/user/configure/category/0\">Edit</a>",'align'=>'right'));
+    foreach ($role_names as $rid => $name) {
+     $rows[] = array($name,array('data'=>"<a href=\"admin/user/configure/category/$rid\">Edit</a>", 'align'=>'right'));
+    }
+  }
+
+  $output .= theme('table', $header, $rows);
+  $output .= form_submit(t('Save category permissions'));
+
+  return form($output);
+}
+
+function taxonomy_access_configure() {
+  $op = $_POST['op'];
+  $edit = $_POST['edit'];
+
+  if (empty($op)) {
+    $op = arg(3);
+  }
+
+  switch($op)  {
+    case t('Save category permissions'):
+      drupal_set_message(t('the user\'s category permissions have been saved.'));
+      $edit['update'] = true;
+    default:
+      $output = taxonomy_access_admin($edit);
+      break;
+  }
+  print theme('page', $output);
+
+}
+function taxonomy_access_help($section)  {
+  switch($section)  {
+    case 'admin/user/configure/category':
+      return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update and delete permissions set for each user role.  The "Default Permissions" are the permissions applied to all categories for this role.  The <a href="%default">Default</a> role allows you to set the default category permissions for all roles.', array('%role' => url('admin/user/configure/role'), '%default' => url('admin/user/configure/category/0')));
+    case 'admin/modules#description':
+      return t('Allows the user administrator to control access to categories based on user role.');
+  }
+}
+/**
+ * Implementation of hook_node_grants()
+ * Gives access to taxonomies based on the taxonomy_access table
+ */
+function taxonomy_access_node_grants($user, $op)  {
+//    if (user_access('administer nodes'))
+//      return array('taxonomy'=>'0');
+
+    $sql = "SELECT tid from {term_access} where (rid=0 OR rid in ('"
+      . implode("','",array_keys($user->roles)) . "')) and grant_". $op . "=1";
+    $result = db_query($sql);
+    $nids = array();
+    $i=0;
+    while (($nid = db_result($result,$i)) != null)  {
+      $nids[] = $nid;
+      $i++;
+    }
+    $nids[] = 0; // catchall
+    return array('taxonomy'=>$nids);
+
+}
+
+/** 
+ * Inserts a permission for a role to a term
+ * @param $tid
+ *   The term to add the permission for. 
+ * @param $role 
+ *   The role to add the permission to.
+ *   Can be the name or the role id or blank for all term permissions
+ * @param $grants
+ *   A hash of the grants in the form of $grants['perm'] = boolean
+ *   A value of true will grant the permission for this user and term.
+ *   If omitted, only the permission for 'view' will be granted.
+**/
+function taxonomy_access_grant_add($tid,$role = null,$grants = null)  {
+  if (!isset($tid)) return false;
+  if (isset($role) && !is_numeric($role))
+    $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
+  $ta_sql = "INSERT INTO {term_access} (tid";
+  $ta_sql_values = " VALUES ($tid";
+  if (isset($role)) {
+    $ta_sql .= ",rid";
+    $ta_sql_values .= ",$role";
+  }
+  $sql = "";
+  if (isset($grants))  {
+    foreach ($grants as $perm => $value)
+    {
+      $sql .= ",grant_$perm";
+      $ta_sql_values .= ",$value";
+    }
+    $sql .= ")";
+    $ta_sql_values .= ")";
+  } else {
+    $sql .= ")";
+    $ta_sql_values .= ")";
+  }
+  $ta_sql .= $sql . $ta_sql_values;
+
+  db_query($ta_sql);  // insert into term_access
+
+  // take care of node_access
+  $result = db_query("SELECT DISTINCT(n.nid) from {node} as n INNER JOIN {term_node} as tn 
+			on n.nid=tn.nid where tn.tid=$tid");
+  while ($node = db_fetch_array($result))  {
+    $nid = $node['nid'];
+    db_query("INSERT INTO {node_access} (nid,gid,realm,grant_view,grant_update,grant_delete)
+		VALUES ($nid,$tid,'taxonomy',1,1,1)");
+  }
+
+}
+
+/**
+ * Deletes permissions for a role from a term
+ * @param $tid
+ *   The term to add the permission for.
+ * @param $role
+ *   The role to add the permission to. 
+ *   Can be the name or the role id or blank for all term permissions.
+**/
+function taxonomy_access_grant_del($tid,$role = null)  {
+  if (!isset($tid)) return false;
+  if (isset($role) && !is_numeric($role))
+    $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
+  $ta_sql = "DELETE FROM {term_access} where tid=$tid";
+  $na_sql = "DELETE FROM {node_access} where gid=$tid and realm='taxonomy'";
+  if (isset($role))
+    $ta_sql .= " and rid=$role";
+  db_query($ta_sql);
+  db_query($na_sql);
+}
+/**
+ * Updates permissions for a role from a term
+ * @param $tid
+ *   The term to add the permission for.
+ * @param $role
+ *   The role to add the permission to.
+ *   Can be the name or the role id or blank for all term permissions.
+ * @param $grants
+ *   A hash of the grants in the form of $grants['perm'] = boolean
+ *   A value of true will grant the permission for this user and term.
+ *   If omitted, only the permission for 'view' will be granted.
+**/
+function taxonomy_access_grant_update($tid,$role = null, $grants = null)  {
+  if (!isset($tid)) return false;
+  if (isset($role) && !is_numeric($role))
+    $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
+  taxonomy_access_grant_del($tid,$role);
+  if (isset($grants))
+    taxonomy_access_grant_add($tid,$role,$grants);
+}
+
+/**
+ * Gets permissions for a given role
+ * @param $role
+ *   The role to retrieve the permissions for.
+ *   Can be the name or the role id or blank for all term permissions.
+ * @return
+ *   A two dimensional hash of the form $grants[tid][grant] where
+ *   tid is the term id and
+ *   grant is the permission (i.e. 'view','delete',ect.)
+ *   this entry in the hash is true if permission is granted, false otherwise
+**/
+function taxonomy_access_get_grants($role)  {
+  if (!isset($role)) return false;
+  if (isset($role) && !is_numeric($role))
+    $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
+  $result = db_query("SELECT * from {term_access} where rid='$role' OR rid=0");
+  $grants = array();
+  while ($grant = db_fetch_array($result))  {
+    $tid = $grant['tid'];
+    foreach($grant as $key => $grant_val)  {
+      if (strpos($key,'grant_') !== FALSE)  {
+        $grant_name = '';
+        $grant_name = str_replace('grant_','',$key);
+        if (!($grants[$tid][$grant_name]))  // If there's conflicting DB rules, take the most lenient
+          $grants[$tid][$grant_name] = $grant_val;
+      }
+    }
+  }
+  return $grants;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
+  switch ($op) {
+    case 'delete':
+      // When a node is deleted, delete any relevant permissions.
+      db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'taxonomy\'', $node->nid);
+      break;
+
+    case 'insert':
+    case 'update':
+      // Clear out any existing permissions for the node, and set new ones.
+      db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'taxonomy\'', $node->nid);
+      if ($node->taxonomy) {
+        foreach ($node->taxonomy as $term) {
+          db_query('INSERT IGNORE INTO {node_access} (nid,gid,realm,grant_view,grant_update,grant_delete) 
+			VALUES (%d, %d, \'taxonomy\', %d, %d, %d)', $node->nid, $term,1, 1, 1);
+        }
+      }
+      break;
+  }
+}
+
+/**
+ * Allows you to determine if the current user or $uid can access this taxonomy for the given perm
+**/
+function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
+  if (!isset($uid) && user_access('bypass taxonomy access'))
+    return TRUE;
+
+  $taxonomy = array2object($taxonomy);
+
+  if ($taxonomy->tid)
+    $tid = $taxonomy->tid;
+  else if (is_numeric($taxonomy))
+    $tid = $taxonomy;
+  else return FALSE;
+
+  global $user;
+
+  if (isset($uid)) {
+    $user_object = user_load(array('uid' => $uid));
+  }
+  else {
+    $user_object = $user;
+  }
+  $sql = "SELECT tid from {term_access} where (rid=0 OR rid in ('"
+    . implode("','",array_keys($user_object->roles)) . "')) and (tid='$tid' OR tid=0) and grant_". $op . "=1";
+
+  if (db_result(db_query($sql)))
+    return TRUE;
+  else return FALSE;
+}
+
+function taxonomy_access_perm()  {
+  return array('bypass taxonomy access');
+}
+
+?>

@@ -1,0 +1,19 @@
+#
+# Table structure for table `term_access`
+#
+
+CREATE TABLE term_access (
+  tid int(10) unsigned NOT NULL default '0',
+  rid int(10) unsigned NOT NULL default '0',
+  grant_view tinyint(1) unsigned NOT NULL default '0',
+  grant_update tinyint(1) unsigned NOT NULL default '0',
+  grant_delete tinyint(1) unsigned NOT NULL default '0',
+  PRIMARY KEY  (tid,rid)
+) TYPE=MyISAM;
+
+#
+# Adding default 'read all' access to access tables
+#
+
+INSERT INTO term_access VALUES (0, 0, 1, 0, 0);
+INSERT INTO node_access VALUES (0, 0,'taxonomy', 1, 0, 0);

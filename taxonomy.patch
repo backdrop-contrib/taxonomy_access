@@ -1,0 +1,101 @@
+109c109,113
+<       $items[] = l($category->name .' ('. $category->count .')', 'taxonomy/term/'. $category->tid) .'<br />'. t('%time ago', array('%time' => format_interval(time() - $category->updated)));
+---
+>       if (function_exists('taxonomy_access'))  {
+>         if (taxonomy_access('view',$category->tid))
+>           $items[] = l($category->name .' ('. $category->count .')', 'taxonomy/term/'. $category->tid) .'<br />'. t('%time ago', array('%time' => format_interval(time() - $category->updated)));
+>       } else // if taxonomy_access isn't installed
+>         $items[] = l($category->name .' ('. $category->count .')', 'taxonomy/term/'. $category->tid) .'<br />'. t('%time ago', array('%time' => format_interval(time() - $category->updated)));        
+434a439,441
+>   if (function_exists('taxonomy_access'))
+>     if (!taxonomy_access('view',$tid))
+>       return FALSE;
+447c454,457
+<     $terms[$term->$key] = $term;
+---
+>     if (function_exists('taxonomy_access'))  {
+>       if (taxonomy_access('view',$term->tid))
+>         $terms[$term->$key] = $term;
+>     } else $terms[$term->$key] = $term;
+461a472,475
+>      if (function_exists('taxonomy_access'))  {
+>        if (taxonomy_access('view',$term->tid))
+>         $terms[$nid][$term->$key] = $term;
+>      } else $terms[$nid][$term->$key] = $term;
+477c491,494
+<         db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
+---
+>         if (function_exists('taxonomy_access'))  {
+>            if (taxonomy_access('update',$term))
+>              db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
+>         } else db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
+498c515,518
+<       $related[$term->$key] = $term;
+---
+>         if (function_exists('taxonomy_access'))  {
+>            if (taxonomy_access('view',$term->tid))
+>             $related[$term->$key] = $term;
+>         } else $related[$term->$key] = $term;
+515c535,538
+<       $parents[$parent->$key] = $parent;
+---
+>         if (function_exists('taxonomy_access'))  {
+>            if (taxonomy_access('view',$parent->tid))
+>             $parents[$parent->$key] = $parent;
+>         } else $parents[$parent->$key] = $parent;
+552c575,578
+<     $children[$term->$key] = $term;
+---
+>     if (function_exists('taxonomy_access'))  {
+>        if (taxonomy_access('view',$term->tid))
+>         $children[$term->$key] = $term;
+>     } else $children[$term->$key] = $term;
+589,591c615,625
+<       $children[$vid][$term->parent][] = $term->tid;
+<       $parents[$vid][$term->tid][] = $term->parent;
+<       $terms[$vid][$term->tid] = $term;
+---
+>       if (function_exists('taxonomy_access'))  {
+>          if (taxonomy_access('view',$term->tid))  {
+>           $children[$vid][$term->parent][] = $term->tid;
+>           $parents[$vid][$term->tid][] = $term->parent;
+>           $terms[$vid][$term->tid] = $term; 
+>          }
+>       } else {
+>         $children[$vid][$term->parent][] = $term->tid;
+>         $parents[$vid][$term->tid][] = $term->parent;
+>         $terms[$vid][$term->tid] = $term;
+>       }
+670c704,707
+<       $children[$term->parent][] = $term->tid;
+---
+>       if (function_exists('taxonomy_access'))  {
+>          if (taxonomy_access('view',$term->tid))
+>            $children[$term->parent][] = $term->tid;
+>       } else $children[$term->parent][] = $term->tid;
+714c751,754
+<     $result[] = $term;
+---
+>     if (function_exists('taxonomy_access'))  {
+>        if (taxonomy_access('view',$term->tid))
+>         $result[] = $term;
+>     } else $result[] = $term;
+730a771,774
+>     if (function_exists('taxonomy_access'))
+>        if (!taxonomy_access('view',$term->tid))
+>         return FALSE;
+> 
+895a940,952
+>   }
+> 
+>   if (function_exists('taxonomy_access'))  {
+>     $access_tids = array();
+>     foreach($tids as $tid)
+>       if (taxonomy_access('view',$tid))
+>         $access_tids[] = $tid;
+>     if ($access_tids)
+>       $tids = $access_tids;
+>     else {
+>       drupal_access_denied();
+>       return;
+>     }
