@@ -8,6 +8,7 @@ CREATE TABLE term_access (
   grant_view tinyint(1) unsigned NOT NULL default '0',
   grant_update tinyint(1) unsigned NOT NULL default '0',
   grant_delete tinyint(1) unsigned NOT NULL default '0',
+  grant_create tinyint(1) unsigned NOT NULL default '0',
   PRIMARY KEY  (tid,rid)
 ) TYPE=MyISAM;
 

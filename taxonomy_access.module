@@ -56,7 +56,7 @@ function taxonomy_access_admin($edit = array()) {
   $save = $_POST['save'];
   $rid = arg(4);
   $output = '';
-  $grant_types = array('view', 'update', 'delete');
+  $grant_types = array('view', 'update', 'delete', 'create');
   
   // Code to handle user supplied changes to permission configuration
   if ($save) {
@@ -110,25 +110,27 @@ function taxonomy_access_admin($edit = array()) {
     $perm = taxonomy_access_get_grants($rid);
     // Compile category permission overview
     $term_list = array();
-    $header = array('Category','View','Update','Delete');
+    $header = array('Category','View','Update','Delete','Create');
     
     // Do the row for uncategorized nodes
     $rows[] = array('uncategorized nodes',
            '<input type="hidden" name="tids[]" value="0">'.
            '<input type="checkbox" name="edit[0][view]" '. (($perm[0]['view']) ? 'checked>' : '>'),
            '<input type="checkbox" name="edit[0][update]" '. (($perm[0]['update']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit[0][delete]" '. (($perm[0]['delete']) ? 'checked>' : '>'));
+           '<input type="checkbox" name="edit[0][delete]" '. (($perm[0]['delete']) ? 'checked>' : '>'),
+           '&nbsp;');
     $vocabs = taxonomy_get_vocabularies();
     foreach($vocabs as $vocab)  {
-      $rows[] = array('<b>'.t($vocab->name).'</b>','&nbsp','&nbsp','&nbsp');
+      $rows[] = array('<b>'.t($vocab->name).'</b>','&nbsp','&nbsp','&nbsp','&nbsp;');
       $terms = array();
       $terms = taxonomy_get_tree($vocab->vid);
       foreach($terms as $term)  {
         $rows[] = array(str_repeat('-',$term->depth).$term->name,
            '<input type="hidden" name="tids[]" value="'.$term->tid.'">'.
-     '<input type="checkbox" name="edit['.$term->tid.'][view]" '. (($perm[$term->tid]['view']) ? 'checked>' : '>'),
+           '<input type="checkbox" name="edit['.$term->tid.'][view]" '. (($perm[$term->tid]['view']) ? 'checked>' : '>'),
            '<input type="checkbox" name="edit['.$term->tid.'][update]" '. (($perm[$term->tid]['update']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit['.$term->tid.'][delete]" '. (($perm[$term->tid]['delete']) ? 'checked>' : '>'));
+           '<input type="checkbox" name="edit['.$term->tid.'][delete]" '. (($perm[$term->tid]['delete']) ? 'checked>' : '>'),
+           '<input type="checkbox" name="edit['.$term->tid.'][create]" '. (($perm[$term->tid]['create']) ? 'checked>' : '>'));
       }
     }
     $output .= theme('table', $header, $rows);
@@ -459,7 +461,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // pyromanfo : Drupal default is actually view only, as is the case with node_access
     foreach($add_tids as $tid) {
       foreach($all_rids as $rid) {
-        db_query('INSERT INTO term_access VALUES (%d, %d, 1, 0, 0)', $tid, $rid);
+        db_query('INSERT INTO term_access VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
       }
     }
     
@@ -468,7 +470,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // pyromanfo : Drupal default is actually view only, as is the case with node_access
     foreach($current_tids as $tid) {
       foreach($add_rids as $rid) {
-        db_query('INSERT INTO term_access VALUES (%d, %d, 1, 0, 0)', $tid, $rid);
+        db_query('INSERT INTO term_access VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
       }
     } 
     // END: term_access table housekeeping
@@ -512,7 +514,7 @@ function _refresh_node_access_table() {
 		$term_access[] = $term_access_row;
 	}
 	foreach($term_access as $key => $value) {
-		$permissions[$value['tid']][$value['rid']] = array('grant_view' => $value['grant_view'], 'grant_update' => $value['grant_update'], 'grant_delete' => $value['grant_delete']);
+		$permissions[$value['tid']][$value['rid']] = array('grant_view' => $value['grant_view'], 'grant_update' => $value['grant_update'], 'grant_delete' => $value['grant_delete'], 'grant_create' => $value['grant_create']);
 	}
 	
 	// Use the array structure of permissions we just created to make the updates to the node_access table
