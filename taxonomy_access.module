@@ -703,12 +703,12 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // Setup defaults
     if (is_array($delete_rids))  {
       foreach($delete_rids as $rid)  {
-        db_query("DELETE from {node_access_defaults} WHERE rid='%d'",$rid);
+        db_query("DELETE from {term_access_defaults} WHERE rid='%d'",$rid);
       }
     }
     if (is_array($delete_vids))  {
       foreach($delete_vids as $vid)  {
-        db_query("DELETE from {node_access_defaults} WHERE vid='%d'",$vid);
+        db_query("DELETE from {term_access_defaults} WHERE vid='%d'",$vid);
       }
     }
   
@@ -716,7 +716,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       foreach($current_vids as $vid)  {
         if (is_array($add_rids))  {
           foreach($add_rids as $rid)  {
-            db_query("REPLACE INTO {node_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
+            db_query("REPLACE INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
           }
         }
       }
@@ -726,7 +726,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       foreach($add_vids as $vid)  {
         if (is_array($current_rids))  {
           foreach($current_rids as $rid)  {
-            db_query("REPLACE INTO {node_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
+            db_query("REPLACE INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
           }
         }
       }
