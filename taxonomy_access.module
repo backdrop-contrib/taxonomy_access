@@ -471,7 +471,7 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
 
   global $user;
 
-  if (isset($user)) {
+  if (!isset($user)) {
     $user_object = user_load(array('uid' => $uid));
   }
   else {
