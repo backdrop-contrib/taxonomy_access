@@ -284,15 +284,17 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
  * Allows you to determine if the current user or $uid can access this taxonomy for the given perm
 **/
 function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
-  if (!isset($uid) && user_access('bypass taxonomy access'))
+  if (!isset($uid) && user_access('administer taxonomy'))
     return TRUE;
 
   $taxonomy = array2object($taxonomy);
 
-  if ($taxonomy->tid)
-    $tid = $taxonomy->tid;
+  if ($taxonomy == NULL)
+    $tid = 0;  // check the default access
   else if (is_numeric($taxonomy))
     $tid = $taxonomy;
+  else if ($taxonomy->tid)
+    $tid = $taxonomy->tid;
   else return FALSE;
 
   global $user;
@@ -303,16 +305,13 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
   else {
     $user_object = $user;
   }
+
   $sql = "SELECT tid from {term_access} where (rid=0 OR rid in ('"
     . implode("','",array_keys($user_object->roles)) . "')) and (tid='$tid' OR tid=0) and grant_". $op . "=1";
 
   if (db_result(db_query($sql)))
     return TRUE;
   else return FALSE;
-}
-
-function taxonomy_access_perm()  {
-  return array('bypass taxonomy access');
 }
 
 ?>
