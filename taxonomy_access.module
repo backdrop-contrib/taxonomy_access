@@ -265,18 +265,18 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
       db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'term_access\'', $node->nid);
       // For nodes not assigned to a category
       if(!$tids) {
-      	$query = db_query("SELECT * FROM term_access where tid = '0'");
+      	$query = db_query("SELECT * FROM {term_access} where tid = '0'");
       	while($result = db_fetch_object($query)) {
-      		db_query('INSERT INTO node_access (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, $result->grant_view, $result->grant_update, $result->grant_delete);
+      		db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, $result->grant_view, $result->grant_update, $result->grant_delete);
       	}
       }
       // For nodes assigned to a category
       else {      
 	      // Query the term_access table to get the permissions for the new node's assigned category/categories
 	      // then make appropriate changes to the node_access table.
-	      $result = db_query("SELECT * from term_access where tid in ('" . implode("','",array_values($tids)) . "')");
+	      $result = db_query("SELECT * from {term_access} where tid in ('" . implode("','",array_values($tids)) . "')");
 	      while($row = db_fetch_object($result)) {
-	      	db_query('INSERT INTO node_access (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
+	      	db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
 	      }
 	    }	    
 	    break;
@@ -357,7 +357,7 @@ function taxonomy_access_taxonomy($op, $type, $edit)  {
 function taxonomy_access_user($op, &$edit, &$user, $category) {
   if($op == 'update' || $op == 'insert') {
     // Get list of existing roles
-    $query = db_query('SELECT rid FROM role');
+    $query = db_query('SELECT rid FROM {role}');
 		while($result = db_fetch_array($query)) {
     	$current_rids[] = $result['rid'];
     }
@@ -366,7 +366,7 @@ function taxonomy_access_user($op, &$edit, &$user, $category) {
     }
     
     // Get list of roles known to exist from term_access
-    $query = db_query('SELECT DISTINCT rid FROM term_access');
+    $query = db_query('SELECT DISTINCT rid FROM {term_access}');
   	while($result = db_fetch_array($query)) {
      	$known_rids[] = $result['rid'];
     }
@@ -387,7 +387,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // We use the replace statement to avoid inserting a duplicate entry into the database.
     // Without the DELETE query, this can happen when a site admin has already enabled the modules
     // from the settings page and goes back to it and resaves the enabled setting.
-    db_query('REPLACE INTO node_access VALUES (0, 0, \'all\', 1, 0, 0)');
+    db_query('REPLACE INTO {node_access} VALUES (0, 0, \'all\', 1, 0, 0)');
   }
   else { // the module was just enabled; node_access table must initialized or updated to reflect the changes since it was disabled:
          // Check for new nodes and assign them permissions in node_access table;
@@ -396,7 +396,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
          // Check for new roles and make approprate entries into node_access and term_access table;
          // Check for deleted roles and make appropriate entries into node_access and term_access table;
          // Permissions for nodes will be the same as when the module was previously enabled.
-    db_query('DELETE from node_access where nid=0 AND gid=0 AND realm=\'all\' AND grant_view=1 AND grant_update=0 AND grant_delete=0');
+    db_query('DELETE from {node_access} where nid=0 AND gid=0 AND realm=\'all\' AND grant_view=1 AND grant_update=0 AND grant_delete=0');
     
     // BEGIN: term_access table housekeeping
     // Update the term_access table to reflect any changes that may have occured since module was disabled.
@@ -404,14 +404,14 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     $rids = array();
     
     // Create list of all term and role ids
-    $query = db_query('SELECT tid from term_data');
+    $query = db_query('SELECT tid from {term_data}');
     while($result = db_fetch_array($query)) {
     	$current_tids[] = $result['tid'];
     }
     $current_tids[] = 0;
 		
 		if(!$current_rids) {
-		  $query = db_query('SELECT rid FROM role');
+		  $query = db_query('SELECT rid FROM {role}');
 		  while($result = db_fetch_array($query)) {
     	  $current_rids[] = $result['rid'];
       }
@@ -419,7 +419,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     }
     
     // Get old list of term and role ids from when term_access was disabled
-    $query = db_query('SELECT tid FROM term_access');
+    $query = db_query('SELECT tid FROM {term_access}');
     while($result = db_fetch_array($query)) {
     	$old_tids[] = $result['tid'];
     }
@@ -427,7 +427,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     $old_tids = array_unique($old_tids);
     
     if(!$old_rids) {
-      $query = db_query('SELECT rid FROM term_access');
+      $query = db_query('SELECT rid FROM {term_access}');
   		while($result = db_fetch_array($query)) {
       	$old_rids[] = $result['rid'];
       }
@@ -441,17 +441,17 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     
     // Delete all rows with role and term ids that no longer exist from the term_access table
     foreach($delete_rids as $rid) {
-    	db_query('DELETE from term_access where rid = %d', $rid);
+    	db_query('DELETE from {term_access} where rid = %d', $rid);
     }
     foreach($delete_tids as $tid) {
-    	db_query('DELETE from term_access where tid = %d', $tid);
+    	db_query('DELETE from {term_access} where tid = %d', $tid);
     }
     
     // Set permissions for nodes without categories if they aren't already set
-    $query = db_query('SELECT tid FROM term_access where tid = 0');
+    $query = db_query('SELECT tid FROM {term_access} where tid = 0');
     if(!db_fetch_array($query)) {
     	foreach($current_rids as $rid) {
-    		db_query('INSERT INTO term_access VALUES (0, %d, 1, 0, 0)', $rid);
+    		db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0)', $rid);
     	}
     } 
 
@@ -466,7 +466,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // pyromanfo : Drupal default is actually view only, as is the case with node_access
     foreach($add_tids as $tid) {
       foreach($all_rids as $rid) {
-        db_query('INSERT INTO term_access VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
+        db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
       }
     }
     
@@ -475,7 +475,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // pyromanfo : Drupal default is actually view only, as is the case with node_access
     foreach($current_tids as $tid) {
       foreach($add_rids as $rid) {
-        db_query('INSERT INTO term_access VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
+        db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
       }
     } 
     // END: term_access table housekeeping
@@ -485,13 +485,13 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     
     // Get current list of all nodes
     $current_nids = array();
-    $query = db_query('SELECT nid from node');
+    $query = db_query('SELECT nid from {node}');
     while($result = db_fetch_array($query)) {
     	$current_nids[] = $result['nid'];
   	}
     
     // Get list of node ids in the node_access table when module was disabled
-    $query = db_query('SELECT nid from node_access WHERE realm = \'term_access\'');
+    $query = db_query('SELECT nid from {node_access} WHERE realm = \'term_access\'');
     $old_nids = array();
     while($result = db_fetch_array($query)) {
     	$old_nids[] = $result['nid'];
@@ -503,7 +503,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     
     // Delete all node ids that no longer exist from the term_access table
     foreach($delete_nids as $nid) {
-    	db_query('DELETE from node_access where nid = %d AND realm = \'term_access\'', $nid);
+    	db_query('DELETE from {node_access} where nid = %d AND realm = \'term_access\'', $nid);
     }
     
     // Update node_access_table to reflect the changes made to term_access table
@@ -514,7 +514,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
 // Update the node_access table to reflect any changes made to the term_access table
 function _refresh_node_access_table() {
 	// Load term_access table data into memory and put it into an array structure for easy use by second half of function
-	$result = db_query("SELECT * FROM term_access WHERE 1");
+	$result = db_query("SELECT * FROM {term_access} WHERE 1");
 	while($term_access_row = db_fetch_array($result)) {
 		$term_access[] = $term_access_row;
 	}
@@ -524,7 +524,7 @@ function _refresh_node_access_table() {
 	
 	// Use the array structure of permissions we just created to make the updates to the node_access table
 	// for nodes that are in a category.
-	$result = db_query("SELECT term_node.nid, term_node.tid FROM term_node, term_data WHERE term_data.tid = term_node.tid");
+	$result = db_query("SELECT term_node.nid, term_node.tid FROM {term_node}, term_data WHERE term_data.tid = term_node.tid");
 	$category_nids = array();
 	while($row = db_fetch_object($result)) {
  		$nid = $row->nid;
@@ -532,13 +532,13 @@ function _refresh_node_access_table() {
  		$category_nids[] = $nid; // created now for use later on in code handling nodes without categories
  		if(array_key_exists($tid, $permissions)) {
  			foreach($permissions[$tid] as $key => $value) {
-			  db_query('REPLACE node_access (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
+			  db_query('REPLACE {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
  			}
  		}
 	}
 	
 	// Determine which nodes don't belong to a category
-	$query = db_query("SELECT nid FROM node where 1");
+	$query = db_query("SELECT nid FROM {node} where 1");
   $all_nids = array();
 	while($result = db_fetch_array($query)) {
 	  $all_nids[] = $result['nid'];
@@ -550,7 +550,7 @@ function _refresh_node_access_table() {
 	// Update or insert permission data for nodes without categories
 	foreach($no_cat as $nid) {
 	  foreach($permissions[0] as $key => $value) {
-		  db_query('REPLACE node_access (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
+		  db_query('REPLACE {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
 		}
 	}
 }
