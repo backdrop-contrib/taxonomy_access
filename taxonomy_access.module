@@ -271,6 +271,8 @@ function taxonomy_access_grant_update($tid, $role = null, $grants = null)  {
     $ta_sql_values .= ")";
   }
   $ta_sql .= $sql . $ta_sql_values;
+
+  db_query("DELETE FROM {term_access} WHERE tid=%d AND rid=%d", $tid, (isset($role) ? $role : 0));
   db_query($ta_sql);  // insert into term_access
 }
 
@@ -314,7 +316,7 @@ function taxonomy_access_defaults_update($vid, $role = null, $grants = null)  {
   }
   $ta_sql .= $sql . $ta_sql_values;
 
-  db_query("DELETE FROM {term_access} WHERE tid=%d AND rid=%d", $tid, (isset($role) ? $role : 0));
+  db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vid, (isset($role) ? $role : 0));
   db_query($ta_sql);  // insert into term_access
 }
 /**
