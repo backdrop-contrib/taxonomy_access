@@ -317,7 +317,7 @@ function taxonomy_access_defaults_update($vid, $role = null, $grants = null)  {
   $ta_sql .= $sql . $ta_sql_values;
 
   db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vid, (isset($role) ? $role : 0));
-  db_query($ta_sql);  // insert into term_access
+  db_query($ta_sql);  // insert into term_access_defaults
 }
 /**
  * Updates permissions for a role for all the terms in a vocabulary
@@ -665,7 +665,10 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     $query = db_query('SELECT tid FROM {term_access} where tid = 0');
     if(!db_result($query) && is_array($current_rids)) {
     	foreach($current_rids as $rid) {
-    		db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0, 1)', $rid);
+		    $query = db_query('SELECT tid FROM {term_access} where tid=0 AND rid=%d', $rid);
+		    if(!db_fetch_object($query)) {
+              db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0, 1)', $rid);
+    		}
     	}
     } 
 
@@ -743,7 +746,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       foreach($current_vids as $vid)  {
         if (is_array($add_rids))  {
           foreach($add_rids as $rid)  {
-	    db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
+	        db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
             db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
           }
         }
@@ -754,7 +757,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       foreach($add_vids as $vid)  {
         if (is_array($current_rids))  {
           foreach($current_rids as $rid)  {
-	    db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
+	        db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
             db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
           }
         }
