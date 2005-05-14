@@ -492,7 +492,7 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
     $user_roles_key = implode("','",array_keys($user_object->roles));
   if (!isset($taxonomy_access_perms))
     $taxonomy_access_perms = array();
-  if (!isset($taxonomy_access_perms[$tid]))  {
+  if (!isset($taxonomy_access_perms[$tid][$op]))  {
    $sql = "SELECT count(*) from {term_access} where ";
     if (isset($user) && is_array($user->roles)) {
       $sql .="rid in ('". $user_roles_key . "') and ";
@@ -501,9 +501,9 @@ function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
    }
     $sql .= "tid='$tid' and grant_". $op . "=1";
     $access = db_result(db_query($sql)) ? TRUE : FALSE;
-    $taxonomy_access_perms[$tid] = $access;
+    $taxonomy_access_perms[$tid][$op] = $access;
   } else {
-    $access = $taxonomy_access_perms[$tid];
+    $access = $taxonomy_access_perms[$tid][$op];
   }
   return $access;
 }
