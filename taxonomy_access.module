@@ -134,7 +134,7 @@ function taxonomy_access_admin($edit = array()) {
     }
 
     // Reflect changes made to term_access table in node_access table
-    _refresh_node_access_table();
+    _refresh_node_access_table($rid);
 
     // Clear the cache, as we might have changed the anonymous user's
     // permissions.
@@ -443,7 +443,7 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
       else {      
 	      // Query the term_access table to get the permissions for the new node's assigned category/categories
 	      // then make appropriate changes to the node_access table.
-	      $result = db_query("SELECT * from {term_access} where tid in ('" . implode("','",array_values($tids)) . "')");
+	      $result = db_query("SELECT rid, bit_or(grant_view) as grant_view, bit_or(grant_update) as grant_update, bit_or(grant_delete) as grant_delete from {term_access} where tid in ('".implode("','",array_values($tids))."') group by rid");
 	      while($row = db_fetch_object($result)) {
 	        db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $node->nid, $row->rid);
 	      	db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
@@ -538,8 +538,8 @@ function taxonomy_access_taxonomy($op, $type, $edit)  {
         }
         break;
       case 'delete': // delete everything from term_access and node_access
-        db_query("DELETE FROM {node_access} WHERE gid='%d' AND realm='term_access'",$edit['tid']);
-        db_query("DELETE FROM {term_access} WHERE tid='%d'",$edit['tid']);
+        db_query("DELETE FROM {term_access} WHERE tid='%d'",$edit->tid);
+        _refresh_node_access_table();
         break;
     }
         }
@@ -772,49 +772,27 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
 }
 
 // Update the node_access table to reflect any changes made to the term_access table
-function _refresh_node_access_table() {
-	// Load term_access table data into memory and put it into an array structure for easy use by second half of function
-	$result = db_query("SELECT * FROM {term_access}");
-	while($term_access_row = db_fetch_array($result)) {
-		$term_access[] = $term_access_row;
-	}
-  if (is_array($term_access))  {
-  	foreach($term_access as $key => $value) {
-	  	$permissions[$value['tid']][$value['rid']] = array('grant_view' => $value['grant_view'], 'grant_update' => $value['grant_update'], 'grant_delete' => $value['grant_delete'], 'grant_create' => $value['grant_create']);
-  	} 
+function _refresh_node_access_table($rid = NULL ) {
+  if (!isset($rid)){
+    $result = db_query("SELECT n.nid, t.rid, BIT_OR(t.grant_view) AS grant_view, BIT_OR(t.grant_update) AS grant_update, BIT_OR(t.grant_delete) AS grant_delete FROM {term_node} n LEFT JOIN {term_access} t ON n.tid = t.tid GROUP BY n.nid, t.rid");
+  } else {
+    $result = db_query("SELECT n.nid, t.rid, BIT_OR(t.grant_view) AS grant_view, BIT_OR(t.grant_update) AS grant_update, BIT_OR(t.grant_delete) AS grant_delete FROM {term_node} n LEFT JOIN {term_access} t ON n.tid = t.tid WHERE t.rid = %d GROUP BY n.nid", $rid);
   }
-	
-	// Use the array structure of permissions we just created to make the updates to the node_access table
-	// for nodes that are in a category.
-	$result = db_query("SELECT tn.nid, tn.tid FROM {term_node} as tn, {term_data} as td WHERE td.tid = tn.tid");
-	$category_nids = array();
-	while($row = db_fetch_object($result)) {
- 		$nid = $row->nid;
- 		$tid = $row->tid;
- 		$category_nids[] = $nid; // created now for use later on in code handling nodes without categories
- 		if(array_key_exists($tid, $permissions)) {
- 			foreach($permissions[$tid] as $key => $value) {
-			  db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $nid, $key);
-			  db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
- 			}
- 		}
-	}
-	
-	// Determine which nodes don't belong to a category
-	$query = db_query("SELECT n.nid FROM {node} n LEFT JOIN {term_node} t ON t.nid=n.nid WHERE t.nid IS NULL");
-	while($result = db_fetch_array($query)) {
-	  $no_cat[] = $result['nid'];
-	}
-  if ($no_cat)  {
-  	// Update or insert permission data for nodes without categories
-	  foreach($no_cat as $nid) {
-	    foreach($permissions[0] as $key => $value) {
-		    db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $nid, $key);
-		    db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $nid, $key, $value['grant_view'], $value['grant_update'], $value['grant_delete']);
-  		}
-	  }
+  while($row = db_fetch_object($result)) {
+    db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $row->nid, $row->rid);
+    db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $row->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
+  }
+
+  // Determine which nodes don't belong to a category
+  if (!isset($rid)){
+   $result = db_query("SELECT n.nid, a.rid, a.grant_view FROM {node} n LEFT JOIN {term_node} t ON t.nid=n.nid LEFT JOIN {term_access} a ON a.tid = 0 WHERE t.nid IS NULL");
+  } else {
+    $result = db_query("SELECT n.nid, a.rid, a.grant_view FROM {node} n LEFT JOIN {term_node} t ON t.nid=n.nid LEFT JOIN {term_access} a ON a.tid = 0 WHERE t.nid IS NULL AND a.rid = %d", $rid);
+  }
+  while($row = db_fetch_object($result)) {
+    db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $row->nid, $row->rid);
+    db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $row->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
   }
 }
-
 
 ?>
