@@ -1,21 +1,47 @@
---- taxonomy.old	Thu Apr 14 14:43:04 2005
-+++ taxonomy.module	Wed Apr 27 12:24:06 2005
-@@ -387,7 +387,7 @@ function taxonomy_form($vid, $value = 0,
+Index: modules/taxonomy.module
+===================================================================
+RCS file: /cvs/drupal/drupal/modules/taxonomy.module,v
+retrieving revision 1.192.2.6
+diff -u -r1.192.2.6 taxonomy.module
+--- modules/taxonomy.module	19 Jul 2005 21:31:03 -0000	1.192.2.6
++++ modules/taxonomy.module	8 Nov 2005 22:01:58 -0000
+@@ -1,5 +1,6 @@
+ <?php
+ // $Id$
++// patch based on http://drupal.org/node/25998 "problem editing node with only update access"
+ 
+ /**
+  * @file
+@@ -377,7 +378,7 @@
+ /**
+  * Generate a form element for selecting terms from a vocabulary.
+  */
+-function taxonomy_form($vid, $value = 0, $help = NULL, $name = 'taxonomy') {
++function taxonomy_form($vid, $value = 0, $help = NULL, $name = 'taxonomy', $op = 'create') {
+   $vocabulary = taxonomy_get_vocabulary($vid);
+   $help = ($help) ? $help : $vocabulary->help;
+   if ($vocabulary->required) {
+@@ -387,7 +388,7 @@
      $blank = '<'. t('none') .'>';
    }
  
 -  return _taxonomy_term_select(check_plain($vocabulary->name), $name, $value, $vid, $help, intval($vocabulary->multiple), $blank);
-+  return _taxonomy_term_select(check_plain($vocabulary->name), $name, $value, $vid, $help, intval($vocabulary->multiple), $blank, array(), 'create');
++  return _taxonomy_term_select(check_plain($vocabulary->name), $name, $value, $vid, $help, intval($vocabulary->multiple), $blank, array(), $op);
  }
  
  /**
-@@ -441,7 +441,12 @@ function taxonomy_get_vocabularies($type
+@@ -439,9 +440,17 @@
+  * Generate a form for selecting terms to associate with a node.
+  */
  function taxonomy_node_form($type, $node = '', $help = NULL, $name = 'taxonomy') {
++  $op = 'create';
    if (!$node->taxonomy) {
      if ($node->nid) {
 -      $terms = array_keys(taxonomy_node_get_terms($node->nid));
 +      if (function_exists('taxonomy_access')) {
-+        $terms = array_keys(taxonomy_node_get_terms($node->nid, 'tid', 'create'));
++      	// if nid exists, we are updating the node
++        $op = 'update';
++        $terms = array_keys(taxonomy_node_get_terms($node->nid, 'tid', $op));
 +      }
 +      else {
 +        $terms = array_keys(taxonomy_node_get_terms($node->nid));
@@ -23,7 +49,16 @@
      }
      else {
        $terms = 0;
-@@ -461,11 +466,18 @@ function taxonomy_node_form($type, $node
+@@ -453,7 +462,7 @@
+ 
+   $c = db_query("SELECT v.*, n.type FROM {vocabulary} v INNER JOIN {vocabulary_node_types} n ON v.vid = n.vid WHERE n.type = '%s' ORDER BY v.weight, v.name", $type);
+   while ($vocabulary = db_fetch_object($c)) {
+-    $result[] = taxonomy_form($vocabulary->vid, $terms, $help, $name);
++    $result[] = taxonomy_form($vocabulary->vid, $terms, $help, $name, $op);
+   }
+   return $result ? $result : array();
+ }
+@@ -461,11 +470,18 @@
  /**
   * Find all terms associated to the given node, within one vocabulary.
   */
@@ -44,7 +79,7 @@
    }
    return $terms;
  }
-@@ -473,14 +485,21 @@ function taxonomy_node_get_terms_by_voca
+@@ -473,14 +489,21 @@
  /**
   * Find all terms associated to the given node.
   */
@@ -68,13 +103,22 @@
      }
    }
    return $terms[$nid];
-@@ -502,7 +521,14 @@ function taxonomy_node_save($nid, $terms
+@@ -489,7 +512,7 @@
+ /**
+  * Save term associations for a given node.
+  */
+-function taxonomy_node_save($nid, $terms) {
++function taxonomy_node_save($nid, $terms, $op = 'create') {
+   taxonomy_node_delete($nid);
+ 
+   if (is_array($terms)) {
+@@ -502,7 +525,14 @@
          }
        }
        else if ($term) {
 -        db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
 +        if (function_exists('taxonomy_access')) {
-+	  if (taxonomy_access('create', $term)) {
++	  if (taxonomy_access($op, $term)) {
 +            db_query('INSERT INTO {term_node} (nid, tid) VALUES (%d, %d)', $nid, $term);
 +	  }
 +	}
@@ -84,7 +128,7 @@
        }
      }
    }
-@@ -523,7 +549,14 @@ function taxonomy_get_related($tid, $key
+@@ -523,7 +553,14 @@
      $result = db_query('SELECT t.*, tid1, tid2 FROM {term_relation}, {term_data} t WHERE (t.tid = tid1 OR t.tid = tid2) AND (tid1 = %d OR tid2 = %d) AND t.tid != %d ORDER BY weight, name', $tid, $tid, $tid);
      $related = array();
      while ($term = db_fetch_object($result)) {
@@ -100,7 +144,7 @@
      }
      return $related;
    }
-@@ -540,7 +573,14 @@ function taxonomy_get_parents($tid, $key
+@@ -540,7 +577,14 @@
      $result = db_query('SELECT t.* FROM {term_hierarchy} h, {term_data} t WHERE h.parent = t.tid AND h.tid = %d ORDER BY weight, name', $tid);
      $parents = array();
      while ($parent = db_fetch_object($result)) {
@@ -116,7 +160,7 @@
      }
      return $parents;
    }
-@@ -577,7 +617,14 @@ function taxonomy_get_children($tid, $vi
+@@ -577,7 +621,14 @@
    }
    $children = array();
    while ($term = db_fetch_object($result)) {
@@ -132,7 +176,7 @@
    }
    return $children;
  }
-@@ -602,24 +649,44 @@ function taxonomy_get_children($tid, $vi
+@@ -602,24 +653,44 @@
   *   An array of all term objects in the tree. Each term object is extended
   *   to have "depth" and "parents" attributes in addition to its normal ones.
   */
@@ -180,7 +224,7 @@
    $max_depth = (is_null($max_depth)) ? count($children[$vid]) : $max_depth;
    if ($children[$vid][$parent]) {
      foreach ($children[$vid][$parent] as $child) {
-@@ -631,12 +698,23 @@ function taxonomy_get_tree($vid, $parent
+@@ -631,12 +702,23 @@
          $tree[] = $terms[$vid][$child];
  
          if ($children[$vid][$child]) {
@@ -205,7 +249,7 @@
    return $tree ? $tree : array();
  }
  
-@@ -697,7 +775,14 @@ function _taxonomy_term_children($tid) {
+@@ -697,7 +779,14 @@
    if (!isset($children)) {
      $result = db_query('SELECT tid, parent FROM {term_hierarchy}');
      while ($term = db_fetch_object($result)) {
@@ -221,7 +265,7 @@
      }
    }
    return $children[$tid] ? $children[$tid] : array();
-@@ -719,7 +804,14 @@ function taxonomy_get_term_by_name($name
+@@ -719,7 +808,14 @@
    $db_result = db_query("SELECT * FROM {term_data} WHERE LOWER('%s') LIKE LOWER(name)", trim($name));
    $result = array();
    while ($term = db_fetch_object($db_result)) {
@@ -237,7 +281,7 @@
    }
  
    return $result;
-@@ -745,12 +837,17 @@ function taxonomy_get_vocabulary($vid) {
+@@ -745,12 +841,17 @@
   * Return the term object matching a term ID.
   */
  function taxonomy_get_term($tid) {
@@ -257,11 +301,23 @@
    $options = array();
  
    if ($blank) {
-@@ -918,6 +1015,22 @@ function taxonomy_term_page($str_tids = 
- 
+@@ -885,10 +986,10 @@
+ function taxonomy_nodeapi($node, $op, $arg = 0) {
+   switch ($op) {
+     case 'insert':
+-      taxonomy_node_save($node->nid, $node->taxonomy);
++      taxonomy_node_save($node->nid, $node->taxonomy, 'create');
+       break;
+     case 'update':
+-      taxonomy_node_save($node->nid, $node->taxonomy);
++      taxonomy_node_save($node->nid, $node->taxonomy, 'update');
+       break;
+     case 'delete':
+       taxonomy_node_delete($node->nid);
+@@ -919,6 +1020,22 @@
    // Needed for '+' to show up in RSS discovery URLs
    $rss_tids = urlencode($str_tids);
-+
+ 
 +  if (function_exists('taxonomy_access')) {
 +    $access_tids = array();
 +    foreach($tids as $tid) {
@@ -277,6 +333,7 @@
 +      return;
 +    }
 +  }
- 
++
    if ($tids) {
      // Build title:
+     $result = db_query('SELECT name FROM {term_data} WHERE tid IN (%s)', implode(',', $tids));
