@@ -1,14 +1,12 @@
 To install, simply add the database and activate the module, in these steps.
-
+  PLEASE NOTE: There is no need to patch the taxonomy.module anymore.
+  
 1) From the command line, type 'mysql -u username -p drupal < taxonomy_access.mysql' where drupal is your drupal database and username is your mysql username
 
 2) Copy taxonomy_access.module to your drupal installation's module directory
 
-3) Patch taxonomy.module with the included taxonomy.patch with the command 'patch -p0 < taxonomy.patch' while in your drupal installation's module directory.
+3) Activate the module from administer >> modules
 
-4) Activate the module from administer >> modules
+4) Go to administer >> settings >> taxonomy_access and enable the module 
 
-5) Go to administer >> settings >> taxonomy_access and enable the module 
-
-6) Configure the access to the various categories from administer >> access control >> category permissions
-
+5) Configure the access to the various categories from administer >> access control >> category permissions.
