@@ -52,7 +52,7 @@ function taxonomy_access_menu() {
   $access = user_access('administer users');
 
   $items[] = array('path' => 'admin/access/category', 'title' => t('category permissions'),
-    'callback' => 'taxonomy_access_admin', 'access' => $access,
+    'callback' => 'taxonomy_access_admin', 'access' => $access, 'callback arguments'=>array(),
     'type' => MENU_LOCAL_TASK);
   return $items;
 }
