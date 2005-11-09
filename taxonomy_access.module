@@ -48,6 +48,9 @@ function taxonomy_access_node_grants($user, $op) {
   return array('term_access' => array_keys(is_array($user->roles) ? $user->roles : array()));
 }
 
+/**
+ * Implementation of hook_menu
+ */
 function taxonomy_access_menu() {
   $access = user_access('administer users');
 
@@ -431,7 +434,17 @@ function taxonomy_access_get_default_grants($role) {
  * Implementation of hook_nodeapi().
  */
 function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
+  global $_taxonomy_access_op;
   switch ($op) {
+    // case 'form pre':
+    case 'validate':
+      $_taxonomy_access_op = 'create';
+      break;
+
+    case 'view':
+      $_taxonomy_access_op = 'view';
+      break;
+
     case 'delete':
       // When a node is deleted, delete any relevant permissions.
       db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'term_access\'', $node->nid);
@@ -469,88 +482,43 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
 }
 
 /**
- * Allows you to determine if the current user or $uid can access this taxonomy for the given perm
-**/
-function taxonomy_access($op, $taxonomy = NULL, $uid = NULL) {
-  if (!isset($uid) && user_access('administer taxonomy')) {
-    return TRUE;
-  }
-
-  $taxonomy = array2object($taxonomy);
-
-  if ($taxonomy == NULL) {
-    $tid = 0;  // check the default access
-  }
-  else if (is_numeric($taxonomy)) {
-    $tid = $taxonomy;
-  }
-  else if ($taxonomy->tid) {
-    $tid = $taxonomy->tid;
-  }
-  else if ($op == 'create') {
-    // if you're creating with no taxonomy information, it should grant access
-    return TRUE;
-  }
-  else {
-    return FALSE;
-  }
-
-  global $user;
-
-  if (!isset($user)) {
-    $user_object = user_load(array('uid' => $uid));
-  }
-  else {
-    $user_object = $user;
-  }
-
-  // let's cache
-  static $taxonomy_access_perms;
-  $access = null;
-  if (!is_array($user_object->roles)) {
-    $user_roles_key='0';
-  }
-  else {
-    $user_roles_key = implode("','",array_keys($user_object->roles));
-  }
-  if (!isset($taxonomy_access_perms)) {
-    $taxonomy_access_perms = array();
-  }
-  if (!isset($taxonomy_access_perms[$tid][$op])) {
-    $sql = "SELECT count(*) from {term_access} where ";
-    if (isset($user) && is_array($user->roles)) {
-      $sql .="rid in ('". $user_roles_key . "') and ";
-    }
-    else {
-      $sql .="rid='1' and ";
-    }
-    $sql .= "tid='$tid' and grant_". $op . "=1";
-    $access = db_result(db_query($sql)) ? TRUE : FALSE;
-    $taxonomy_access_perms[$tid][$op] = $access;
-  }
-  else {
-    $access = $taxonomy_access_perms[$tid][$op];
-  }
-  return $access;
-}
-
+ * Implementation of hook_settings()
+ */
 function taxonomy_access_settings() {
-  if (variable_get('taxonomy_access_settings_changed', FALSE)) {
-    _taxonomy_access_update_db();
-  }
-  $formitems = '';
-  $taxonomy_access_enabled = variable_get('taxonomy_access_enabled', FALSE);
-  $formitems .= form_hidden('taxonomy_access_settings_changed', 1);
-  $formitems .= form_radio(t('Enable the taxonomy_access module.'), 'taxonomy_access_enabled', 1,variable_get('taxonomy_access_enabled', FALSE) );
-  $formitems .= form_radio(t('Disable the taxonomy_access module.'), 'taxonomy_access_enabled', 0, !variable_get('taxonomy_access_enabled', FALSE) );
-
-  return $formitems;
+  $form['taxonomy_access_enabled'] = array(
+    '#type' => 'radios', '#default_value' => variable_get('taxonomy_access_enabled', 0),
+    '#options' => array( 1 => t('Enable the taxonomy_access module.'), 0 => t('Disable the taxonomy_access module.'))
+  );
+//  $form['taxonomy_access_settings_changed']= array( '#type' => 'hidden', '#value' => TRUE);
+  return $form;
 }
 
 /**
- * _taxonomy hook called when changes are made to the taxonomy structure
+ * Execute the taxonomy_access_settings_form.
+ */
+function taxonomy_access_settings_form_execute($form_id, $values) {
+  $op = isset($_POST['op']) ? $_POST['op'] : '';
+  foreach ($values as $key => $value) {
+    if ($op == t('Reset to defaults')) {
+      variable_del($key);
+    }
+    else {
+      variable_set($key, $value);
+    }
+  }
+  cache_clear_all();
+  _taxonomy_access_update_db();
+  if ($op == t('Reset to defaults')) {
+    drupal_set_message(t('The configuration options of taxonomy access have been reset to their default values.'));
+  } else {
+    drupal_set_message(t('The configuration options of taxonomy access have been saved.'));
+  }
+}
+
+/**
+ * hook_taxonomy is called when changes are made to the taxonomy structure
 **/
-function taxonomy_access_taxonomy($op, $type, $edit) {
+function taxonomy_access_taxonomy($op, $type, $edit = NULL) {
   if ($type = 'term') {
     switch($op) {
       case 'update':  // don't do anything, nothing on our end has changed
@@ -570,6 +538,7 @@ function taxonomy_access_taxonomy($op, $type, $edit) {
         break;
     }
   }
+  return;
 }
 
 /**
@@ -603,8 +572,7 @@ function taxonomy_access_user($op, &$edit, &$user, $category = NULL) {
 }  
   
 function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
-  variable_set('taxonomy_access_settings_changed', FALSE);
-  
+  //  variable_set('taxonomy_access_settings_changed', FALSE);
   if (!variable_get('taxonomy_access_enabled', FALSE)) {
     // We delete before insert to avoid inserting a duplicate entry into the database.
     // Without the DELETE query, this can happen when a site admin has already enabled the modules
@@ -625,7 +593,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // Update the term_access table to reflect any changes that may have occured since module was disabled.
     $tids = array();
     $rids = array();
-    
+
     // Create list of all term and role ids
     $query = db_query('SELECT tid from {term_data}');
     while ($result = db_fetch_array($query)) {
@@ -645,7 +613,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     while ($result = db_fetch_array($query)) {
       $current_vids[] = $result['vid'];
     }
-    
+
     // Get old list of term and role ids from when term_access was disabled
     $query = db_query('SELECT tid FROM {term_access}');
     while ($result = db_fetch_array($query)) {
@@ -653,7 +621,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     }
     $old_tids[] = 0;
     $old_tids = array_unique($old_tids);
-    
+
     if (!$old_rids) {
       $query = db_query('SELECT rid FROM {term_access}');
       while($result = db_fetch_array($query)) {
@@ -669,7 +637,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     while($result = db_fetch_array($query)) {
       $old_vids[] = $result['vid'];
     }
-    
+
     // Get the difference between old and current
     if (is_array($old_tids))
       $delete_tids = array_diff($old_tids, $current_tids);
@@ -821,6 +789,49 @@ function _refresh_node_access_table($rid = NULL ) {
   while($row = db_fetch_object($result)) {
     db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $row->nid, $row->rid);
     db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $row->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
+  }
+}
+
+/**
+ * Implementation of hook_db_rewrite_sql()
+ */
+function taxonomy_access_db_rewrite_sql($query, $table, $field) {
+  if (!user_access('administer taxonomy') && ($field =='vid' || $field =='tid')) {
+    global $user;
+    global $taxonomy_access_op;
+    
+    // let's cache
+    static $taxonomy_access_sql_clause;
+    $clause = array();
+    
+    if (!isset($taxonomy_access_sql_clause)) {
+      $taxonomy_access_sql_clause = array();
+    }
+    $op = ($taxonomy_access_op == 'create') ? 'create' : 'view';
+    if (!isset($taxonomy_access_sql_clause[$op][$field]))  {
+      if (isset($user) && is_array($user->roles)) {
+        $rids = array_keys($user->roles);
+      } 
+      else {
+        $rids[] = 1;
+      }
+      
+      $sql = db_query("SELECT t.tid, d.vid, BIT_OR(t.grant_$op) AS grant_$op FROM {term_access} t INNER JOIN {term_data} d ON t.tid=d.tid WHERE t.rid in ('".implode("','",$rids)."') AND grant_$op = 1 group by t.tid");
+      while ($result = db_fetch_object($sql)) {
+        $tids[]= $result->tid;
+        $vids[$result->vid]= $result->vid;
+      }
+      $clause[$op]['tid'] = $tids ? implode("','",$tids) : '';
+      $clause[$op]['vid']= $vids ? implode("','",$vids) : '';
+      $taxonomy_access_sql_clause = $clause;
+    } else {
+      $clause[$op][$field] = $taxonomy_access_sql_clause[$op][$field];
+    }
+    $return['where'] = "$table.$field IN ('".$clause[$op][$field]."')";
+    return $return;
+  } 
+  else {
+    return array();
   }
 }
 
