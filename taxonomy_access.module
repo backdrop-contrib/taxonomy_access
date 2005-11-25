@@ -204,7 +204,12 @@ function taxonomy_access_admin($edit = array()) {
       }
     }
     $output .= theme('table', $header, $rows);
-    $output .= form_submit(t('Save category permissions'), 'save');
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save category permissions'),
+      '#name' => 'save',
+      '#button_type' => 'submit',
+    );
   }
   else {
 
@@ -236,10 +241,19 @@ function taxonomy_access_admin($edit = array()) {
     }
     $output .= theme('table', $header, $rows);
   }
-  $output = form($output);
-  print theme('page', $output);
+/*  $output = form($output);
+  print theme('page', $output);*/
+
+  $method = 'post';
+  $action = request_uri();
+  $output .= form_render($form);
+  $output = '<form action="'. check_url($action) .'" method="'. $method .'"'. ">\n". $output ."\n</form>\n";
+
+//  $output = drupal_get_form('form_id', $form);
+  return $output;
 }
 
+  
 /**
  * Updates permissions for a role for a term
  * @param $tid
