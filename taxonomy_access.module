@@ -485,7 +485,7 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
       else {
         // Query the term_access table to get the permissions for the new node's assigned category/categories
         // then make appropriate changes to the node_access table.
-        $result = db_query("SELECT rid, bit_or(grant_view) as grant_view, bit_or(grant_update) as grant_update, bit_or(grant_delete) as grant_delete from {term_access} where tid in ('".implode("','",array_values($tids))."') group by rid");
+        $result = db_query("SELECT rid, BIT_OR(grant_view) AS grant_view, BIT_OR(grant_update) AS grant_update, BIT_OR(grant_delete) AS grant_delete FROM {term_access} WHERE tid IN ('".implode("','",array_values($tids))."') GROUP BY rid");
         while ($row = db_fetch_object($result)) {
           db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $node->nid, $row->rid);
           db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
@@ -524,7 +524,8 @@ function taxonomy_access_settings_form_execute($form_id, $values) {
   _taxonomy_access_update_db();
   if ($op == t('Reset to defaults')) {
     drupal_set_message(t('The configuration options of taxonomy access have been reset to their default values.'));
-  } else {
+  }
+  else {
     drupal_set_message(t('The configuration options of taxonomy access have been saved.'));
   }
 }
@@ -786,7 +787,7 @@ function _refresh_node_access_table($rid = NULL ) {
     $result = db_query("SELECT n.nid, t.rid, BIT_OR(t.grant_view) AS grant_view, BIT_OR(t.grant_update) AS grant_update, BIT_OR(t.grant_delete) AS grant_delete FROM {term_node} n LEFT JOIN {term_access} t ON n.tid = t.tid GROUP BY n.nid, t.rid");
   }
   else {
-    $result = db_query("SELECT n.nid, t.rid, BIT_OR(t.grant_view) AS grant_view, BIT_OR(t.grant_update) AS grant_update, BIT_OR(t.grant_delete) AS grant_delete FROM {term_node} n LEFT JOIN {term_access} t ON n.tid = t.tid WHERE t.rid = %d GROUP BY n.nid", $rid);
+    $result = db_query("SELECT n.nid, t.rid, BIT_OR(t.grant_view) AS grant_view, BIT_OR(t.grant_update) AS grant_update, BIT_OR(t.grant_delete) AS grant_delete FROM {term_node} n LEFT JOIN {term_access} t ON n.tid = t.tid WHERE t.rid = %d GROUP BY n.nid, t.rid", $rid);
   }
   while($row = db_fetch_object($result)) {
     db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $row->nid, $row->rid);
@@ -838,7 +839,8 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
       $clause[$op]['tid'] = $tids ? implode("','",$tids) : '';
       $clause[$op]['vid']= $vids ? implode("','",$vids) : '';
       $taxonomy_access_sql_clause = $clause;
-    } else {
+    }
+    else {
       $clause[$op][$field] = $taxonomy_access_sql_clause[$op][$field];
     }
     $return['where'] = "$table.$field IN ('".$clause[$op][$field]."')";
