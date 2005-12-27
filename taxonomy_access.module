@@ -1,15 +1,12 @@
 <?php
 // $Id$
-
+// Based on original taxonomy_access.module made by pyromanfo
 /**
  * Implementation of hook_help
  */
 function taxonomy_access_help($section) {
   switch ($section) {
     // Brief message for administrators to explain what this module does
-    case 'admin/access/category':
-      return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete and create permissions set for each user role.', array('%role' => url('admin/access/roles'), '%default' => url('admin/access/category/0')));
-
     case 'admin/modules#description': 
       return t('Allows users to specify how each category can be used by various roles.');
 
@@ -35,7 +32,14 @@ function taxonomy_access_help($section) {
       
     default:
       if (strpos($section,'admin/access/category') !== FALSE) {
-        return t('<b>Vocabulary Settings</b> - Next to each vocabulary is a dropdown with "Add" and "Remove" settings.  Select the "Add" setting for a permission to add that permission to all the categories in that vocabulary for the current role, likewise select the "Remove" setting to remove it.  "--" leaves that permission alone.<p><b>Default</b>: This permission, just underneath the vocabulary title, allows you to set the default permissions to apply for the current role to new categories added to this vocabulary.');
+        $roles = user_roles();
+        $rid = arg(3);
+        if ($roles[$rid]) {
+          return t('<b>Vocabulary Settings</b> - Next to each vocabulary is a dropdown with "Add" and "Remove" settings.  Select the "Add" setting for a permission to add that permission to all the categories in that vocabulary for the current role, likewise select the "Remove" setting to remove it.  "--" leaves that permission alone.<p><b>Default</b>: This permission, just underneath the vocabulary title, allows you to set the default permissions to apply for the current role to new categories added to this vocabulary.');
+        }
+        else {
+          return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete and create permissions set for each user role.', array('%role' => url('admin/access/roles'), '%default' => url('admin/access/category/0')));
+        }
       }
   }
 }
@@ -55,52 +59,161 @@ function taxonomy_access_menu() {
   $access = user_access('administer users');
 
   $items[] = array('path' => 'admin/access/category', 'title' => t('category permissions'),
-    'callback' => 'taxonomy_access_admin', 'access' => $access, 'callback arguments'=>array(),
+    'callback' => 'taxonomy_access_admin_form', 'access' => $access, 'callback arguments'=>array(),
     'type' => MENU_LOCAL_TASK);
   return $items;
 }
  
-function taxonomy_access_admin($edit = array()) {
-  $edit = $_POST['edit'];
-  $tids = $_POST['tids'];
-  $vids = $_POST['vids'];
-  $save = $_POST['save'];
+function taxonomy_access_admin_form($edit = array()) {
   $rid = arg(3);
   $output = '';
-  $grant_types = array('view', 'update', 'delete', 'create');
-  
-  // Code to handle user supplied changes to permission configuration
-  if ($save) {
-    // Process input data and use it to make changes to the database.
-    foreach ($tids as $tid) {
-      // The $edit array is filled out with zeroes here to
-      // reduce code complexity when we update the term_access table.
-      if (!array_key_exists($tid, $edit)) {
-        foreach ($grant_types as $grant) {
-          $edit[$tid][$grant] = 0;
-        }
-      }
-      // Enter a '0' for any permission that has been left unchecked by the user
-      // For any permission checked by user, set it to a value of '1'
-      else {
-        foreach ($grant_types as $grant) {
-          if (!isset($edit[$tid][$grant])) {
-            $edit[$tid][$grant] = 0;
-          }
-          else {
-            $edit[$tid][$grant] = 1;
-          }
-        }
-      }
-      
-      // Make the changes to the term_access table
-      taxonomy_access_grant_update($tid, $rid, $edit[$tid]);
+  $roles = user_roles();
+
+  // Output the main page of category permissions
+  if (!$roles[$rid]) {
+    // Render role/permission overview:
+    $header = array("Role", '&nbsp;' );
+    foreach ($roles as $rid => $name) {
+     $rows[] = array($name, array('data'=>l(t("edit"),"admin/access/category/$rid"), 'align'=>'right'));
     }
-    // Now to the same for vocabularies
+    $output .= theme('table', $header, $rows);
+  }
+
+  // Output the permission matrix user form
+  else { 
+    $options = array( '0' => '--', '1' => t('Select all'), '2' => t('Deselect all'));
+    $grant_types = array('view', 'update', 'delete', 'create');
+
+    $output = '<h2>Permissions for \''.$roles[$rid].'\'</h2><p>';
+    // Get all category permissions
+    $perm = taxonomy_access_get_grants($rid);
+    $default = taxonomy_access_get_default_grants($rid);
+    // Compile category permission overview
+    $term_list = array();
+    $header = array('Category','View','Update','Delete','Create');
+    
+    $forms['taxonomy_access'] = array( '#tree' => TRUE);
+    // Do the row for uncategorized nodes
+    $forms['taxonomy_access']['tids'][0] = array(
+      '#type' => 'value',
+      '#value' => 0,
+    );
+    foreach ($grant_types as $grant) {
+      if ($grant != 'create') {
+        $forms['taxonomy_access']['term'][0][$grant] = array(
+          '#type' => 'checkbox',
+          '#default_value' => $perm[0][$grant],
+          '#prefix' => '<td>',
+          '#suffix' => '</td>',
+        );
+      }
+    }
+
+    $vocabs = taxonomy_get_vocabularies();
+
+    foreach ($vocabs as $vocab) {
+      $forms['taxonomy_access']['vids'][$vocab->vid] = array(
+        '#type' => 'value', 
+        '#value' => $vocab->vid,
+       );
+      foreach ($grant_types as $grant) {
+        $forms['taxonomy_access']['vocab'][$vocab->vid][$grant] = array(
+          '#type' => 'select', 
+          '#options' => $options,
+          '#prefix' => '<td>', '#suffix' => '</td>',
+         );
+        $forms['taxonomy_access']['default'][$vocab->vid][$grant] = array(
+          '#type' => 'checkbox', 
+          '#default_value' => $default[$vocab->vid][$grant],
+          '#prefix' => '<td>', '#suffix' => '</td>',
+         );
+       }
+
+      // Do the rows for each term in vocabulary
+      $terms = array();
+      $terms = taxonomy_get_tree($vocab->vid);
+      foreach ($terms as $term) {
+        $forms['taxonomy_access']['tids'][$term->tid] = array(
+          '#type' => 'value',
+          '#value' => $term->tid
+        );
+        foreach ($grant_types as $grant) {
+          $forms['taxonomy_access']['term'][$term->tid][$grant] = array (
+            '#type' => 'checkbox', 
+            '#default_value' => $perm[$term->tid][$grant],
+            '#prefix' => '<td>', '#suffix' => '</td>',
+           );
+         }
+      }
+    }
+    $forms['taxonomy_access']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save category permissions'),
+      '#name' => 'save',
+      '#button_type' => 'submit',
+    );
+    $output .= drupal_get_form('taxonomy_access_admin_form', $forms);
+  }
+  return $output;
+}
+
+function theme_taxonomy_access_admin_form($form) {
+  $output = "<table><thead><tr><th>Category</th><th>View</th><th>Update</th><th>Delete</th><th>Create</th> </tr></thead><tbody>\n<tr class=\"even\"><td>uncategorized nodes</td>";
+  $output .= form_render($form['taxonomy_access']['term'][0]);
+  $output .= "<td>&nbsp;</td></tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td> </tr>\n";
+  $vocabs = taxonomy_get_vocabularies();
+  foreach ($vocabs as $vocab) {
+    $output .= "<tr class=\"even\"><td><b>".t($vocab->name)."</b></td>";
+    $output .= form_render($form['taxonomy_access']['vocab'][$vocab->vid]);
+    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td> </tr>\n";
+    $output .= "<tr class=\"even\"><td>".t('Default')."</td>";
+    $output .= form_render($form['taxonomy_access']['default'][$vocab->vid]);
+    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td> </tr>\n";
+    $terms = array();
+    $terms = taxonomy_get_tree($vocab->vid);
+    foreach ($terms as $term) {
+      $output .= "<tr class=\"even\"><td>".str_repeat('-',$term->depth).$term->name."</td>";
+      $output .= form_render($form['taxonomy_access']['term'][$term->tid]);
+    }
+    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td> </tr>\n";
+  }
+  $output .= '</tr></tbody></table>';
+  $output .= form_render($form);
+  return $output;
+}
+
+function taxonomy_access_admin_form_submit($form_id, $form_values) {
+  $tids = $form_values['taxonomy_access']['tids'];
+  $vids = $form_values['taxonomy_access']['vids'];
+  $rid = arg(3);
+  $grant_types = array('view', 'update', 'delete', 'create');
+  $edit = $form_values['taxonomy_access'];
+
+  // Process input data and use it to make changes to the database.
+  foreach ($tids as $tid) {
+    // The $edit array is filled out with zeroes here to
+    // reduce code complexity when we update the term_access table.
+    if (!array_key_exists($tid, $edit['term'])) {
+      foreach ($grant_types as $grant) {
+        $edit['term'][$tid][$grant] = 0;
+      }
+    }
+    // Enter a '0' for any permission that has been left unchecked by the user
+    // For any permission checked by user, set it to a value of '1'
+    else {
+      foreach ($grant_types as $grant) {
+        $edit['term'][$tid][$grant] = $edit['term'][$tid][$grant] ? 1 : 0;
+      }
+    }
+    
+    // Make the changes to the term_access table
+    taxonomy_access_grant_update($tid, $rid, $edit['term'][$tid]);
+  }
+  // Now to the same for vocabularies
+  if ($vids) {
     foreach ($vids as $vid) {
       // The $edit array is filled out with zeroes here to
       // reduce code complexity when we update the term_access table.
-      $vocab_array = array();
       $vocab_array = $edit['vocab'];
       $changed = false;
       if (!array_key_exists($vid, $vocab_array)) {
@@ -112,7 +225,7 @@ function taxonomy_access_admin($edit = array()) {
       // For any permission checked by user, set it to a value of '1'
       else {
         foreach ($grant_types as $grant) {
-          if (!isset($edit['vocab'][$vid][$grant])) {
+          if (!($edit['vocab'][$vid][$grant])) {
             $edit['vocab'][$vid][$grant] = 0;
           }
           else {
@@ -123,137 +236,32 @@ function taxonomy_access_admin($edit = array()) {
               $changed = true;
             }
           }
-          if (!isset($edit['default'][$vid][$grant])) {
-            $edit['default'][$vid][$grant] = 0;
-          }
-          else {
-            $edit['default'][$vid][$grant] = 1;
-          }
+          $edit['default'][$vid][$grant] = $edit['default'][$vid][$grant] ? 1 : 0;
         }
       }
       // Make the changes to the term_access table
       if ($changed) {
         taxonomy_access_grant_vocab_update($vid, $rid, $edit);
       }
-
       // set the defaults
-      taxonomy_access_defaults_update($vid,$rid,$edit['default'][$vid]); 
+      taxonomy_access_defaults_update($vid,$rid,$edit['default'][$vid]);
     }
-
-    // Reflect changes made to term_access table in node_access table
-    _refresh_node_access_table($rid);
-
-    // Clear the cache, as we might have changed the anonymous user's
-    // permissions.
-    cache_clear_all();
-    // redirect to main category permissions menu
-    drupal_goto('admin/access/category');
   }
-  
-  // Output the permission matrix user form
-  if ($rid) {
-    // Get name of role
-    if ($rid == 0) {
-      $role_name = t('no role');
-    }
-    else {
-      $role_name = db_result(db_query('select name from {role} where rid='.$rid));
-    }
-    
-    $output = '<h2>Permissions for \''.$role_name.'\'</h2><p>';
-    // Get all category permissions
-    $perm = taxonomy_access_get_grants($rid);
-    $default = taxonomy_access_get_default_grants($rid);
-    // Compile category permission overview
-    $term_list = array();
-    $header = array('Category','View','Update','Delete','Create');
-    
-    // Do the row for uncategorized nodes
-    $rows[] = array('uncategorized nodes',
-           '<input type="hidden" name="tids[]" value="0">'.
-           '<input type="checkbox" name="edit[0][view]" '. (($perm[0]['view']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit[0][update]" '. (($perm[0]['update']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit[0][delete]" '. (($perm[0]['delete']) ? 'checked>' : '>'),
-           '&nbsp;');
-    $vocabs = taxonomy_get_vocabularies();
-    foreach ($vocabs as $vocab) {
-      $rows[] = array('&nbsp;','&nbsp;','&nbsp;','&nbsp;','&nbsp;');
-      $rows[] = array('<b>'.t($vocab->name).'</b>',
-           '<input type="hidden" name="vids[]" value="'.$vocab->vid.'">'.
-           '<select name="edit[vocab]['.$vocab->vid.'][view]"><option value="0">--</option><option value="1">Add</option><option value="2">Remove</option></select>',
-           '<select name="edit[vocab]['.$vocab->vid.'][update]"><option value="0">--</option><option value="1">Add</option><option value="2">Remove</option></select>',
-           '<select name="edit[vocab]['.$vocab->vid.'][delete]"><option value="0">--</option><option value="1">Add</option><option value="2">Remove</option></select>',
-           '<select name="edit[vocab]['.$vocab->vid.'][create]"><option value="0">--</option><option value="1">Add</option><option value="2">Remove</option></select>');
-      $rows[] = array('&nbsp;','&nbsp;','&nbsp;','&nbsp;','&nbsp;');
-      $rows[] = array('Default',
-           '<input type="checkbox" name="edit[default]['.$vocab->vid.'][view]" '. (($default[$vocab->vid]['view']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit[default]['.$vocab->vid.'][update]" '. (($default[$vocab->vid]['update']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit[default]['.$vocab->vid.'][delete]" '. (($default[$vocab->vid]['delete']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit[default]['.$vocab->vid.'][create]" '. (($default[$vocab->vid]['create']) ? 'checked>' : '>'));
-      $rows[] = array('&nbsp;','&nbsp;','&nbsp;','&nbsp;','&nbsp;');
 
-      $terms = array();
-      $terms = taxonomy_get_tree($vocab->vid);
-      foreach ($terms as $term) {
-        $rows[] = array(str_repeat('-',$term->depth).$term->name,
-           '<input type="hidden" name="tids[]" value="'.$term->tid.'">'.
-           '<input type="checkbox" name="edit['.$term->tid.'][view]" '. (($perm[$term->tid]['view']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit['.$term->tid.'][update]" '. (($perm[$term->tid]['update']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit['.$term->tid.'][delete]" '. (($perm[$term->tid]['delete']) ? 'checked>' : '>'),
-           '<input type="checkbox" name="edit['.$term->tid.'][create]" '. (($perm[$term->tid]['create']) ? 'checked>' : '>'));
-      }
-    }
-    $output .= theme('table', $header, $rows);
-    $form['submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save category permissions'),
-      '#name' => 'save',
-      '#button_type' => 'submit',
-    );
-  }
-  else {
+  // Reflect changes made to term_access table in node_access table
+  _refresh_node_access_table($rid);
 
-    // Compile role array:
-    $result = db_query('SELECT r.rid, p.perm FROM {role} r LEFT JOIN {permission} p ON r.rid = p.rid ORDER BY name');
-    $roles = array();
-    while ($role = db_fetch_object($result)) {
-      $role_perms[$role->rid] = $role->perm;
-    }
+  // Clear the cache, as we might have changed the anonymous user's
+  // permissions.
+  cache_clear_all();
+  // redirect to main category permissions menu
+  $roles = user_roles();
+  drupal_set_message('Your permission settings for \'' . $roles[$rid] . '\' role have been saved.', 'status');
+  drupal_goto('admin/access/category');
 
-    $result = db_query('SELECT rid, name FROM {role} ORDER BY name');
-    $role_names = array();
-    while ($role = db_fetch_object($result)) {
-      $role_names[$role->rid] = $role->name;
-    }
-
-    // Render role/permission overview:
-    $header = array("Role","Category Permissions");
-    // Default settings for categories
-    //$rows[] = array(t('no role'), array('data'=>l(t("edit"),"admin/access/category/0"),'align'=>'right'));
-    foreach ($role_names as $rid => $name) {
-     $rows[] = array($name,array('data'=>l(t("edit"),"admin/access/category/$rid"), 'align'=>'right'));
-    }
-    $rid = arg(4);
-    if ($save) {
-      $row = db_fetch_object(db_query('SELECT r.name FROM {role} r WHERE rid = %d', $rid));
-      drupal_set_message('Your permission settings for users in the \'' . $row->name . '\' role have been saved.', 'status');
-      $output = theme_status_messages();
-    }
-    $output .= theme('table', $header, $rows);
-  }
-/*  $output = form($output);
-  print theme('page', $output);*/
-
-  $method = 'post';
-  $action = request_uri();
-  $output .= form_render($form);
-  $output = '<form action="'. check_url($action) .'" method="'. $method .'"'. ">\n". $output ."\n</form>\n";
-
-//  $output = drupal_get_form('form_id', $form);
-  return $output;
+  return;
 }
 
-  
 /**
  * Updates permissions for a role for a term
  * @param $tid
@@ -366,7 +374,7 @@ function taxonomy_access_grant_vocab_update($vid, $role = null, $edit = null) {
         $grants[$grant] = 0;
       }
       else {
-        $grants[$grant] = $edit[$term->tid][$grant];
+        $grants[$grant] = $edit['term'][$term->tid][$grant];
       }
     }
     taxonomy_access_grant_update($term->tid,$role,$grants);
@@ -500,34 +508,37 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
  */
 function taxonomy_access_settings() {
   $form['taxonomy_access_enabled'] = array(
-    '#type' => 'radios', '#default_value' => variable_get('taxonomy_access_enabled', 0),
+    '#type' => 'radios', 
+    '#default_value' => variable_get('taxonomy_access_enabled', 0),
     '#options' => array( 1 => t('Enable the taxonomy_access module.'), 0 => t('Disable the taxonomy_access module.'))
   );
-//  $form['taxonomy_access_settings_changed']= array( '#type' => 'hidden', '#value' => TRUE);
   return $form;
 }
 
 /**
- * Execute the taxonomy_access_settings_form.
+ * Submit the taxonomy_access_settings_form.
  */
-function taxonomy_access_settings_form_execute($form_id, $values) {
+function taxonomy_access_settings_form_submit($form_id, $form_values) {
   $op = isset($_POST['op']) ? $_POST['op'] : '';
-  foreach ($values as $key => $value) {
-    if ($op == t('Reset to defaults')) {
-      variable_del($key);
-    }
-    else {
-      variable_set($key, $value);
-    }
+  if ($op == t('Reset to defaults')) {
+    variable_del('taxonomy_access_enabled');
   }
-  cache_clear_all();
-  _taxonomy_access_update_db();
+  else {
+    $settings_changed = (variable_get('taxonomy_access_enabled', 0) == $form_values['taxonomy_access_enabled']) ? FALSE : TRUE;
+    variable_set('taxonomy_access_enabled', $form_values['taxonomy_access_enabled']);
+  }
+  if ($settings_changed || $op == t('Reset to defaults')) {
+    cache_clear_all();
+    _taxonomy_access_update_db();
+  }
   if ($op == t('Reset to defaults')) {
     drupal_set_message(t('The configuration options of taxonomy access have been reset to their default values.'));
+    drupal_goto('admin/settings/taxonomy_access');
   }
   else {
     drupal_set_message(t('The configuration options of taxonomy access have been saved.'));
   }
+  return;
 }
 
 /**
@@ -587,7 +598,6 @@ function taxonomy_access_user($op, &$edit, &$user, $category = NULL) {
 }  
   
 function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
-  //  variable_set('taxonomy_access_settings_changed', FALSE);
   if (!variable_get('taxonomy_access_enabled', FALSE)) {
     // We delete before insert to avoid inserting a duplicate entry into the database.
     // Without the DELETE query, this can happen when a site admin has already enabled the modules
@@ -850,5 +860,4 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
     return array();
   }
 }
-
 ?>
