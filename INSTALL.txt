@@ -1,6 +1,10 @@
-To install, simply add the database and activate the module, in these steps.
-  PLEASE NOTE: There is no need to patch the taxonomy.module anymore.
-  
+TO INSTALL, simply add the database and activate the module, in these steps.
+
+NOTE: Personally, I DO NOT RECOMMAND USING TWO OR MORE "ACCESS" MODULE AT THE SAME TIME (e.g: OG, node_privacy_by_role, taxonomy access, etc.)at the same time, only in case you know exactly what you are doing, and if you tested it thoroughly. 
+  (If you used other access modules before, read the 'Troubleshooting' section)
+
+PLEASE NOTE: There is no need to patch the taxonomy.module anymore. (it was neccessary only in previuos versions of Drupal 4.5 and 4.6)
+
 1) UPDATING DATABASE: 
     For MySQL:
       From the command line, type 'mysql -u username -p drupal < taxonomy_access.mysql' where drupal is your drupal database and username is your mysql username
@@ -16,3 +20,12 @@ To install, simply add the database and activate the module, in these steps.
 4) ENABLE TAXONOMY ACCESS SETTINGS: Go to administer >> settings >> taxonomy_access and enable the module
 
 5) CONFIGURE ACCESS PERMISSIONS to the various categories from administer >> access control >> category permissions
+
+TROUBLESHOOTING:
+
+For general housekeeping of the 'node_access' table, go to /admin/settings/taxonmy_access: First 'Disable', then 'Enable the taxonomy_access module'.
+  This regenerates the 'node_access' table (only the values related to taxonomy_access) according to taxonomy_access settings (stored in table 'term_access').
+
+If you have troubles with node access (users can view/edit pages, they do not have permission), and you used other access modules before (OG, node_privacy_by_role, etc.). 
+  Try this: after backing up the database, try deleting values from the "node_access" table ( TRUNCATE 'node_access' ).  Then for regenerating the "node_access" table (according to TAC settings) go to /admin/settings/taxonmy_access: First 'Dsable', then 'Enable the taxonomy_access module'.
+  
