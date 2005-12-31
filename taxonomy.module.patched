@@ -1,6 +1,6 @@
 <?php
 // $Id$
-// patched to be used with taxonomy_access.module
+// patched to be used with taxonomy_access.module 
 // patch based on http://drupal.org/node/25998 "problem editing node with only update access"
 
 /**
