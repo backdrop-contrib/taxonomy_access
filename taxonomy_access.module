@@ -456,17 +456,7 @@ function taxonomy_access_get_default_grants($role) {
  * Implementation of hook_nodeapi().
  */
 function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
-  global $_taxonomy_access_op;
   switch ($op) {
-    // case 'form pre':
-    case 'validate':
-      $_taxonomy_access_op = 'create';
-      break;
-
-    case 'view':
-      $_taxonomy_access_op = 'view';
-      break;
-
     case 'delete':
       // When a node is deleted, delete any relevant permissions.
       db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'term_access\'', $node->nid);
@@ -823,7 +813,7 @@ function _refresh_node_access_table($rid = NULL ) {
 function taxonomy_access_db_rewrite_sql($query, $table, $field) {
   if (!user_access('administer taxonomy') && ($field =='vid' || $field =='tid')) {
     global $user;
-    global $taxonomy_access_op;
+    $op = (arg(0) == 'node' && (arg(1) == 'add' || arg(2) == 'edit')) ? 'create' : 'view';
     
     // let's cache
     static $taxonomy_access_sql_clause;
@@ -832,7 +822,6 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
     if (!isset($taxonomy_access_sql_clause)) {
       $taxonomy_access_sql_clause = array();
     }
-    $op = ($taxonomy_access_op == 'create') ? 'create' : 'view';
     if (!isset($taxonomy_access_sql_clause[$op][$field]))  {
       if (isset($user) && is_array($user->roles)) {
         $rids = array_keys($user->roles);
