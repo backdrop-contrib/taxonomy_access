@@ -12,6 +12,9 @@ CREATE TABLE term_access (
   PRIMARY KEY  (tid,rid)
 ) TYPE=MyISAM;
 
+#
+# Table structure for table `term_access_defaults`
+#
 
 CREATE TABLE term_access_defaults (
   vid int(10) unsigned NOT NULL default '0',
