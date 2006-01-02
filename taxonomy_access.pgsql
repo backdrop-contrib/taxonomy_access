@@ -12,6 +12,10 @@ CREATE TABLE term_access (
  PRIMARY KEY  (tid,rid)
 );
 
+-- 
+--Table structure for table `term_access_defaults`
+-- 
+
 CREATE TABLE term_access_defaults (
  vid integer  NOT NULL default '0',
  rid integer  NOT NULL default '0',
