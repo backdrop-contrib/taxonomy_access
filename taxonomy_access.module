@@ -19,14 +19,13 @@ function taxonomy_access_help($section) {
 
       // header message if module is enabled
       if ($taxonomy_access_enabled) { 
-        $message .= 'The module is currently enabled properly.<br/>';
-        $message .= 'To disable the module properly, select \'disable\' here and save the configuration before disabling it in the modules page.<br/>';
+        $message .= t('The module is currently enabled properly.').'<br/>';
+        $message .= t('To disable the module properly, select \'disable\' here and save the configuration before disabling it in the modules page.').'<br/>';
       }
 
       // header message if module is not enabled
       else {
-      $message .= 'The module is currently disabled, but must also be disabled in the %module_page_link in order for it to be properly disabled.<br/>To properly enable this module, select \'enable\' here and save the configuration.<br/>';
-      $message = t($message, array('%module_page_link' => l(t('modules admin page'), 'admin/modules', array('title' => t('View more.')))   ));
+        $message = t('The module is currently disabled, but must also be disabled in the %module_page_link in order for it to be properly disabled.<br/>To properly enable this module, select \'enable\' here and save the configuration.<br/>', array('%module_page_link' => l(t('modules admin page'), 'admin/modules', array('title' => t('View more.')))   ));
       }
       return $message;
       
@@ -35,10 +34,13 @@ function taxonomy_access_help($section) {
         $roles = user_roles();
         $rid = arg(3);
         if ($roles[$rid]) {
-          return t('<b>Vocabulary Settings</b> - Next to each vocabulary is a dropdown with "Add" and "Remove" settings.  Select the "Add" setting for a permission to add that permission to all the categories in that vocabulary for the current role, likewise select the "Remove" setting to remove it.  "--" leaves that permission alone.<p><b>Default</b>: This permission, just underneath the vocabulary title, allows you to set the default permissions to apply for the current role to new categories added to this vocabulary.');
+          $output = "<p><br />".t("<strong>Vocabulary Settings:</strong> Each vocabulary displays a list of the terms within it, each with four checkboxes: <em>View, Update, Delete, Create </em>and <em>List</em>. (For detailed description of these permissions, see README.txt) When you tick a checkbox next to a term, this role is given permission to perform that action on any nodes assigned to that term.")."</p>";
+          $output .= "<p>".t("Beside each vocabulary title there is also a dropdown with &quot;<em>Select all</em>&quot; and &quot;<em>Deselect all</em>&quot; settings:")."</p>".t("<ul><li>Choose the &quot;<em>Select all</em>&quot; setting to automatically select all of the terms in that vocabulary when you save (except '<em>Default</em>', which is not affected).</li><li>Choose the &quot;<em>Deselect all</em>&quot; setting to deselect all checkboxes in that vocabulary when you save (except &quot;<em>Default&quot;</em>).&nbsp;</li><li> &quot;--&quot; doesn't make any automatic changes to that vocabulary; only manual changes that you make to the checkboxes will be saved.</li></ul>");
+          $output .= "<p>".t("<strong>Default:</strong> This checkbox, just underneath the vocabulary title, <u>sets the permissions that will automatically be given</u> to this role, <u>for any new terms</u> that are added within the vocabulary.")."</p><br />";
+          return $output;
         }
         else {
-          return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete and create permissions set for each user role.', array('%role' => url('admin/access/roles'), '%default' => url('admin/access/category/0')));
+          return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete, create and list permissions set for each user role.', array('%role' => url('admin/access/roles'), '%default' => url('admin/access/category/0')));
         }
       }
   }
@@ -61,6 +63,9 @@ function taxonomy_access_menu() {
   $items[] = array('path' => 'admin/access/category', 'title' => t('category permissions'),
     'callback' => 'taxonomy_access_admin_form', 'access' => $access, 'callback arguments'=>array(),
     'type' => MENU_LOCAL_TASK);
+  $items[] = array('path' => 'admin/settings/taxonomy_access/update', 'title' => t('update database'),
+    'callback' => 'taxonomy_access_admin_update', 'access' => $access,
+    'type' => MENU_CALLBACK);
   return $items;
 }
  
@@ -82,7 +87,7 @@ function taxonomy_access_admin_form($edit = array()) {
   // Output the permission matrix user form
   else { 
     $options = array( '0' => '--', '1' => t('Select all'), '2' => t('Deselect all'));
-    $grant_types = array('view', 'update', 'delete', 'create');
+    $grant_types = array('view', 'update', 'delete', 'create', 'list');
 
     $output = '<h2>Permissions for \''.$roles[$rid].'\'</h2><p>';
     // Get all category permissions
@@ -90,7 +95,7 @@ function taxonomy_access_admin_form($edit = array()) {
     $default = taxonomy_access_get_default_grants($rid);
     // Compile category permission overview
     $term_list = array();
-    $header = array('Category','View','Update','Delete','Create');
+    $header = array('Category','View (node)','Update (node)','Delete (node)','Create', 'List');
     
     $forms['taxonomy_access'] = array( '#tree' => TRUE);
     // Do the row for uncategorized nodes
@@ -158,24 +163,24 @@ function taxonomy_access_admin_form($edit = array()) {
 }
 
 function theme_taxonomy_access_admin_form($form) {
-  $output = "<table><thead><tr><th>Category</th><th>View</th><th>Update</th><th>Delete</th><th>Create</th> </tr></thead><tbody>\n<tr class=\"even\"><td>uncategorized nodes</td>";
+  $output = "<table><thead><tr><th>Category</th><th>View</th><th>Update</th><th>Delete</th><th>Create</th><th>List</th></tr></thead><tbody>\n<tr class=\"even\"><td>uncategorized nodes</td>";
   $output .= form_render($form['taxonomy_access']['term'][0]);
-  $output .= "<td>&nbsp;</td></tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td> </tr>\n";
+  $output .= "<td>&nbsp;</td></tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>\n";
   $vocabs = taxonomy_get_vocabularies();
   foreach ($vocabs as $vocab) {
     $output .= "<tr class=\"even\"><td><b>".t($vocab->name)."</b></td>";
     $output .= form_render($form['taxonomy_access']['vocab'][$vocab->vid]);
-    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td> </tr>\n";
+    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>\n";
     $output .= "<tr class=\"even\"><td>".t('Default')."</td>";
     $output .= form_render($form['taxonomy_access']['default'][$vocab->vid]);
-    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td> </tr>\n";
+    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>\n";
     $terms = array();
     $terms = taxonomy_get_tree($vocab->vid);
     foreach ($terms as $term) {
       $output .= "<tr class=\"even\"><td>".str_repeat('-',$term->depth).$term->name."</td>";
       $output .= form_render($form['taxonomy_access']['term'][$term->tid]);
     }
-    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td> </tr>\n";
+    $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>\n";
   }
   $output .= '</tr></tbody></table>';
   $output .= form_render($form);
@@ -273,6 +278,31 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
 **/
+/**
+ * Script for updating database for previous versions of Taxonomy Access
+**/
+function taxonomy_access_admin_update($update_num = 0) {
+  switch ($update_num) {
+    case 1:
+      db_query("ALTER TABLE {term_access} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
+      db_query("UPDATE {term_access} SET grant_list = grant_view");
+      db_query("ALTER TABLE {term_access_defaults} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
+      db_query("UPDATE {term_access_defaults} SET grant_list = grant_view");
+      $output = 'Update complete.';
+      break;
+
+    default:
+      $output = "<p>You have to apply this update if you used previous versions of Taxonomy Access. \n (For security reasons, do not forget to backup your database, before applying this script)</p>";
+      $output .= '<dl>';
+      $output .= '<dt>'. l('Update for Taxonomy access (2006/01/12)', 'admin/settings/taxonomy_access/update/1') .'</dt>';
+      $output .= "<dd>This update adds new columns (grant_list) to table 'term_access'.</dd>";
+      $output .= '</dl>';
+      $output .= '<dl>';
+
+  }
+  print theme('page', $output);
+}
+
 function taxonomy_access_grant_update($tid, $role = null, $grants = null) {
   if (!isset($tid)) {
     return FALSE;
@@ -363,6 +393,7 @@ function taxonomy_access_defaults_update($vid, $role = null, $grants = null) {
 function taxonomy_access_grant_vocab_update($vid, $role = null, $edit = null) {
   $tree = taxonomy_get_tree($vid);
   $grant_types = array('view', 'update', 'delete', 'create');
+  $grant_types = array('view', 'update', 'delete', 'create', 'list');
   $vgrants = $edit['vocab'][$vid];
   $grants = array();
   foreach ($tree as $term) {
@@ -544,7 +575,7 @@ function taxonomy_access_taxonomy($op, $type, $edit = NULL) {
         foreach (user_roles() as $rid => $role) {
           $grants = db_fetch_object(db_query("SELECT * FROM {term_access_defaults} WHERE vid='%d' AND rid='%d'",$edit['vid'], $rid));
           db_query("DELETE FROM {term_access} WHERE tid='%d' AND rid='%d'",$edit['tid'],$rid);
-          db_query('INSERT INTO {term_access} VALUES (\'%d\', \'%d\', %d, %d, %d, %d)', $edit['tid'], $rid, $grants->grant_view,$grants->grant_update,$grants->grant_delete,$grants->grant_create);
+          db_query('INSERT INTO {term_access} VALUES (\'%d\', \'%d\', %d, %d, %d, %d, %d)', $edit['tid'], $rid, $grants->grant_view,$grants->grant_update,$grants->grant_delete,$grants->grant_create,$grants->grant_list);
         }
         break;
 
@@ -677,7 +708,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       foreach ($current_rids as $rid) {
         $query = db_query('SELECT tid FROM {term_access} where tid=0 AND rid=%d', $rid);
         if (!db_fetch_object($query)) {
-          db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0, 1)', $rid);
+          db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1, 1)', $tid, $rid);
         }
       }
     }
@@ -697,7 +728,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     foreach ($add_tids as $tid) {
       if ($tid != 0) {
         foreach ($all_rids as $rid) {
-          db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
+          db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1, 1)', $tid, $rid);
         }
       }
     }
@@ -709,7 +740,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
       if ($tid != 0) {
         if (is_array($add_rids)) {
           foreach ($add_rids as $rid) {
-            db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1)', $tid, $rid);
+            db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1, 1)', $tid, $rid);
           }
         }
       }
@@ -759,7 +790,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
         if (is_array($add_rids)) {
           foreach ($add_rids as $rid) {
             db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
-            db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
+            db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1,1)",$vocab->vid,$rid);
           }
         }
       }
@@ -770,7 +801,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
         if (is_array($current_rids)) {
           foreach ($current_rids as $rid) {
             db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
-            db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1)",$vocab->vid,$rid);
+            db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1,1)",$vocab->vid,$rid);
           }
         }
       }

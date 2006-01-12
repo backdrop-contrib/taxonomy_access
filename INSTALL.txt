@@ -5,7 +5,11 @@ NOTE: Personally, I DO NOT RECOMMAND USING TWO OR MORE "ACCESS" MODULE AT THE SA
 
 PLEASE NOTE: There is no need to patch the taxonomy.module anymore. (it was neccessary only in previuos versions of Drupal 4.5 and 4.6)
 
-1) UPDATING DATABASE: 
+TO UPDATE from previous versions of taxonomy_access: PLEASE READ UPDATE.TXT!
+
+INSTALLATION:
+
+1) ADDING NEW TABLES TO DATABASE:
     For MySQL:
       From the command line, type 'mysql -u username -p drupal < taxonomy_access.mysql' where drupal is your drupal database and username is your mysql username
 

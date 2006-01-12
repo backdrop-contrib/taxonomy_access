@@ -2,16 +2,31 @@ This module allows you to set access permissions for various categories based on
 
 This works as a hook into node_access and follows the same general structure as the node_access module.  It's got permissions for view, update and delete for each category on the system.  
 
-There are two ways you can check whether or not a user has access for a given taxonomy.  First, you can call node_access on a given node and if taxonomy_access is enabled it will take category permissions into account when determining whether or not the user has access to the given node.  The second way is to call the function taxonomy_access which takes two parameters, an operation and a taxonomy, with a third optional paramater of a userid to use instead of the current user.  It returns whether or not the user is authorized, almost identical to node_access.
+API functions: There are two ways you can check whether or not a user has access for a given taxonomy.  First, you can call node_access on a given node and if taxonomy_access is enabled it will take category permissions into account when determining whether or not the user has access to the given node.  The second way is to call the function taxonomy_access which takes two parameters, an operation and a taxonomy, with a third optional paramater of a userid to use instead of the current user.  It returns whether or not the user is authorized, almost identical to node_access.
 
   (PLEASE NOTE: For HEAD version, there is no need to patch the taxonomy.module anymore.)
 
+--------------------------------------
 TUTORIAL for Category Permissions page
 ('/admin/access/category')
+--------------------------------------
 
   VIEW enables user to be able to access content (node) with given term.
-     It also enables viewing the term name as well as accessing the node listings for the given term on pages e.g.:"taxonomy/term/", etc.
   UPDATE, DELETE enables user to 'Update' or 'Delete' nodes with that category.
-  CREATE enables user to set that category when adding node on "create content" page. 
+  CREATE enables user to set that category when adding new node on "create content" page or when editing node.
+  LIST  enables user to view the name of the given term (e.g. below the title of a node, or in category lists). It also controls whether a user can access the taxonomy page for the given term (e.g.:"taxonomy/term/*").
+
+  (VIEW, UPDATE, DELETE controls the node access system, and these settings are saved to table 'node_access'.
+   LIST, CREATE: These settings controls if a user can view and select the given term. These settings are used by the taxonomy.module.
+
+    NOTE: In previous versions of Taxonomy Access Control: there was no LIST permission, its functionality was controled by the VIEW permission.
 
   In case of multicategory nodes, there is an OR operation btw TAC permissions.
+
+----------------------
+
+Please, send bug reports, feature requests, or other comments about Taxonomy Access module:
+http://drupal.org/project/issues/taxonomy_access
+
+You can also contact me personally:
+Keve  ( http://drupal.org/user/13163/contact )

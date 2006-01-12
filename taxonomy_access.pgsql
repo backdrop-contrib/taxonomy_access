@@ -9,6 +9,7 @@ CREATE TABLE term_access (
  grant_update smallint NOT NULL default '0',
  grant_delete smallint NOT NULL default '0',
  grant_create smallint NOT NULL default '0',
+ grant_list smallint NOT NULL default '0',
  PRIMARY KEY  (tid,rid)
 );
 
@@ -23,5 +24,6 @@ CREATE TABLE term_access_defaults (
  grant_update smallint NOT NULL default '0',
  grant_delete smallint NOT NULL default '0',
  grant_create smallint NOT NULL default '0',
+ grant_list smallint NOT NULL default '0',
  PRIMARY KEY  (vid,rid)
 ); 
