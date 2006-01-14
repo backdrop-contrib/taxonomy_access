@@ -566,7 +566,7 @@ function taxonomy_access_settings_form_submit($form_id, $form_values) {
  * hook_taxonomy is called when changes are made to the taxonomy structure
 **/
 function taxonomy_access_taxonomy($op, $type, $edit = NULL) {
-  if ($type = 'term') {
+  if ($type == 'term') {
     switch($op) {
       case 'update':  // don't do anything, nothing on our end has changed
         break;
