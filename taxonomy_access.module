@@ -402,7 +402,6 @@ function taxonomy_access_defaults_update($vid, $role = null, $grants = null) {
 **/
 function taxonomy_access_grant_vocab_update($vid, $role = null, $edit = null) {
   $tree = taxonomy_get_tree($vid);
-  $grant_types = array('view', 'update', 'delete', 'create');
   $grant_types = array('view', 'update', 'delete', 'create', 'list');
   $vgrants = $edit['vocab'][$vid];
   $grants = array();
