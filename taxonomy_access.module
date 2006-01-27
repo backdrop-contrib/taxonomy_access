@@ -622,6 +622,7 @@ function taxonomy_access_user($op, &$edit, &$user, $category = NULL) {
     }
 
     // Get list of roles known to exist from term_access
+    $known_rids = array();
     $query = db_query('SELECT DISTINCT rid FROM {term_access}');
     while($result = db_fetch_array($query)) {
       $known_rids[] = $result['rid'];
