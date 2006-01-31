@@ -11,7 +11,8 @@ CREATE TABLE term_access (
   grant_create tinyint(1) unsigned NOT NULL default '0',
   grant_list tinyint(1) unsigned NOT NULL default '0',
   PRIMARY KEY  (tid,rid)
-) TYPE=MyISAM;
+) TYPE=MyISAM
+/*!40100 DEFAULT CHARACTER SET utf8 */ ;
 
 #
 # Table structure for table `term_access_defaults`
@@ -26,4 +27,5 @@ CREATE TABLE term_access_defaults (
   grant_create tinyint(1) unsigned NOT NULL default '0',
   grant_list tinyint(1) unsigned NOT NULL default '0',
   PRIMARY KEY  (vid,rid)
-) TYPE=MyISAM;
+) TYPE=MyISAM
+/*!40100 DEFAULT CHARACTER SET utf8 */ ;
