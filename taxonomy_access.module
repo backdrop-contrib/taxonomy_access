@@ -555,10 +555,10 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
       db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'term_access\'', $node->nid);
       // For nodes not assigned to a category
       if (!is_array($node->taxonomy)) {
-        $query = db_query("SELECT * FROM {term_access} where tid = '0'");
-        while ($result = db_fetch_object($query)) {
+        $result = db_query("SELECT * FROM {term_access} where tid = '0'");
+        while ($row = db_fetch_object($result)) {
 //          db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, $result->grant_view, $result->grant_update, $result->grant_delete);
-          db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, ($result->grant_view == 1 ? 1 : 0), ($result->grant_update == 1 ? 1 : 0), ($result->grant_delete == 1 ? 1 : 0));
+          db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, ($row->grant_view == 1 ? 1 : 0), ($row->grant_update == 1 ? 1 : 0), ($row->grant_delete == 1 ? 1 : 0));
         }
       }
       // For nodes assigned to a category
@@ -581,7 +581,8 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
         $result = db_query("SELECT rid, BIT_OR(grant_view) AS grant_view, BIT_OR(grant_update) AS grant_update, BIT_OR(grant_delete) AS grant_delete FROM {term_access} WHERE tid IN ('".implode("','",array_values($tids))."') GROUP BY rid");
         while ($row = db_fetch_object($result)) {
           db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $node->nid, $row->rid);
-          db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
+//          db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
+          db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, ($row->grant_view == 1 ? 1 : 0), ($row->grant_update == 1 ? 1 : 0), ($row->grant_delete == 1 ? 1 : 0));
         }
       }
       break;
@@ -659,9 +660,9 @@ function taxonomy_access_taxonomy($op, $type, $edit = NULL) {
 function taxonomy_access_user($op, &$edit, &$user, $category = NULL) {
   if ($op == 'update' || $op == 'insert') {
     // Get list of existing roles
-    $query = db_query('SELECT rid FROM {role}');
-    while ($result = db_fetch_array($query)) {
-      $current_rids[] = $result['rid'];
+    $result = db_query('SELECT rid FROM {role}');
+    while ($rids = db_fetch_array($result)) {
+      $current_rids[] = $rids['rid'];
     }
     if (!in_array(0, $current_rids)) {
       $current_rids[] = 0;
@@ -669,9 +670,9 @@ function taxonomy_access_user($op, &$edit, &$user, $category = NULL) {
 
     // Get list of roles known to exist from term_access
     $known_rids = array();
-    $query = db_query('SELECT DISTINCT rid FROM {term_access}');
-    while($result = db_fetch_array($query)) {
-      $known_rids[] = $result['rid'];
+    $result = db_query('SELECT DISTINCT rid FROM {term_access}');
+    while($rids = db_fetch_array($result)) {
+      $known_rids[] = $rids['rid'];
     }
     if (!in_array(0, $known_rids)) {
       $known_rids[] = 0;
