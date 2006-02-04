@@ -96,13 +96,23 @@ function taxonomy_access_admin_form($edit = array()) {
     $default = taxonomy_access_get_default_grants($rid);
     
     $forms['taxonomy_access'] = array( '#tree' => TRUE);
+
     // Do the row for uncategorized nodes
-    $forms['taxonomy_access']['tids'][0] = array(
-      '#type' => 'value',
-      '#value' => 0,
+    $forms['taxonomy_access'][0] = array(
+      '#type' => 'fieldset',
+      '#title' => 'Uncategrozied nodes',
+      '#weight' => 3,
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#tree' => TRUE,
+    );
+    $head = "<table><thead><tr><th>Category</th><th colspan=\"4\">View</th><th colspan=\"4\">Update</th><th colspan=\"4\">Delete</th><th>Create</th><th>List</th></tr></thead><tbody>\n";
+    $forms['taxonomy_access'][0]['term'][0] = array(
+      '#prefix' => $head."<tr class=\"even\"><td>uncategorized nodes</td>",
+      '#suffix' => "<td>&nbsp;</td><td>&nbsp;</td></tr>\n</tbody></table>",
     );
     foreach ($node_grant_types as $grant) {
-      $forms['taxonomy_access']['term'][0][$grant] = array(
+      $forms['taxonomy_access'][0]['term'][0][$grant] = array(
         '#type' => 'checkbox',
         '#default_value' => $perm[0][$grant],
         '#prefix' => '<td colspan="4">',
@@ -111,17 +121,33 @@ function taxonomy_access_admin_form($edit = array()) {
     }
 
     $vocabs = taxonomy_get_vocabularies();
-
     $options1 = array( '3' => '--', '1' => t('Allow all'), '0' => t('Ignore all'), '2' => t('Deny all'));
-    $options2 = array( '0' => '--', '1' => t('Select all'), '2' => t('Deselect all'));
+    $options2 = array( '3' => '--', '1' => t('Select all'), '2' => t('Deselect all'));
     $radios = array('1' => 'Allow', '0' => 'Ignore', '2' => 'Deny');
+
     foreach ($vocabs as $vocab) {
-      $forms['taxonomy_access']['vids'][$vocab->vid] = array(
-        '#type' => 'value', 
-        '#value' => $vocab->name,
+      $forms['taxonomy_access'][$vocab->vid] = array(
+        '#type' => 'fieldset',
+        '#title' => t($vocab->name),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#tree' => TRUE,
        );
+      $label = '<td>&nbsp;A.</td><td>&nbsp;I.</td><td>&nbsp;D.</td><td>&nbsp;</td>';
+      $forms['taxonomy_access'][$vocab->vid]['vocab'] = array(
+        '#prefix' => $head."<tr class=\"even\"><td><b>".t($vocab->name)."</b></td>",
+        '#suffix' => "</tr>\n<tr class=\"even\"><td>&nbsp;</td>".$label.$label.$label."<td colspan=\"2\">&nbsp;</td>\n",
+      );
+      $forms['taxonomy_access'][$vocab->vid]['default'] = array(
+        '#prefix' => "<tr class=\"even\"><td><blockquote><em>".t('Default')."</blockquote></em></td>",
+       );
+      $forms['taxonomy_access'][$vocab->vid]['term'] = array(
+        '#prefix' => "</tr>\n<tr class=\"even\"><td colspan=\"15\">&nbsp;</td>\n",
+        '#suffix' => "</tr></tbody></table>",
+       );
+
       foreach (array('view', 'update', 'delete') as $grant) {
-        $forms['taxonomy_access']['vocab'][$vocab->vid][$grant] = array(
+        $forms['taxonomy_access'][$vocab->vid]['vocab'][$grant] = array(
           '#type' => 'select', 
           '#options' => $options1,
           '#default_value' => -1,
@@ -129,9 +155,9 @@ function taxonomy_access_admin_form($edit = array()) {
          );
         foreach ($radios as $value => $name) {
           $suffix = ($value == 2) ? '</td><td>&nbsp;&nbsp;' : '';
-          $forms['taxonomy_access']['default'][$vocab->vid][$grant][$value] = array(
+          $forms['taxonomy_access'][$vocab->vid]['default'][$grant][$value] = array(
             '#type' => 'radio', 
-            '#name' => 'edit[taxonomy_access][default]['.$vocab->vid.']['.$grant.']', 
+            '#name' => 'edit[taxonomy_access]['.$vocab->vid.'][default]['.$grant.']', 
             '#return_value' => $value,
             '#default_value' => $default[$vocab->vid][$grant],
             '#prefix' => '<td>', '#suffix' => $suffix.'</td>',
@@ -139,12 +165,12 @@ function taxonomy_access_admin_form($edit = array()) {
         }
       }
       foreach (array('create', 'list') as $grant) {
-        $forms['taxonomy_access']['vocab'][$vocab->vid][$grant] = array(
+        $forms['taxonomy_access'][$vocab->vid]['vocab'][$grant] = array(
           '#type' => 'select', 
           '#options' => $options2,
           '#prefix' => '<td>', '#suffix' => '</td>',
          );
-        $forms['taxonomy_access']['default'][$vocab->vid][$grant] = array(
+        $forms['taxonomy_access'][$vocab->vid]['default'][$grant] = array(
           '#type' => 'checkbox', 
           '#default_value' => $default[$vocab->vid][$grant],
           '#prefix' => '<td>', '#suffix' => '</td>',
@@ -154,32 +180,37 @@ function taxonomy_access_admin_form($edit = array()) {
       // Do the rows for each term in vocabulary
       $terms = array();
       $terms = taxonomy_get_tree($vocab->vid);
-      foreach ($terms as $term) {
-        $forms['taxonomy_access']['tids'][$term->tid] = array(
-          '#type' => 'value',
-          '#value' => $term->tid
-        );
-        foreach (array('view', 'update', 'delete') as $grant) {
-          foreach ($radios as $value => $name) {
-            $suffix = ($value == 2) ? '</td><td>&nbsp;&nbsp;' : '';
-            $forms['taxonomy_access']['term'][$term->tid][$grant][$value] = array (
-              '#name' => 'edit[taxonomy_access][term]['.$term->tid.']['.$grant.']', 
-              '#return_value' => $value,
-              '#type' => 'radio', 
+      if (!$terms) {
+        $forms['taxonomy_access'][$vocab->vid]['default']['#suffix'] = "</tr></tbody></table>";
+      }
+      else {
+        foreach ($terms as $term) {
+          $forms['taxonomy_access'][$vocab->vid]['term'][$term->tid] = array(
+            '#prefix' => "<tr class=\"even\"><td>".str_repeat('-',$term->depth).$term->name."</td>",
+           );
+          foreach (array('view', 'update', 'delete') as $grant) {
+            foreach ($radios as $value => $name) {
+              $suffix = ($value == 2) ? '</td><td>&nbsp;&nbsp;' : '';
+              $forms['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant][$value] = array (
+                '#name' => 'edit[taxonomy_access]['.$vocab->vid.'][term]['.$term->tid.']['.$grant.']', 
+                '#return_value' => $value,
+                '#type' => 'radio', 
+                '#default_value' => $perm[$term->tid][$grant],
+                '#prefix' => '<td>', '#suffix' => $suffix.'</td>',
+               );
+            }
+          }
+          foreach (array('create', 'list') as $grant) {
+            $forms['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant] = array (
+              '#type' => 'checkbox', 
               '#default_value' => $perm[$term->tid][$grant],
-              '#prefix' => '<td>', '#suffix' => $suffix.'</td>',
+              '#prefix' => '<td>', '#suffix' => '</td>',
              );
           }
         }
-        foreach (array('create', 'list') as $grant) {
-          $forms['taxonomy_access']['term'][$term->tid][$grant] = array (
-            '#type' => 'checkbox', 
-            '#default_value' => $perm[$term->tid][$grant],
-            '#prefix' => '<td>', '#suffix' => '</td>',
-           );
-        }
       }
     }
+
     $forms['taxonomy_access']['submit'] = array(
       '#type' => 'submit',
       '#value' => t('Save category permissions'),
@@ -193,110 +224,95 @@ function taxonomy_access_admin_form($edit = array()) {
 }
 
 function theme_taxonomy_access_admin_form($form) {
-  $label = '<td>&nbsp;A.</td><td>&nbsp;I.</td><td>&nbsp;D.</td><td>&nbsp;</td>';
-  $output = "<table><thead><tr><th>Category</th><th colspan=\"4\">View</th><th colspan=\"4\">Update</th><th colspan=\"4\">Delete</th><th>Create</th><th>List</th></tr></thead><tbody>\n<tr class=\"even\"><td>uncategorized nodes</td>";
-  $output .= form_render($form['taxonomy_access']['term'][0]);
-  $output .= "<td>&nbsp;</td><td>&nbsp;</td></tr>\n<tr class=\"even\"><td colspan=\"15\">&nbsp;</td>\n";
-//  $vocabs = taxonomy_get_vocabularies();
-  $vocabs = $form['taxonomy_access']['vids'];
-  foreach ($vocabs as $vid => $vocabname) {
+  $vids = array_keys($form['taxonomy_access']);
+  foreach ($vids as $vid) {
     if (is_integer($vid)) {
-      $output .= "<tr class=\"even\"><td><b>".t($vocabname['#value'])."</b></td>";
-      $output .= form_render($form['taxonomy_access']['vocab'][$vid]);
-      $output .= "</tr>\n<tr class=\"even\"><td>&nbsp;</td>".$label.$label.$label."<td colspan=\"2\">&nbsp;</td>\n";
-      $output .= "<tr class=\"even\"><td><blockquote><em>".t('Default')."</blockquote></em></td>";
-      $output .= form_render($form['taxonomy_access']['default'][$vid]);
-      $output .= "</tr>\n<tr class=\"even\"><td colspan=\"15\">&nbsp;</td>\n";
-      $terms = array();
-      $terms = taxonomy_get_tree($vid);
-      foreach ($terms as $term) {
-        $output .= "<tr class=\"even\"><td>".str_repeat('-',$term->depth).$term->name."</td>";
-        $output .= form_render($form['taxonomy_access']['term'][$term->tid]);
-      }
-      $output .= "</tr>\n<tr class=\"even\"><td colspan=\"15\">&nbsp;</td>\n";
+      $output .= form_render($form['taxonomy_access'][$vid]);
     }
   }
-  $output .= '</tr></tbody></table>';
   $output .= form_render($form);
   return $output;
 }
 
 function taxonomy_access_admin_form_submit($form_id, $form_values) {
   global $tac_user_roles;
-  $tids = $form_values['taxonomy_access']['tids'];
-  $vids = $form_values['taxonomy_access']['vids'];
+  $vids = array_keys($form_values['taxonomy_access']);
   $rid = arg(3);
   $grant_types = array('view', 'update', 'delete', 'create', 'list');
   $edit = $form_values['taxonomy_access'];
 
-  // Process input data and use it to make changes to the database.
-  foreach ($tids as $tid) {
-    // The $edit array is filled out with zeroes here to
-    // reduce code complexity when we update the term_access table.
-    if (!array_key_exists($tid, $edit['term'])) {
-      foreach ($grant_types as $grant) {
-        $edit['term'][$tid][$grant] = 0;
-      }
-    }
-    else {
-        foreach ($grant_types as $grant) {
-          if (!isset($edit[$tid][$grant])) {
-            // Enter a '0' for any permission that has not been set or for any checkbox that has been left unchecked by the user
-            $edit[$tid][$grant] = 0;
+
+  foreach ($vids as $vid) {
+    if (is_numeric($vid)) {
+    // Process input data and use it to make changes to the database.
+      $tids = array_keys($edit[$vid]['term']);
+      foreach ($tids as $tid) {
+        // The $edit array is filled out with zeroes here to
+        // reduce code complexity when we update the term_access table.
+        if (!$edit[$vid]['term'][$tid]) {
+          foreach ($grant_types as $grant) {
+            $edit[$vid]['term'][$tid][$grant] = 0;
           }
-          else {
-            if ($grant == 'create' || $grant == 'list') {
-              // For any permission checkbox checked by user, set it to a value of '1'
-              $edit[$tid][$grant] = 1;
+        }
+        else {
+            foreach ($grant_types as $grant) {
+              if (!isset($edit[$vid][$tid][$grant])) {
+                // Enter a '0' for any permission that has not been set or for any checkbox that has been left unchecked by the user
+                $edit[$vid][$tid][$grant] = 0;
+              }
+              else {
+                if ($grant == 'create' || $grant == 'list') {
+                  // For any permission checkbox checked by user, set it to a value of '1'
+                  $edit[$vid][$tid][$grant] = 1;
+                }
+              }
             }
-          }
         }
-    }
-    
-    // Make the changes to the term_access table
-    taxonomy_access_grant_update($tid, $rid, $edit['term'][$tid]);
-  }
-  // Now to the same for vocabularies
-  if ($vids) {
-    foreach (array_keys($vids) as $vid) {
-      // The $edit array is filled out with zeroes here to
-      // reduce code complexity when we update the term_access table.
-      $vocab_array = $edit['vocab'];
-      $changed = false;
-      if (!array_key_exists($vid, $vocab_array)) {
-        foreach ($grant_types as $grant) {
-          $edit['vocab'][$vid][$grant] = 0;
-        }
+        
+        // Make the changes to the term_access table
+        taxonomy_access_grant_update($tid, $rid, $edit[$vid]['term'][$tid]);
       }
-      // Enter a '0' for any permission that has been left unchecked by the user
-      // For any permission checked by user, set it to a value of '1'
-      else {
-        foreach ($grant_types as $grant) {
-          if (!($edit['vocab'][$vid][$grant])) {
-            $edit['vocab'][$vid][$grant] = 0;
+  
+    // Now to the same for vocabularies
+      if ($vid !=0) {
+        // The $edit array is filled out with zeroes here to
+        // reduce code complexity when we update the term_access table.
+        $changed = false;
+        if (!array_key_exists($vid, $edit)) {
+          foreach ($grant_types as $grant) {
+            $edit[$vid]['vocab'][$grant] = 0;
           }
-          else {
-            if ($edit['vocab'][$vid][$grant] > 2 || $edit['vocab'][$vid][$grant] < 1) {
-              $edit['vocab'][$vid][$grant] = 0;
+        }
+        else {
+          foreach ($grant_types as $grant) {
+            if ($edit[$vid]['vocab'][$grant] === NULL) {
+              $edit[$vid]['vocab'][$grant] = 3;
             }
             else {
-              $changed = true;
+              if ($edit[$vid]['vocab'][$grant] > 2 || $edit[$vid]['vocab'][$grant] < 0) {
+                $edit[$vid]['vocab'][$grant] = 3;
+              }
+              else {
+                $changed = true;
+              }
+            }
+            // Enter a '0' for any permission that has been left unchecked by the user
+            // For any permission checked by user, set it to a value of '1'
+            if ($grant == 'create' || $grant == 'list') {
+              $edit[$vid]['default'][$grant] = $edit[$vid]['default'][$grant] ? 1 : 0;
+            }
+            else {
+              $edit[$vid]['default'][$grant] = $edit[$vid]['default'][$grant][0];
             }
           }
-          if ($grant == 'create' || $grant == 'list') {
-            $edit['default'][$vid][$grant] = $edit['default'][$vid][$grant] ? 1 : 0;
-          }
-          else {
-            $edit['default'][$vid][$grant] = $edit['default'][$vid][$grant][0];
-          }
         }
+        // Make the changes to the term_access table
+        if ($changed) {
+          taxonomy_access_grant_vocab_update($vid, $rid, $edit);
+        }
+        // set the defaults
+        taxonomy_access_defaults_update($vid,$rid,$edit[$vid]['default']);
       }
-      // Make the changes to the term_access table
-      if ($changed) {
-        taxonomy_access_grant_vocab_update($vid, $rid, $edit);
-      }
-      // set the defaults
-      taxonomy_access_defaults_update($vid,$rid,$edit['default'][$vid]);
     }
   }
 
@@ -450,15 +466,15 @@ function taxonomy_access_defaults_update($vid, $role = null, $grants = null) {
 function taxonomy_access_grant_vocab_update($vid, $rid = null, $edit = null) {
   $tree = taxonomy_get_tree($vid);
   $grant_types = array('view', 'update', 'delete', 'create', 'list');
-  $vgrants = $edit['vocab'][$vid];
+  $vgrants = $edit[$vid]['vocab'];
   $grants = array();
   foreach ($tree as $term) {
     foreach ($grant_types as $grant) {
-      if ($vgrants[$grant] > -1 || $vgrants[$grant] < 3) {
+      if ($vgrants[$grant] > -1 && $vgrants[$grant] < 3) {
         $grants[$grant] = $vgrants[$grant];
       }
       else {
-        $grants[$grant] = $edit['term'][$term->tid][$grant];
+        $grants[$grant] = $edit[$term->vid]['term'][$term->tid][$grant];
       }
     }
     taxonomy_access_grant_update($term->tid,$rid,$grants);
