@@ -1,3 +1,5 @@
+-- $Id$ 
+
 -- 
 --PRIOR TO POSTGRESQL 8.0: making a BIT_OR aggregate function
 -- 

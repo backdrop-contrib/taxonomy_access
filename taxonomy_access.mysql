@@ -1,6 +1,8 @@
-#
-# Table structure for table `term_access`
-#
+-- $Id$ 
+
+--
+-- Table structure for table `term_access`
+--
 
 CREATE TABLE term_access (
   tid int(10) unsigned NOT NULL default '0',
@@ -14,9 +16,9 @@ CREATE TABLE term_access (
 ) TYPE=MyISAM
 /*!40100 DEFAULT CHARACTER SET utf8 */ ;
 
-#
-# Table structure for table `term_access_defaults`
-#
+--
+-- Table structure for table `term_access_defaults`
+--
 
 CREATE TABLE term_access_defaults (
   vid int(10) unsigned NOT NULL default '0',
