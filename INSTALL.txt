@@ -1,11 +1,14 @@
 TO INSTALL, simply add the database and activate the module, in these steps.
 
+PLEASE CHECK, that you use the right version of Taxonomy Access for DRUPAL-4.7. (taxonomy_access-4.7.0.tar.gz)
+
 NOTE: Personally, I DO NOT RECOMMAND USING TWO OR MORE "ACCESS" MODULE AT THE SAME TIME (e.g: OG, node_privacy_by_role, taxonomy access, etc.)at the same time, only in case you know exactly what you are doing, and if you tested it thoroughly. 
   (If you used other access modules before, read the 'Troubleshooting' section)
 
-PLEASE NOTE: There is no need to patch the taxonomy.module anymore. (it was neccessary only in previuos versions of Drupal 4.5 and 4.6)
+PLEASE NOTE: There is no need to patch the taxonomy.module. (it was neccessary only in previuos versions of Drupal 4.5 and 4.6)
 
 TO UPDATE from previous versions of taxonomy_access: PLEASE READ UPDATE.TXT!
+  WHEN UPDATING, ALWAYS disable the module first (admin/settings/taxonomy_access) and then remove it (admin/modules) before uploading the new module.
 
 INSTALLATION:
 

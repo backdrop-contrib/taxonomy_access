@@ -2,6 +2,8 @@ READ THIS FILE if you are updating from previous versions of taxonomy_access.mod
 
 If you are installing taxonomy_access.module for the first time, you may ignore this file.
 
+WHEN UPDATING, ALWAYS disable the module first (admin/settings/taxonomy_access) and then remove it (admin/modules) before uploading the new module.
+
 You need to make sure that your database schema is current.
 
 (1) There is an update script included in taxonomy_access.module. 
