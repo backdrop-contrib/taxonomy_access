@@ -29,19 +29,34 @@ function taxonomy_access_help($section) {
         $message = t('The module is currently disabled, but must also be disabled in the %module_page_link in order for it to be properly disabled.<br/>To properly enable this module, select \'enable\' here and save the configuration.<br/>', array('%module_page_link' => l(t('modules admin page'), 'admin/modules', array('title' => t('View more.')))   ));
       }
       return $message;
+
+    case 'admin/help#taxonomy_access':
+      $message = "<p>".t('The Taxonomy Access Control module allows users to specify how each category can be used by various roles.')."</p>";
+      $message .= "<p>".t('On the category permissions page for each role, each category displays a list of the terms within it, each with five types of permission: <em>View, Update, Delete, Create</em> and <em>List</em>:')."</p>";
+      $message .= "<ul>";
+      $message .= "<li>".t('<strong>VIEW</strong> enables the user to access content (nodes) with given term.')."</li>";
+      $message .= "<li>".t('<strong>UPDATE, DELETE</strong> enables the user to "Update" or "Delete" nodes with the given term.')."</li>";
+      $message .= "<li>".t('<strong>CREATE</strong> enables the user to set that term when adding a new node or when editing a node.')."</li>";
+      $message .= "<li>".t('<strong>LIST</strong> enables the user to view the name of the given term below the title of a node or in category lists.  It also controls whether a user can access the taxonomy page for the given term.  (e.g. "taxonomy/term/*")')."</li>";
+      $message .= "</ul>";
+      $message .= "<p>".t('VIEW, UPDATE, and DELETE control the node access system.  LIST and CREATE control if a user can view and select a given term.  (Note: In previous versions of Taxonomy Access Control, there was no LIST permission; its functionality was controlled by the VIEW permission.)')."</p>";
+      $message .= "<p>".t('<strong>VIEW, UPDATE and DELETE have three options for each term: <u>A</u>llow, <u>I</u>gnore, and <u>D</u>eny.</strong>  Indicate which rights each role should have for each term.')."</p>";
+      $message .= "<p>".t('<strong>CREATE and LIST have only two options for each term:  YES (selected) or NO (deselected).</strong>  Indicate what each role should be allowed to do with each term.')."</p>";
+      $message .= "<p>".t('<strong>IMPORTANT NOTE:</strong><br><u>The DENY directives are processed after the ALLOW directives. (DENY overrides ALLOW.)</u>  So, if a multicategory node is in Categories "A" and "B" and a user has ALLOW permissions for VIEW in Category "A" and DENY permissions for VIEW in Category "B", then the user will NOT be permitted to VIEW the node. (DENY overrides ALLOW.)<br><u>Access is denied by default.</u> So, if a multicategory node is in Categories "C" and "D" and a user has IGNORE permissions for VIEW in both Category "C" and "D", then the user will NOT be permitted to VIEW the node.<br>(If you are familiar with Apache mod_access, this permission system works similar to directive: <em>ORDER ALLOW, DENY</em>)')."</p>";
+      $message .= "<p>".t('<strong>Allow/Ignore/Deny All</strong> or <strong>Select/Deselect All:</strong><br>Beside each vocabulary title there are dropdowns containing the options that can be set for individual terms.  Selecting one of these options using the dropdown effectively <u>selects that option for ALL of the individual terms inside that vocabulary when the options are saved.</u><br>Selecting "--" does not make any automatic changes to the permission of the terms in that vocabulary; only manual changes that you make will be saved.<br>NOTE:  This does <u>not</u> change the "Default" option (described below).')."</p>";
+      $message .= "<p>".t('<strong>Default:</strong><br>This option, just underneath the vocabulary title, <u>sets the permission that will automatically be given</u> to the role, <u>for any new terms</u> that are added within the vocabulary.  This includes terms that are added via free tagging.')."</p>";
+      $message .= "<p>".t('')."</p>";
+      return $message;
       
     default:
       if (strpos($section,'admin/access/category') !== FALSE) {
         $rid = arg(3);
         if ($tac_user_roles[$rid]) {
-          $output = "<p><br />".t("<strong>Vocabulary Settings:</strong> Each vocabulary displays a list of the terms within it, each with four checkboxes: <em>View, Update, Delete, Create </em>and <em>List</em>. (For detailed description of these permissions, see README.txt) When you tick a checkbox next to a term, this role is given permission to perform that action on any nodes assigned to that term.")."</p>";
-          $output .= "<p>".t("Beside each vocabulary title there is also a dropdown with &quot;<em>Select all</em>&quot; and &quot;<em>Deselect all</em>&quot; settings:")."</p>".t("<ul><li>Choose the &quot;<em>Select all</em>&quot; setting to automatically select all of the terms in that vocabulary when you save (except '<em>Default</em>', which is not affected).</li><li>Choose the &quot;<em>Deselect all</em>&quot; setting to deselect all checkboxes in that vocabulary when you save (except &quot;<em>Default&quot;</em>).&nbsp;</li><li> &quot;--&quot; doesn't make any automatic changes to that vocabulary; only manual changes that you make to the checkboxes will be saved.</li></ul>");
-          $output .= "<p>".t("<strong>Default:</strong> This checkbox, just underneath the vocabulary title, <u>sets the permissions that will automatically be given</u> to this role, <u>for any new terms</u> that are added within the vocabulary.")."</p><br />";
-          $output .= "<p>".t("<strong>Order: Allow, Deny:</strong> The Allow directives are evaluated before the Deny directives. Access is denied by default, when all terms are ignored. ")."</p><br />";
+          $output = t("<p><strong>Vocabulary Settings:</strong> Each vocabulary displays a list of the terms within it, each with five types of permission: <em>View, Update, Delete, Create</em> and <em>List</em>.</p><p>For a detailed description of these permissions and how to use them, see <a href=\"%taxonomy_access_help\">Taxonomy Access Control help</a>. If you are new to Taxonomy Access Control, it is very important that you read the help page.</p>", array('%taxonomy_access_help' => url('admin/help/taxonomy_access')));
           return $output;
         }
         else {
-          return t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have view, update,delete, create and list permissions set for each user role.', array('%role' => url('admin/access/roles'), '%default' => url('admin/access/category/0')));
+          return "<p>".t('In this area you will define the permissions that each <a href="%role">user role</a> has for each category.  Each category can have View, Update, Delete, Create and List permissions set for each user role.', array('%role' => url('admin/access/roles'), '%default' => url('admin/access/category/0')))."</p>";
         }
       }
   }
@@ -100,7 +115,7 @@ function taxonomy_access_admin_form($edit = array()) {
     // Do the row for uncategorized nodes
     $forms['taxonomy_access'][0] = array(
       '#type' => 'fieldset',
-      '#title' => 'Uncategrozied nodes',
+      '#title' => t('Uncategorized nodes'),
       '#weight' => 3,
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
@@ -108,7 +123,7 @@ function taxonomy_access_admin_form($edit = array()) {
     );
     $head = "<table><thead><tr><th>Category</th><th colspan=\"4\">View</th><th colspan=\"4\">Update</th><th colspan=\"4\">Delete</th><th>Create</th><th>List</th></tr></thead><tbody>\n";
     $forms['taxonomy_access'][0]['term'][0] = array(
-      '#prefix' => $head."<tr class=\"even\"><td>uncategorized nodes</td>",
+      '#prefix' => $head."<tr class=\"even\"><td>Uncategorized nodes</td>",
       '#suffix' => "<td>&nbsp;</td><td>&nbsp;</td></tr>\n</tbody></table>",
     );
     foreach ($node_grant_types as $grant) {
@@ -133,7 +148,7 @@ function taxonomy_access_admin_form($edit = array()) {
         '#collapsed' => TRUE,
         '#tree' => TRUE,
        );
-      $label = '<td>&nbsp;A.</td><td>&nbsp;I.</td><td>&nbsp;D.</td><td>&nbsp;</td>';
+      $label = '<td>&nbsp;<strong>A</strong></td><td>&nbsp;<strong>I</strong></td><td>&nbsp;<strong>D</strong></td><td>&nbsp;</td>';
       $forms['taxonomy_access'][$vocab->vid]['vocab'] = array(
         '#prefix' => $head."<tr class=\"even\"><td><b>".t($vocab->name)."</b></td>",
         '#suffix' => "</tr>\n<tr class=\"even\"><td>&nbsp;</td>".$label.$label.$label."<td colspan=\"2\">&nbsp;</td>\n",
