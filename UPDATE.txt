@@ -1,4 +1,4 @@
-READ THIS FILE if you are updating from previous versions of taxonomy_access.module for Drupal v.4.5. 
+READ THIS FILE if you are updating from previous versions of taxonomy_access.module (Version before 02/01/2006)
 
 If you are installing taxonomy_access.module for the first time, you may ignore this file.
 
