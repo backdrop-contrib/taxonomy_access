@@ -73,7 +73,7 @@ function taxonomy_access_node_grants($user, $op) {
 /**
  * Implementation of hook_menu
  */
-function taxonomy_access_menu() {
+function taxonomy_access_menu($may_cache) {
   $items = array();
 
   if ($may_cache) {
