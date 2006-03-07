@@ -362,7 +362,7 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
 function taxonomy_access_admin_update($update_num = 0) {
   switch ($update_num) {
     case 1:
-      if (db_result(db_query("DESC term_access 'grant_list'"))) {
+      if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
         drupal_set_message(t("Field 'grant_list' already exists in tables 'term_access'."), 'error');
       }
       else {
@@ -375,7 +375,7 @@ function taxonomy_access_admin_update($update_num = 0) {
       break;
 
     default:
-      if (db_result(db_query("DESC term_access 'grant_list'"))) {
+      if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
         $output = t("There is no update needed.");
       }
       else {
@@ -396,7 +396,7 @@ function taxonomy_access_grant_update($tid, $role = null, $grants = null) {
     return FALSE;
   }
   if (isset($role) && !is_numeric($role)) {
-    $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
+    $role = db_result(db_query("SELECT rid FROM {role} WHERE name='$role'"));
   }
   
   $ta_sql = "INSERT INTO {term_access} (tid";
@@ -440,7 +440,7 @@ function taxonomy_access_defaults_update($vid, $role = null, $grants = null) {
     return FALSE;
   }
   if (isset($role) && !is_numeric($role)) {
-    $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
+    $role = db_result(db_query("SELECT rid FROM {role} WHERE name='$role'"));
   }
   
   $ta_sql = "INSERT INTO {term_access_defaults} (vid";
@@ -512,9 +512,9 @@ function taxonomy_access_get_grants($role) {
     return false;
   }
   if (isset($role) && !is_numeric($role)) {
-    $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
+    $role = db_result(db_query("SELECT rid FROM {role} WHERE name='$role'"));
   }
-  $result = db_query("SELECT * from {term_access} where rid='$role'");
+  $result = db_query("SELECT * FROM {term_access} WHERE rid='$role'");
   $grants = array();
   while ($grant = db_fetch_array($result)) {
     $tid = $grant['tid'];
@@ -547,9 +547,9 @@ function taxonomy_access_get_default_grants($role) {
     return false;
   }
   if (isset($role) && !is_numeric($role)) {
-    $role = db_result(db_query("SELECT rid from {role} where name='$role'"));
+    $role = db_result(db_query("SELECT rid FROM {role} WHERE name='$role'"));
   }
-  $result = db_query("SELECT * from {term_access_defaults} where rid='$role'");
+  $result = db_query("SELECT * FROM {term_access_defaults} WHERE rid='$role'");
   $grants = array();
   while ($grant = db_fetch_array($result)) {
     $vid = $grant['vid'];
@@ -738,7 +738,7 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     $rids = array();
 
     // Create list of all term and role ids
-    $query = db_query('SELECT tid from {term_data}');
+    $query = db_query('SELECT tid FROM {term_data}');
     while ($result = db_fetch_array($query)) {
       $current_tids[] = $result['tid'];
     }
@@ -787,11 +787,11 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
     // Delete all rows with role and term ids that no longer exist from the term_access table
     if (is_array($delete_rids)) {
       foreach ($delete_rids as $rid) {
-        db_query('DELETE from {term_access} where rid = %d', $rid);
+        db_query('DELETE FROM {term_access} WHERE rid = %d', $rid);
       }
     }
     foreach ($delete_tids as $tid) {
-      db_query('DELETE from {term_access} where tid = %d', $tid);
+      db_query('DELETE FROM {term_access} WHERE tid = %d', $tid);
     }
 
     // Set permissions for nodes without categories if they aren't already set
@@ -844,13 +844,13 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
 
     // Get current list of all nodes
     $current_nids = array();
-    $query = db_query('SELECT nid from {node}');
+    $query = db_query('SELECT nid FROM {node}');
     while($result = db_fetch_array($query)) {
       $current_nids[] = $result['nid'];
     }
 
     // Get list of node ids in the node_access table when module was disabled
-    $query = db_query('SELECT nid from {node_access} WHERE realm = \'term_access\'');
+    $query = db_query('SELECT nid FROM {node_access} WHERE realm = \'term_access\'');
     $old_nids = array();
     while($result = db_fetch_array($query)) {
       $old_nids[] = $result['nid'];
@@ -862,18 +862,18 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
 
     // Delete all node ids that no longer exist from the term_access table
     foreach ($delete_nids as $nid) {
-      db_query('DELETE from {node_access} where nid = %d AND realm = \'term_access\'', $nid);
+      db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'term_access\'', $nid);
     }
 
     // Setup defaults
     if (is_array($delete_rids)) {
       foreach ($delete_rids as $rid) {
-        db_query("DELETE from {term_access_defaults} WHERE rid='%d'",$rid);
+        db_query("DELETE FROM {term_access_defaults} WHERE rid='%d'",$rid);
       }
     }
     if (is_array($delete_vids)) {
       foreach ($delete_vids as $vid) {
-        db_query("DELETE from {term_access_defaults} WHERE vid='%d'",$vid);
+        db_query("DELETE FROM {term_access_defaults} WHERE vid='%d'",$vid);
       }
     }
 
