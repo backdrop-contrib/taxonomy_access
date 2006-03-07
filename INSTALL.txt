@@ -12,21 +12,16 @@ TO UPDATE from previous versions of taxonomy_access: PLEASE READ UPDATE.TXT!
 
 INSTALLATION:
 
-1) ADDING NEW TABLES TO DATABASE:
-    For MySQL:
-      From the command line, type 'mysql -u username -p drupal < taxonomy_access.mysql' where drupal is your drupal database and username is your mysql username
+1) COPY taxonomy_access.module to your drupal installation's module directory
 
-    For PostgreSQL: 
-      Use the provided script in "taxonomy_access.pgsql". 
-      (NOTE: Users of older versions of PostgreSQL - prior to PostgreSQL 8.0 - should use the script "taxonomy_access_prior8.pgsql" instead. There was no BIT_OR aggregate function by default in PostgreSQL. It is needed to make a BIT_OR aggregate function.
+2) ACTIVATE THE MODULE from administer >> modules
 
-2) COPY taxonomy_access.module to your drupal installation's module directory
+3) ENABLE TAXONOMY ACCESS SETTINGS: Go to administer >> settings >> taxonomy_access and enable the module
 
-3) ACTIVATE THE MODULE from administer >> modules
+4) CONFIGURE ACCESS PERMISSIONS to the various categories from administer >> access control >> category permissions
 
-4) ENABLE TAXONOMY ACCESS SETTINGS: Go to administer >> settings >> taxonomy_access and enable the module
-
-5) CONFIGURE ACCESS PERMISSIONS to the various categories from administer >> access control >> category permissions
+NOTE: DATABASE TABLES are automatically added to database. Module creates two tables in database: 'term_access' and
+  'term_access_defaults'.
 
 TROUBLESHOOTING:
 

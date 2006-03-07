@@ -14,6 +14,9 @@ parameters, an operation and a taxonomy, with a third optional paramater of a
 userid to use instead of the current user.  It returns whether or not the user
 is authorized, almost identical to node_access.
 
+DATABASE TABLES: Module creates two tables in database: 'term_access' and
+'term_access_defaults'
+
 (PLEASE NOTE: For HEAD version, there is no need to patch the taxonomy.module.)
 
 For more information about how to control access permissions with the Taxonomy

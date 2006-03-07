@@ -1,0 +1,88 @@
+<?php
+// $Id$
+
+/**
+ * Update the tables to UTF-8
+ */
+
+function taxonomy_access_update_1() {
+  return _system_update_utf8(array('term_access', 'term_access_defaults'));
+}
+
+/**
+ * Implementation of hook_install.
+ * Addes tables to database: 'term_access', 'term_access_defaults'
+ */
+function taxonomy_access_install() {
+  switch ($GLOBALS['db_type']) {
+    case 'pgsql':
+      /*
+       * Not using pg_version() because it is only available in PHP 5 and with
+       * PostgreSQL library: 7.4.  More importantly, the 'server_version'
+       * is missing, at least in PHP 5.1.2.
+       */
+      $row = db_fetch_object(db_query('SELECT version() AS version'));
+      $version = preg_replace('/^[^0-9]+([^ ]+).*/i', '\\1', $row->version);
+
+      if (version_compare($version, '8.0', '<')) {
+        // PRIOR TO POSTGRESQL 8.0: making a BIT_OR aggregate function
+        db_query("CREATE AGGREGATE BIT_OR (
+          basetype = smallint,
+          sfunc = int2or,
+          stype = smallint
+        );");
+      }
+
+      db_query("CREATE TABLE {term_access} (
+        tid integer  NOT NULL default '0',
+        rid integer  NOT NULL default '0',
+        grant_view smallint NOT NULL default '0',
+        grant_update smallint NOT NULL default '0',
+        grant_delete smallint NOT NULL default '0',
+        grant_create smallint NOT NULL default '0',
+        grant_list smallint NOT NULL default '0',
+        PRIMARY KEY  (tid,rid)
+      );");
+
+      db_query("CREATE TABLE {term_access_defaults} (
+        vid integer  NOT NULL default '0',
+        rid integer  NOT NULL default '0',
+        grant_view smallint NOT NULL default '0',
+        grant_update smallint NOT NULL default '0',
+        grant_delete smallint NOT NULL default '0',
+        grant_create smallint NOT NULL default '0',
+        grant_list smallint NOT NULL default '0',
+        PRIMARY KEY  (vid,rid)
+      );");
+      break;
+
+    case 'mysql':
+    case 'mysqli':
+
+      db_query("CREATE TABLE {term_access} (
+        tid int(10) unsigned NOT NULL default '0',
+        rid int(10) unsigned NOT NULL default '0',
+        grant_view tinyint(1) unsigned NOT NULL default '0',
+        grant_update tinyint(1) unsigned NOT NULL default '0',
+        grant_delete tinyint(1) unsigned NOT NULL default '0',
+        grant_create tinyint(1) unsigned NOT NULL default '0',
+        grant_list tinyint(1) unsigned NOT NULL default '0',
+        PRIMARY KEY  (tid,rid)
+      ) TYPE=MyISAM /*!40100 DEFAULT CHARACTER SET utf8 */;");
+
+      db_query("CREATE TABLE {term_access_defaults} (
+        vid int(10) unsigned NOT NULL default '0',
+        rid int(10) unsigned NOT NULL default '0',
+        grant_view tinyint(1) unsigned NOT NULL default '0',
+        grant_update tinyint(1) unsigned NOT NULL default '0',
+        grant_delete tinyint(1) unsigned NOT NULL default '0',
+        grant_create tinyint(1) unsigned NOT NULL default '0',
+        grant_list tinyint(1) unsigned NOT NULL default '0',
+        PRIMARY KEY  (vid,rid)
+      ) TYPE=MyISAM /*!40100 DEFAULT CHARACTER SET utf8 */;");
+
+      break;
+  }
+}
+
+?>
