@@ -74,17 +74,22 @@ function taxonomy_access_node_grants($user, $op) {
  * Implementation of hook_menu
  */
 function taxonomy_access_menu() {
-  $access = user_access('administer users');
+  $items = array();
 
-  $items[] = array('path' => 'admin/access/category', 'title' => t('category permissions'),
-    'callback' => 'taxonomy_access_admin_form', 'access' => $access, 'callback arguments'=>array(),
-    'type' => MENU_LOCAL_TASK);
-  $items[] = array('path' => 'admin/settings/taxonomy_access/update', 'title' => t('update database'),
-    'callback' => 'taxonomy_access_admin_update', 'access' => $access,
-    'type' => MENU_CALLBACK);
+  if ($may_cache) {
+    $access = user_access('administer users');
+  
+    $items[] = array('path' => 'admin/access/category', 'title' => t('category permissions'),
+      'callback' => 'taxonomy_access_admin_form', 'access' => $access, 'callback arguments'=>array(),
+      'type' => MENU_LOCAL_TASK);
+    $items[] = array('path' => 'admin/settings/taxonomy_access/update', 'title' => t('update database'),
+      'callback' => 'taxonomy_access_admin_update', 'access' => $access,
+      'type' => MENU_CALLBACK);
+  }
+
   return $items;
 }
- 
+
 function taxonomy_access_admin_form($edit = array()) {
   global $tac_user_roles;
   $rid = arg(3);
