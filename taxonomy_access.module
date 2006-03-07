@@ -82,9 +82,6 @@ function taxonomy_access_menu($may_cache) {
     $items[] = array('path' => 'admin/access/category', 'title' => t('category permissions'),
       'callback' => 'taxonomy_access_admin_form', 'access' => $access, 'callback arguments'=>array(),
       'type' => MENU_LOCAL_TASK);
-    $items[] = array('path' => 'admin/settings/taxonomy_access/update', 'title' => t('update database'),
-      'callback' => 'taxonomy_access_admin_update', 'access' => $access,
-      'type' => MENU_CALLBACK);
   }
 
   return $items;
@@ -361,41 +358,6 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
 **/
-/**
- * Script for updating database for previous versions of Taxonomy Access
-**/
-function taxonomy_access_admin_update($update_num = 0) {
-  switch ($update_num) {
-    case 1:
-      if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
-        drupal_set_message(t("Field 'grant_list' already exists in tables 'term_access'."), 'error');
-      }
-      else {
-        db_query("ALTER TABLE {term_access} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
-        db_query("UPDATE {term_access} SET grant_list = grant_view");
-        db_query("ALTER TABLE {term_access_defaults} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
-        db_query("UPDATE {term_access_defaults} SET grant_list = grant_view");
-        drupal_set_message(t("Update complete."));
-      }
-      break;
-
-    default:
-      if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
-        $output = t("There is no update needed.");
-      }
-      else {
-        $output = "<p>".t("You have to apply this update if you used previous versions of Taxonomy Access. \n (For security reasons, do not forget to backup your database, before applying this script)")."</p>";
-        $output .= "<dl>";
-        $output .= "<dt>". l(t('Update for Taxonomy access')." (2006/01/12)", "admin/settings/taxonomy_access/update/1") ."</dt>";
-        $output .= "<dd>".t("This update adds new field 'grant_list' to table 'term_access' and 'term_access_defaults'.")."</dd>";
-        $output .= "</dl>";
-        $output .= "<dl>";
-      }
-
-  }
-  print theme('page', $output);
-}
-
 function taxonomy_access_grant_update($tid, $role = null, $grants = null) {
   if (!isset($tid)) {
     return FALSE;
