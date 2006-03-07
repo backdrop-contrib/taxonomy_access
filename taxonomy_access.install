@@ -2,16 +2,31 @@
 // $Id$
 
 /**
- * Update the tables to UTF-8
+ *  Implementations of hook_update (called by update.php)
  */
 
+// Update#1: updating the tables to UTF-8
 function taxonomy_access_update_1() {
   return _system_update_utf8(array('term_access', 'term_access_defaults'));
 }
 
+// Update#2: adding field 'grant_list' to tables 'term_access' and 'term_access_defaults'.
+function taxonomy_access_update_2() {
+  if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
+    drupal_set_message(t("Taxonomy Access - Update #2: No queries executed. Field 'grant_list' already exists in tables 'term_access'."), 'error');
+  }
+  else {
+    $ret[] = update_sql("ALTER TABLE {term_access} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
+    $ret[] = update_sql("UPDATE {term_access} SET grant_list = grant_view");
+    $ret[] = update_sql("ALTER TABLE {term_access_defaults} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
+    $ret[] = update_sql("UPDATE {term_access_defaults} SET grant_list = grant_view");
+  }
+  return $ret;
+}
+
 /**
  * Implementation of hook_install.
- * Addes tables to database: 'term_access', 'term_access_defaults'
+ * Adding tables to database: 'term_access', 'term_access_defaults'
  */
 function taxonomy_access_install() {
   switch ($GLOBALS['db_type']) {
