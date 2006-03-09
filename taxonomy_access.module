@@ -50,6 +50,9 @@ function taxonomy_access_help($section) {
       
     default:
       if (strpos($section,'admin/access/category') !== FALSE) {
+        if (!variable_get('taxonomy_access_enabled', 0)) {
+          return '<p>'.t("Taxonomy Access Control has to be <u>activated</u> on %settings_page, before configuring 'category permissions'.", array('%settings_page' => l(t('settings page'), 'admin/settings/taxonomy_access'))).'</p>';
+        }
         $rid = arg(3);
         if ($tac_user_roles[$rid]) {
           $output = t("<p><strong>Vocabulary Settings:</strong> Each vocabulary displays a list of the terms within it, each with five types of permission: <em>View, Update, Delete, Create</em> and <em>List</em>.</p><p>For a detailed description of these permissions and how to use them, see <a href=\"%taxonomy_access_help\">Taxonomy Access Control help</a>. If you are new to Taxonomy Access Control, it is very important that you read the help page.</p>", array('%taxonomy_access_help' => url('admin/help/taxonomy_access')));
@@ -92,6 +95,11 @@ function taxonomy_access_admin_form($edit = array()) {
   $rid = arg(3);
   $output = '';
   $tac_user_roles = user_roles();
+
+  // Checking if TAC is activated
+  if (!variable_get('taxonomy_access_enabled', 0)) {
+    return '';
+  }
 
   // Output the main page of category permissions
   if (!$tac_user_roles[$rid]) {
