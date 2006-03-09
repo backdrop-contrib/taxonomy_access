@@ -355,6 +355,16 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
   return;
 }
 
+function taxonomy_access_form_alter($form_id, &$form) {
+  // Module cannot be disabled, until deactivated on settings page
+  if ($form_id == 'system_modules') {
+    if (variable_get('taxonomy_access_enabled', 0)) {
+      $form['status']['taxonomy_access'] = array('#type' => 'hidden', '#value' => 1, '#suffix' => t('active'));
+      $form['description']['taxonomy_access']['#value'] .= '<br>'.t('<strong>Cannot be disabled!</strong> First, <u>deactivate</u> on %settings_page', array('%settings_page' => l(t('settings page'), 'admin/settings/taxonomy_access')));
+    }
+  }
+}
+
 /**
  * Updates permissions for a role for a term
  * @param $tid
