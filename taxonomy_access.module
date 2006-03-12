@@ -574,6 +574,21 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
       db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'term_access\'', $node->nid);
       break;
 
+    case 'submit':
+      // When TAC grants 'update' access to edit node,
+      // Changing $node->uid back to original creator (changed by node_submit)
+      if (($node->nid) && !user_access('administer nodes') && (node_access('update', $node))) {
+        // Populate the "authored by" field.
+        $old_node = node_load($node->nid);
+        if ($account = user_load(array('name' => $old_node->name))) {
+          $node->uid = $account->uid;
+        }
+        else {
+          $node->uid = 0;
+        }
+      }
+      break;
+
     // Enter new data into node_access to set permissions for the new node
     case 'update':
       // intentional fall through to insert
