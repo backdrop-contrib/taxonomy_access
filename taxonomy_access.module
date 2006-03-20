@@ -600,7 +600,6 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
       if (!is_array($node->taxonomy)) {
         $result = db_query("SELECT * FROM {term_access} where tid = '0'");
         while ($row = db_fetch_object($result)) {
-//          db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $result->rid, $result->grant_view, $result->grant_update, $result->grant_delete);
           db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, ($row->grant_view == 1 ? 1 : 0), ($row->grant_update == 1 ? 1 : 0), ($row->grant_delete == 1 ? 1 : 0));
         }
       }
@@ -624,7 +623,6 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
         $result = db_query("SELECT rid, BIT_OR(grant_view) AS grant_view, BIT_OR(grant_update) AS grant_update, BIT_OR(grant_delete) AS grant_delete FROM {term_access} WHERE tid IN ('".implode("','",array_values($tids))."') GROUP BY rid");
         while ($row = db_fetch_object($result)) {
           db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $node->nid, $row->rid);
-//          db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, $row->grant_view, $row->grant_update, $row->grant_delete);
           db_query('INSERT INTO {node_access} (nid, gid, realm, grant_view, grant_update, grant_delete) VALUES (%d, %d, \'term_access\', %d, %d, %d)', $node->nid, $row->rid, ($row->grant_view == 1 ? 1 : 0), ($row->grant_update == 1 ? 1 : 0), ($row->grant_delete == 1 ? 1 : 0));
         }
       }
@@ -919,6 +917,9 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
 // Update the node_access table to reflect any changes made to the term_access table
 function _refresh_node_access_table($rid = NULL ) {
   if (!isset($rid)) {
+    // Housekeeping: Remove lines where gid=0: This might grant all users access to some specific nodes.
+    db_query("DELETE FROM {node_access} WHERE gid = 0 AND realm='term_access'");
+
     $result = db_query("SELECT n.nid, t.rid, BIT_OR(t.grant_view) AS grant_view, BIT_OR(t.grant_update) AS grant_update, BIT_OR(t.grant_delete) AS grant_delete FROM {term_node} n LEFT JOIN {term_access} t ON n.tid = t.tid GROUP BY n.nid, t.rid");
   }
   else {
