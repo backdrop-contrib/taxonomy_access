@@ -6,15 +6,26 @@ If you are installing taxonomy_access.module for the first time, you may ignore
 
 Taxonomy Access uses the AUTOMATED UPDATE SYSTEM of Drupal (since Drupal 4.7)
 
+--------
 UPDATING
 --------
 
-1. Backup your database.
+1. DEACTIVATE TAXONOMY ACCESS SETTINGS: Go to administer >> settings >> taxonomy_access and deactivate the Taxonomy Access System
 
-2. Log on as the user with user ID 1.
+2. DISABLE THE MODULE on page: administer >> modules
 
-3. Run update.php by visiting http://www.example.com/update.php.
+3. BACKUP your database
 
+4. LOG ON AS MAIN ADMINISTRATOR (user with user ID 1)
+
+5. RUN UPDATE.PHP by visiting http://www.example.com/update.php
+
+6. ENABLE THE MODULE on page: administer >> modules
+
+7. ACTIVATE TAXONOMY ACCESS SETTINGS: Go to administer >> settings >> taxonomy_access and activate the Taxonomy Access System
+
+
+-----------------------
 TAXONOMY ACCESS UPDATES
 -----------------------
 
