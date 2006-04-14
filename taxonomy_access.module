@@ -20,13 +20,14 @@ function taxonomy_access_help($section) {
 
       // header message if module is enabled
       if ($taxonomy_access_enabled) { 
-        $message .= t('The module is currently enabled properly.').'<br/>';
-        $message .= t("To disable the module properly, select 'disable' here and save the configuration before disabling it in the modules page.").'<br/>';
+        $message .= '<p>'.t('The module is currently <u>ACTIVATED</u> properly.').'</p>';
+        $message .= '<p>'.t("To disable the module properly: <ol><li><u>Deactivate</u> here. <em>(Save this configuration.)</em></li><li><u>Disable/Uninstall</u> it in the 'Modules Administration Page'.</li></ol>").'</p>';
       }
 
       // header message if module is not enabled
       else {
-        $message = t("The module is currently disabled, but must also be disabled in the %module_page_link in order for it to be properly disabled.<br/>To properly enable this module, select 'enable' here and save the configuration.<br/>", array('%module_page_link' => l(t('modules admin page'), 'admin/modules', array('title' => t('View more.')))   ));
+        $message .= '<p>'.t('The module is currently <u>DEACTIVATED</u>, but must also be disabled/uninstalled in the %module_page_link in order to be properly disabled.', array('%module_page_link' => l(t('modules admin page'), 'admin/modules'))).'<p>';
+        $message .= '<p>'.t('For controlling the Taxonomy Access System, the module has to be <u>Activated</u> on this page.').'<p>';
       }
       return $message;
 
@@ -606,10 +607,10 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
  * Implementation of hook_settings()
  */
 function taxonomy_access_settings() {
-  $form['taxonomy_access_enabled'] = array(
+  $form['taxonomy_access_enabled'] = array( '#title' => 'Taxonomy Access Control Activation',
     '#type' => 'radios', 
     '#default_value' => variable_get('taxonomy_access_enabled', 0),
-    '#options' => array( 1 => t('Enable the taxonomy_access module.'), 0 => t('Disable the taxonomy_access module.'))
+    '#options' => array( 1 => t('Activate'), 0 => t('Deactivate'))
   );
   return $form;
 }
