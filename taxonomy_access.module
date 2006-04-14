@@ -896,7 +896,7 @@ function _refresh_node_access_table($rid = NULL, $nid = NULL ) {
     $where_clauses[] = "ta.rid = $rid";
   }
   $where = count($where_clauses) > 0 ? ' WHERE ' . implode(' AND ', $where_clauses) : '';
-  $result = db_query("SELECT n.nid, ta.rid, BIT_OR(ta.grant_view) AS grant_view, BIT_OR(ta.grant_update) AS grant_update, BIT_OR(ta.grant_delete) AS grant_delete FROM {term_node} n LEFT JOIN {term_access} ta ON n.tid = ta.tid $where GROUP BY n.nid, ta.rid");
+  $result = db_query("SELECT n.nid, ta.rid, BIT_OR(ta.grant_view) AS grant_view, BIT_OR(ta.grant_update) AS grant_update, BIT_OR(ta.grant_delete) AS grant_delete FROM {term_node} n INNER JOIN {term_access} ta ON n.tid = ta.tid $where GROUP BY n.nid, ta.rid");
 
   while($row = db_fetch_object($result)) {
     _tac_node_access_save($row);
