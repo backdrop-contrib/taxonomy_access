@@ -282,34 +282,36 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
   foreach ($vids as $vid) {
     if (is_numeric($vid)) {
     // Process input data and use it to make changes to the database.
-      $tids = array_keys($edit[$vid]['term']);
-      foreach ($tids as $tid) {
-        // The $edit array is filled out with zeroes here to
-        // reduce code complexity when we update the term_access table.
-        if (!$edit[$vid]['term'][$tid]) {
-          foreach ($grant_types as $grant) {
-            $edit[$vid]['term'][$tid][$grant] = 0;
-          }
-        }
-        else {
+      if (is_array($edit[$vid]['term'])) {
+        $tids = array_keys($edit[$vid]['term']);
+        foreach ($tids as $tid) {
+          // The $edit array is filled out with zeroes here to
+          // reduce code complexity when we update the term_access table.
+          if (!$edit[$vid]['term'][$tid]) {
             foreach ($grant_types as $grant) {
-              if (!isset($edit[$vid][$tid][$grant])) {
-                // Enter a '0' for any permission that has not been set or for any checkbox that has been left unchecked by the user
-                $edit[$vid][$tid][$grant] = 0;
-              }
-              else {
-                if ($grant == 'create' || $grant == 'list') {
-                  // For any permission checkbox checked by user, set it to a value of '1'
-                  $edit[$vid][$tid][$grant] = 1;
+              $edit[$vid]['term'][$tid][$grant] = 0;
+            }
+          }
+          else {
+              foreach ($grant_types as $grant) {
+                if (!isset($edit[$vid][$tid][$grant])) {
+                  // Enter a '0' for any permission that has not been set or for any checkbox that has been left unchecked by the user
+                  $edit[$vid][$tid][$grant] = 0;
+                }
+                else {
+                  if ($grant == 'create' || $grant == 'list') {
+                    // For any permission checkbox checked by user, set it to a value of '1'
+                    $edit[$vid][$tid][$grant] = 1;
+                  }
                 }
               }
-            }
+          }
+          
+          // Make the changes to the term_access table
+          taxonomy_access_grant_update($tid, $rid, $edit[$vid]['term'][$tid]);
         }
-        
-        // Make the changes to the term_access table
-        taxonomy_access_grant_update($tid, $rid, $edit[$vid]['term'][$tid]);
       }
-  
+
     // Now to the same for vocabularies
       if ($vid !=0) {
         // The $edit array is filled out with zeroes here to
