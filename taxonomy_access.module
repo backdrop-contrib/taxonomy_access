@@ -943,7 +943,7 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
         $rids[] = 1;
       }
       
-      $sql = db_query("SELECT t.tid, d.vid, BIT_OR(t.grant_$op) AS grant_$op FROM {term_access} t INNER JOIN {term_data} d ON t.tid=d.tid WHERE t.rid in ('".implode("','",$rids)."') AND grant_$op = 1 group by t.tid");
+      $sql = db_query("SELECT t.tid, d.vid, BIT_OR(t.grant_$op) AS grant_$op FROM {term_access} t INNER JOIN {term_data} d ON t.tid=d.tid WHERE t.rid in ('".implode("','",$rids)."') AND grant_$op = 1 group by t.tid, d.vid");
       while ($result = db_fetch_object($sql)) {
         $tids[]= $result->tid;
         $vids[$result->vid]= $result->vid;
