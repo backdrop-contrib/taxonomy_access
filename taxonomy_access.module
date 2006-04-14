@@ -597,7 +597,6 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
     case 'update':
       // intentional fall through to insert
     case 'insert':
-      db_query('DELETE FROM {node_access} WHERE nid = %d AND realm = \'term_access\'', $node->nid);
       _refresh_node_access_table(NULL, $node->nid);
       break;
   }
@@ -891,10 +890,16 @@ function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
 function _refresh_node_access_table($rid = NULL, $nid = NULL ) {
   if (isset($nid)) {
     $where_clauses[] =  "n.nid = $nid";
+    $del_where_clauses[] =  "nid = $nid";
   }
   if (isset($rid)) {
     $where_clauses[] = "ta.rid = $rid";
+    $del_where_clauses[] = "gid = $rid";
   }
+
+  $del_where = count($del_where_clauses) > 0 ? implode(' AND ', $del_where_clauses) . ' AND ' : '';
+  db_query("DELETE FROM {node_access} WHERE $del_where realm='term_access'");
+
   $where = count($where_clauses) > 0 ? ' WHERE ' . implode(' AND ', $where_clauses) : '';
   $result = db_query("SELECT n.nid, ta.rid, BIT_OR(ta.grant_view) AS grant_view, BIT_OR(ta.grant_update) AS grant_update, BIT_OR(ta.grant_delete) AS grant_delete FROM {term_node} n INNER JOIN {term_access} ta ON n.tid = ta.tid $where GROUP BY n.nid, ta.rid");
 
@@ -912,7 +917,6 @@ function _refresh_node_access_table($rid = NULL, $nid = NULL ) {
 
 function _tac_node_access_save ($row) {
   if ($row) {
-    db_query("DELETE FROM {node_access} WHERE nid=%d AND gid=%d AND realm='term_access'", $row->nid, $row->rid);
     $grant_view = ($row->grant_view == 1) ? 1 : 0;
     $grant_update = ($row->grant_update == 1) ? 1 : 0;
     $grant_delete = ($row->grant_delete == 1) ? 1 : 0;
