@@ -72,7 +72,7 @@ function taxonomy_access_help($section) {
  * Gives access to taxonomies based on the taxonomy_access table
  */
 function taxonomy_access_node_grants($user, $op) {
-  return array('term_access' => array_keys(is_array($user->roles) ? $user->roles : array()));
+  return array('term_access' => array_keys(is_array($user->roles) ? $user->roles : array(1 => 'anonymous user')));
 }
 
 /**
