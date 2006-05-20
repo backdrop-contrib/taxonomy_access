@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Drupal 4.7 - taxonomy_access module - Greek\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2006-05-20 18:40+0200\n"
+"PO-Revision-Date: 2006-05-20 21:35+0200\n"
 "Last-Translator: Cog <cog@cogville.com>\n"
 "Language-Team: Project Cogville <cog@cogville.com>\n"
 "MIME-Version: 1.0\n"
@@ -78,7 +78,7 @@ msgstr "<strong>ΣΗΜΑΝΤΙΚΗ ΠΑΡΑΤΗΡΗΣΗ:</strong><br><u>Οι ο�
 
 #: taxonomy_access.module:47
 msgid "<strong>Allow/Ignore/Deny All</strong> or <strong>Select/Deselect All:</strong><br>Beside each vocabulary title there are dropdowns containing the options that can be set for individual terms.  Selecting one of these options using the dropdown effectively <u>selects that option for ALL of the individual terms inside that vocabulary when the options are saved.</u><br>Selecting \"--\" does not make any automatic changes to the permission of the terms in that vocabulary; only manual changes that you make will be saved.<br>NOTE:  This does <u>not</u> change the \"Default\" option (described below)."
-msgstr "<strong>Επιτρέπεται/Δεν ορίζεται/Απαγορεύεται για όλα</strong> και <strong>Επιλογή/Αποεπιλογή όλων:</strong><br>Δίπλα σε κάθε τίτλο λεξιλογίου υπάρχουν πτυσσόμενες λίστες επιλογής που περιέχουν τις ίδιες ρυθμίσεις που μπορούν να οριστούν για τους μεμονωμένους όρους.  Με την επιλογή μίας από αυτές τις ρυθμίσεις από την πτυσσόμενη λίστα, ουσιαστικά <u>επιλέγεται αυτή η ρύθμιση για ΟΛΟΥΣ τους μεμονωμένους όρους που περιέχονται στο συγκεκριμένο λεξιλόγιο, όταν αποθηκευτούν οι ρυθμίσεις.</u><br>Η επιλογή \"--\" δεν κάνει καμία αυτόματη αλλαγή στις άδειες των όρων του λεξιλογίου -- αποθηκεύονται μόνο οι αλλαγές που κάνατε με το χέρι.<br>ΣΗΜΕΙΩΣΗ:  Αυτό <u>δεν</u> αλλάζει τη ρύθμιση της \"Προεπιλογής\" (που περιγράφεται παρακάτω)."
+msgstr "<strong>Επιτρέπεται/Δεν ορίζεται/Απαγορεύεται σε όλα</strong> και <strong>Επιλογή/Αποεπιλογή όλων:</strong><br>Δίπλα σε κάθε τίτλο λεξιλογίου υπάρχουν πτυσσόμενες λίστες επιλογής που περιέχουν τις ίδιες ρυθμίσεις που μπορούν να οριστούν για τους μεμονωμένους όρους.  Με την επιλογή μίας από αυτές τις ρυθμίσεις από την πτυσσόμενη λίστα, ουσιαστικά <u>επιλέγεται αυτή η ρύθμιση για ΟΛΟΥΣ τους μεμονωμένους όρους που περιέχονται στο συγκεκριμένο λεξιλόγιο, όταν αποθηκευτούν οι ρυθμίσεις.</u><br>Η επιλογή \"--\" δεν κάνει καμία αυτόματη αλλαγή στις άδειες των όρων του λεξιλογίου -- αποθηκεύονται μόνο οι αλλαγές που κάνατε με το χέρι.<br>ΣΗΜΕΙΩΣΗ:  Αυτό <u>δεν</u> αλλάζει τη ρύθμιση της \"Προεπιλογής\" (που περιγράφεται παρακάτω)."
 
 #: taxonomy_access.module:48
 msgid "<strong>Default:</strong><br>This option, just underneath the vocabulary title, <u>sets the permission that will automatically be given</u> to the role, <u>for any new terms</u> that are added within the vocabulary.  This includes terms that are added via free tagging."
@@ -148,15 +148,15 @@ msgstr "Λίστα"
 
 #: taxonomy_access.module:163
 msgid "Allow all"
-msgstr "Επιτρέπεται για όλα"
+msgstr "Επιτρέπεται σε όλα"
 
 #: taxonomy_access.module:163
 msgid "Ignore all"
-msgstr "Δεν ορίζεται, για όλα"
+msgstr "Δεν ορίζεται σε όλα"
 
 #: taxonomy_access.module:163
 msgid "Deny all"
-msgstr "Απαγορεύεται για όλα"
+msgstr "Απαγορεύεται σε όλα"
 
 #: taxonomy_access.module:164
 msgid "Select all"
