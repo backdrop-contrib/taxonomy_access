@@ -372,13 +372,41 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
 }
 
 function taxonomy_access_form_alter($form_id, &$form) {
-  // Module cannot be disabled, until deactivated on settings page
   if ($form_id == 'system_modules') {
+    // Validates module dependency
+    if (!$_POST) {
+      taxonomy_access_system_module_validate($form);
+    }
+
+    // Module cannot be disabled, until deactivated on settings page
     if (variable_get('taxonomy_access_enabled', 0)) {
+      $form['status']['taxonomy'] = array('#type' => 'hidden', '#value' => 1, '#suffix' => t('active'));
+      $form['description']['taxonomy']['#value'] .= '<br><strong>'.t('Cannot be disabled!').'</strong> '.t('Required by taxonomy_access module.');
       $form['status']['taxonomy_access'] = array('#type' => 'hidden', '#value' => 1, '#suffix' => t('active'));
-      $form['description']['taxonomy_access']['#value'] .= '<br>'.t('<strong>Cannot be disabled!</strong> First, <u>deactivate</u> on %settings_page', array('%settings_page' => l(t('settings page'), 'admin/settings/taxonomy_access')));
+      $form['description']['taxonomy_access']['#value'] .= '<br><strong>'.t('Cannot be disabled!').'</strong> '.t('First, <u>deactivate</u> on %settings_page', array('%settings_page' => l(t('settings page'), 'admin/settings/taxonomy_access')));
     }
   }
+}
+
+/**
+* Validates module dependency: taxonomy.module
+*/
+function taxonomy_access_system_module_validate(&$form) {
+
+  $module = 'taxonomy_access';
+  $dependency = 'taxonomy';
+
+  if (!in_array($dependency, $form['status']['#default_value'])) {
+    $missing_dependency = TRUE;
+  }
+
+  if (in_array($module, $form['status']['#default_value']) && isset($missing_dependency)) {
+    db_query("UPDATE {system} SET status = 0 WHERE type = 'module' AND name = '%s'", $module);
+    $key = array_search($module, $form['status']['#default_value']);
+    unset($form['status']['#default_value'][$key]);
+    drupal_set_message(t('The module %module was deactivated--it requires the following disabled/non-existant modules to function properly: %dependencies', array('%module' => $module, '%dependencies' => $dependency)), 'error');
+  }
+
 }
 
 /**
