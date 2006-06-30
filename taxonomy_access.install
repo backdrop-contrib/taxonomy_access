@@ -14,6 +14,7 @@ function taxonomy_access_update_1() {
 function taxonomy_access_update_2() {
   if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
     drupal_set_message(t("Taxonomy Access - Update #2: No queries executed. Field 'grant_list' already exists in tables 'term_access'."), 'error');
+    $ret = array();
   }
   else {
     $ret[] = update_sql("ALTER TABLE {term_access} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
