@@ -56,7 +56,7 @@ function taxonomy_access_help($section) {
           return '<p>'.t("Taxonomy Access Control has to be <u>activated</u> on %settings_page, before configuring 'category permissions'.", array('%settings_page' => l(t('settings page'), 'admin/settings/taxonomy_access'))).'</p>';
         }
         $rid = arg(3);
-        if ($tac_user_roles[$rid]) {
+        if (isset($tac_user_roles[$rid]) && $tac_user_roles[$rid]) {
           $output = t('<p><strong>Vocabulary Settings:</strong> Each vocabulary displays a list of the terms within it, each with five types of permission: <em>View, Update, Delete, Create</em> and <em>List</em>.</p><p>For a detailed description of these permissions and how to use them, see <a href="%taxonomy_access_help">Taxonomy Access Control help</a>. If you are new to Taxonomy Access Control, it is very important that you read the help page.</p>', array('%taxonomy_access_help' => url('admin/help/taxonomy_access')));
           return $output;
         }
@@ -104,7 +104,7 @@ function taxonomy_access_admin_form($edit = array()) {
   }
 
   // Output the main page of category permissions
-  if (!$tac_user_roles[$rid]) {
+  if (!isset($tac_user_roles[$rid])) {
     // Render role/permission overview:
     $header = array(t('Role'), '&nbsp;' );
     foreach ($tac_user_roles as $rid => $name) {
@@ -264,6 +264,7 @@ function taxonomy_access_admin_form($edit = array()) {
 
 function theme_taxonomy_access_admin_form($form) {
   $vids = array_keys($form['taxonomy_access']);
+  $output = '';
   foreach ($vids as $vid) {
     if (is_integer($vid)) {
       $output .= form_render($form['taxonomy_access'][$vid]);
@@ -551,7 +552,7 @@ function taxonomy_access_get_grants($role) {
       if (strpos($key,'grant_') !== FALSE) {
         $grant_name = '';
         $grant_name = str_replace('grant_','',$key);
-        if (!($grants[$tid][$grant_name])) {
+        if (!isset($grants[$tid][$grant_name]) || !($grants[$tid][$grant_name])) {
           // If there's conflicting DB rules, take the most lenient
           $grants[$tid][$grant_name] = $grant_val;
         }
@@ -586,7 +587,7 @@ function taxonomy_access_get_default_grants($role) {
       if (strpos($key,'grant_') !== FALSE) {
         $grant_name = '';
         $grant_name = str_replace('grant_','',$key);
-        if (!($grants[$vid][$grant_name])) {
+        if (!isset($grants[$vid][$grant_name]) || !($grants[$vid][$grant_name])) {
           // If there's conflicting DB rules, take the most lenient
           $grants[$vid][$grant_name] = $grant_val;
         }
@@ -925,10 +926,10 @@ function _refresh_node_access_table($rid = NULL, $nid = NULL ) {
     $del_where_clauses[] = "gid = $rid";
   }
 
-  $del_where = count($del_where_clauses) > 0 ? implode(' AND ', $del_where_clauses) . ' AND ' : '';
+  $del_where = (isset($del_where_clauses) && count($del_where_clauses) > 0) ? implode(' AND ', $del_where_clauses) . ' AND ' : '';
   db_query("DELETE FROM {node_access} WHERE $del_where realm='term_access'");
 
-  $where = count($where_clauses) > 0 ? ' WHERE ' . implode(' AND ', $where_clauses) : '';
+  $where = (isset($where_clauses) && count($where_clauses) > 0) ? ' WHERE ' . implode(' AND ', $where_clauses) : '';
   $result = db_query("SELECT n.nid, ta.rid, BIT_OR(ta.grant_view) AS grant_view, BIT_OR(ta.grant_update) AS grant_update, BIT_OR(ta.grant_delete) AS grant_delete FROM {term_node} n INNER JOIN {term_access} ta ON n.tid = ta.tid $where GROUP BY n.nid, ta.rid");
 
   while($row = db_fetch_object($result)) {
@@ -936,7 +937,7 @@ function _refresh_node_access_table($rid = NULL, $nid = NULL ) {
   }
 
   // Determine which nodes don't belong to a category
-  $where = count($where_clauses) > 0 ? ' AND ' . implode(' AND ', $where_clauses) : '';
+  $where = (isset($where_clauses) && count($where_clauses) > 0) ? ' AND ' . implode(' AND ', $where_clauses) : '';
   $result = db_query("SELECT n.nid, ta.* FROM {node} n LEFT JOIN {term_node} t ON t.nid=n.nid LEFT JOIN {term_access} ta ON ta.tid = 0 WHERE t.nid IS NULL $where", $rid);
   while($row = db_fetch_object($result)) {
     _tac_node_access_save($row);
