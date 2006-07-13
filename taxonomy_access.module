@@ -983,8 +983,8 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
         $tids[]= $result->tid;
         $vids[$result->vid]= $result->vid;
       }
-      $clause[$op]['tid'] = $tids ? implode("','",$tids) : '';
-      $clause[$op]['vid']= $vids ? implode("','",$vids) : '';
+      $clause[$op]['tid'] = isset($tids) ? implode("','",$tids) : '';
+      $clause[$op]['vid']= isset($vids) ? implode("','",$vids) : '';
       $taxonomy_access_sql_clause = $clause;
     }
     else {
