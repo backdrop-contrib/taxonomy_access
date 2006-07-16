@@ -84,9 +84,19 @@ function taxonomy_access_menu($may_cache) {
   if ($may_cache) {
     $access = user_access('administer users');
   
-    $items[] = array('path' => 'admin/access/category', 'title' => t('category permissions'),
-      'callback' => 'taxonomy_access_admin_form', 'access' => $access, 'callback arguments'=>array(),
-      'type' => MENU_LOCAL_TASK);
+    $items[] = array(
+        'path' => 'admin/settings/taxonomy_access',
+        'title' => t('taxonomy_access'),
+        'callback' => 'taxonomy_access_admin_settings',
+        'access' => user_access('administer site configuration'),
+        'type' => MENU_NORMAL_ITEM,
+      );
+    $items[] = array(
+        'path' => 'admin/access/category', 'title' => t('category permissions'),
+        'callback' => 'taxonomy_access_admin_form',
+        'access' => $access, 'callback arguments'=>array(),
+        'type' => MENU_LOCAL_TASK
+      );
   }
 
   return $items;
@@ -632,21 +642,22 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
 }
 
 /**
- * Implementation of hook_settings()
+ * Settings form [Prevously: Implementation of hook_settings() ]
  */
-function taxonomy_access_settings() {
+function taxonomy_access_admin_settings() {
   $form['taxonomy_access_enabled'] = array( '#title' => 'Taxonomy Access Control Activation',
     '#type' => 'radios', 
     '#default_value' => variable_get('taxonomy_access_enabled', 0),
-    '#options' => array( 1 => t('Activate'), 0 => t('Deactivate'))
+    '#options' => array( 1 => t('Activate'), 0 => t('Deactivate')),
   );
-  return $form;
+
+  return system_settings_form('taxonomy_access_admin_settings', $form);
 }
 
 /**
- * Submit the taxonomy_access_settings_form.
+ * Submit the taxonomy_access_admin_settings form.
  */
-function taxonomy_access_settings_form_submit($form_id, $form_values) {
+function taxonomy_access_admin_settings_submit($form_id, $form_values) {
   $op = isset($_POST['op']) ? $_POST['op'] : '';
   if ($op == t('Reset to defaults')) {
     variable_del('taxonomy_access_enabled');
