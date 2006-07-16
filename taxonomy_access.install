@@ -12,16 +12,41 @@ function taxonomy_access_update_1() {
 
 // Update#2: adding field 'grant_list' to tables 'term_access' and 'term_access_defaults'.
 function taxonomy_access_update_2() {
-  if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
-    drupal_set_message(t("Taxonomy Access - Update #2: No queries executed. Field 'grant_list' already exists in tables 'term_access'."), 'error');
-    $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'pgsql':
+      // Checking if column 'grant_list' exists
+      if (db_result(db_query("SELECT a.attname FROM pg_attribute a LEFT JOIN pg_class c ON c.oid = a.attrelid WHERE c.relname = 'term_access' AND a.attname = 'grant_list'"))) {
+        drupal_set_message(t("Taxonomy Access - Update #2: No queries executed. Field 'grant_list' already exists in tables 'term_access'."), 'error');
+        $ret = array();
+      }
+      else {
+        $ret[] = update_sql("ALTER TABLE {term_access} ADD grant_list smallint");
+        $ret[] = update_sql("ALTER TABLE {term_access} ALTER COLUMN grant_list SET DEFAULT '0'");
+        $ret[] = update_sql("ALTER TABLE {term_access} ALTER COLUMN grant_list SET NOT NULL ");
+        $ret[] = update_sql("UPDATE {term_access} SET grant_list = grant_view");
+        $ret[] = update_sql("ALTER TABLE {term_access_defaults} ADD grant_list smallint");
+        $ret[] = update_sql("ALTER TABLE {term_access_defaults} ALTER COLUMN grant_list SET DEFAULT '0");
+        $ret[] = update_sql("ALTER TABLE {term_access_defaults} ALTER COLUMN grant_list SET NOT NULL ");
+        $ret[] = update_sql("UPDATE {term_access_defaults} SET grant_list = grant_view");
+      }
+      break;
+
+    case 'mysql':
+    case 'mysqli':
+      // Checking if column 'grant_list' exists
+      if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
+        drupal_set_message(t("Taxonomy Access - Update #2: No queries executed. Field 'grant_list' already exists in tables 'term_access'."), 'error');
+        $ret = array();
+      }
+      else {
+        $ret[] = update_sql("ALTER TABLE {term_access} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
+        $ret[] = update_sql("UPDATE {term_access} SET grant_list = grant_view");
+        $ret[] = update_sql("ALTER TABLE {term_access_defaults} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
+        $ret[] = update_sql("UPDATE {term_access_defaults} SET grant_list = grant_view");
+      }
+      break;
   }
-  else {
-    $ret[] = update_sql("ALTER TABLE {term_access} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
-    $ret[] = update_sql("UPDATE {term_access} SET grant_list = grant_view");
-    $ret[] = update_sql("ALTER TABLE {term_access_defaults} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
-    $ret[] = update_sql("UPDATE {term_access_defaults} SET grant_list = grant_view");
-  }
+
   return $ret;
 }
 
