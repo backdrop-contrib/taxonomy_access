@@ -173,7 +173,7 @@ function taxonomy_access_admin_form($edit = array()) {
 
     $vocabs = taxonomy_get_vocabularies();
     $options1 = array( '3' => '--', '1' => t('Allow all'), '0' => t('Ignore all'), '2' => t('Deny all'));
-    $options2 = array( '3' => '--', '1' => t('Select all'), '2' => t('Deselect all'));
+    $options2 = array( '3' => '--', '1' => t('Select all'), '0' => t('Deselect all'));
     $radios = array('1' => t('Allow'), '0' => t('Ignore'), '2' => t('Deny'));
 
     foreach ($vocabs as $vocab) {
@@ -339,16 +339,11 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
         }
         else {
           foreach ($grant_types as $grant) {
-            if ($edit[$vid]['vocab'][$grant] === NULL) {
+            if (($edit[$vid]['vocab'][$grant] === NULL) || !in_array($edit[$vid]['vocab'][$grant], array( 0, 1, 2))) {
               $edit[$vid]['vocab'][$grant] = 3;
             }
             else {
-              if ($edit[$vid]['vocab'][$grant] > 2 || $edit[$vid]['vocab'][$grant] < 0) {
-                $edit[$vid]['vocab'][$grant] = 3;
-              }
-              else {
-                $changed = true;
-              }
+              $changed = true;
             }
             // Enter a '0' for any permission that has been left unchecked by the user
             // For any permission checked by user, set it to a value of '1'
@@ -527,7 +522,7 @@ function taxonomy_access_grant_vocab_update($vid, $rid = null, $edit = null) {
   $grants = array();
   foreach ($tree as $term) {
     foreach ($grant_types as $grant) {
-      if ($vgrants[$grant] > -1 && $vgrants[$grant] < 3) {
+      if (in_array($vgrants[$grant], array( 0, 1, 2))) {
         $grants[$grant] = $vgrants[$grant];
       }
       else {
