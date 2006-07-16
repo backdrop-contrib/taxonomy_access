@@ -1,6 +1,7 @@
 <?php
 // $Id$
 // Based on original taxonomy_access.module made by pyromanfo
+
 /**
  * Implementation of hook_help
  */
@@ -94,7 +95,8 @@ function taxonomy_access_menu($may_cache) {
     $items[] = array(
         'path' => 'admin/access/category', 'title' => t('category permissions'),
         'callback' => 'taxonomy_access_admin_form',
-        'access' => $access, 'callback arguments'=>array(),
+        'access' => $access,
+        'callback arguments'=>array(),
         'type' => MENU_LOCAL_TASK
       );
   }
@@ -648,7 +650,7 @@ function taxonomy_access_admin_settings() {
   $form['taxonomy_access_enabled'] = array( '#title' => 'Taxonomy Access Control Activation',
     '#type' => 'radios', 
     '#default_value' => variable_get('taxonomy_access_enabled', 0),
-    '#options' => array( 1 => t('Activate'), 0 => t('Deactivate')),
+    '#options' => array( 1 => t('Activate'), 0 => t('Deactivate'))
   );
 
   return system_settings_form('taxonomy_access_admin_settings', $form);
