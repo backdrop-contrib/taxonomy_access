@@ -32,5 +32,7 @@ TAXONOMY ACCESS UPDATES
 Update #1: Updating the tables to UTF-8
 Update #2: Adding new field 'grant_list' to the tables.
            (Neccessary after revision 1.53 Jan 12, 2006)
+Update #3: Changing weight of the  module: put taxonomy_access to the bottom (but before the very last ones) in the chain.
+
 
 (Send comments to Keve. http://drupal.org/user/13163/contact )
