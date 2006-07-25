@@ -50,6 +50,12 @@ function taxonomy_access_update_2() {
   return $ret;
 }
 
+function taxonomy_access_update_3() {
+  // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
+  $ret[] = update_sql("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
+  return $ret;
+}
+
 /**
  * Implementation of hook_install.
  * Adding tables to database: 'term_access', 'term_access_defaults'
@@ -95,6 +101,10 @@ function taxonomy_access_install() {
         grant_list smallint NOT NULL default '0',
         PRIMARY KEY  (vid,rid)
       );");
+
+      // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
+      db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
+
       break;
 
     case 'mysql':
@@ -121,6 +131,9 @@ function taxonomy_access_install() {
         grant_list tinyint(1) unsigned NOT NULL default '0',
         PRIMARY KEY  (vid,rid)
       ) TYPE=MyISAM /*!40100 DEFAULT CHARACTER SET utf8 */;");
+
+      // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
+      db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
 
       break;
   }
