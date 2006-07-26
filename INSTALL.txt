@@ -12,7 +12,7 @@ TO UPDATE from previous versions of taxonomy_access: PLEASE READ UPDATE.TXT!
 
 INSTALLATION:
 
-1) COPY taxonomy_access.module to your drupal installation's module directory
+1) COPY taxonomy_access.module and taxonomy_access.install to your drupal installation's module directory
 
 2) ACTIVATE THE MODULE from administer >> modules
 
