@@ -428,8 +428,8 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
   // permissions.
   cache_clear_all();
   // redirect to main category permissions menu
-//  $roles = user_roles();
-  drupal_set_message(t('Your permission settings for') . " '" . $tac_user_roles[$rid] . "' role have been saved.", 'status');
+  //  $roles = user_roles();
+  drupal_set_message(t("Your permission settings for '%role' role have been saved.", array('%role' => $tac_user_roles[$rid])), 'status');
   drupal_goto('admin/access/category');
 
   return;
@@ -698,7 +698,7 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
  * Settings form [Prevously: Implementation of hook_settings() ]
  */
 function taxonomy_access_admin_settings() {
-  $form['taxonomy_access_enabled'] = array( '#title' => 'Taxonomy Access Control Activation',
+  $form['taxonomy_access_enabled'] = array( '#title' => t('Taxonomy Access Control Activation'),
     '#type' => 'radios', 
     '#default_value' => variable_get('taxonomy_access_enabled', 0),
     '#options' => array( 1 => t('Activate'), 0 => t('Deactivate'))
