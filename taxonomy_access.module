@@ -751,7 +751,7 @@ function taxonomy_access_taxonomy($op, $type, $edit = NULL) {
         break;
 
       case 'delete': // delete everything from term_access and node_access
-        db_query("DELETE FROM {term_access} WHERE tid='%d'",$edit->tid);
+        db_query("DELETE FROM {term_access} WHERE tid='%d'",$edit['tid']);
         _refresh_node_access_table();
         break;
     }
