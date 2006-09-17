@@ -105,6 +105,7 @@ function taxonomy_access_install() {
       // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
       db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
 
+      $success = TRUE; 
       break;
 
     case 'mysql':
@@ -135,8 +136,16 @@ function taxonomy_access_install() {
       // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
       db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
 
+      $success = TRUE; 
       break;
+  } // End case 
+
+  // Notify of changes
+  if ($success) {
+    drupal_set_message(t('Taxonomy Access module installed tables successfully.').'<br>'.t('For activation, please view the <a href="%settings">Taxonomy Access settings page</a>.', array('%settings' => url('admin/settings/taxonomy_access'))));
+  }
+  else {
+    drupal_set_message(t('The installation of Taxonomy Access module was unsuccessful.'), 'error');
   }
 }
-
 ?>
