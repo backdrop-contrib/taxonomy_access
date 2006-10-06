@@ -1061,4 +1061,3 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
     return array();
   }
 }
-?>
