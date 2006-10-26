@@ -2,4 +2,3 @@
 name = Taxonomy Access Control
 description = Access control for user roles based on taxonomy categories.
 dependencies = taxonomy
-package = 
