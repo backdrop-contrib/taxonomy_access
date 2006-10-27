@@ -10,13 +10,14 @@
  * Menu callback; presents the adminitrator settings page for TAC (/admin/settings/taxonomy_access).
  */
 function _taxonomy_access_admin_settings() {
-  $form['taxonomy_access_enabled'] = array( '#title' => t('Taxonomy Access Control Activation'),
+  $form['taxonomy_access_enabled'] = array(
+    '#title' => t('Taxonomy Access Control Activation'),
     '#type' => 'radios', 
     '#default_value' => variable_get('taxonomy_access_enabled', 0),
     '#options' => array( 1 => t('Activate'), 0 => t('Deactivate'))
   );
 
-  return system_settings_form('_taxonomy_access_admin_settings', $form);
+  return system_settings_form($form);
 }
 
 /**
@@ -46,7 +47,7 @@ function _taxonomy_access_admin_settings_submit($form_id, $form_values) {
 }
 
 /**
- * Menu callback; presents the category permissions page of TAC (/admin/admin/access/category).
+ * Menu callback; presents the category permissions page of TAC (admin/user/taxonomy_access).
  */
 function _taxonomy_access_permissions_page($edit = array()) {
   // Checking if TAC is activated
@@ -61,7 +62,7 @@ function _taxonomy_access_permissions_page($edit = array()) {
 
   // Making permission matrix only if user_role is choosen
   if (isset($tac_user_roles[$rid])) {
-    return _taxonomy_access_permissions_form($edit, $rid);
+    return drupal_get_form('_taxonomy_access_permissions_form', $rid);
   }
   else {
     return theme_taxonomy_access_permissions_page();
@@ -78,7 +79,7 @@ function theme_taxonomy_access_permissions_page() {
   $header = array(t('Role'), '&nbsp;' );
   $rows = array();
   foreach ($tac_user_roles as $rid => $name) {
-   $rows[] = array($name, array('data'=>l(t("edit"),"admin/access/category/$rid"), 'align'=>'right'));
+   $rows[] = array($name, array('data'=>l(t("edit"),"admin/user/taxonomy_access/$rid"), 'align'=>'right'));
   }
 
   return theme('table', $header, $rows);
@@ -88,7 +89,7 @@ function theme_taxonomy_access_permissions_page() {
  * Generating the category permissions form for choosen user role.
  */
 
-function _taxonomy_access_permissions_form($edit = array(), $rid) {
+function _taxonomy_access_permissions_form($rid) {
     $node_grant_types = array('view', 'update', 'delete');
 
     // Get all category permissions
@@ -185,7 +186,7 @@ function _taxonomy_access_permissions_form($edit = array(), $rid) {
       '#name' => 'save',
       '#button_type' => 'submit',
     );
-  return drupal_get_form('_taxonomy_access_permissions_form', $form);
+  return $form;
 }
 
 /**
@@ -223,7 +224,7 @@ function theme__taxonomy_access_permissions_form($form) {
         $row = array();
         $row[] = '<strong>'.t('Uncategorized nodes').'</strong>';
         foreach ($node_grant_types as $grant) {
-          $row[] = array('data' => form_render($form['taxonomy_access'][0]['term'][0][$grant]), 'colspan'=>4);
+          $row[] = array('data' => drupal_render($form['taxonomy_access'][0]['term'][0][$grant]), 'colspan'=>4);
         }
         $row[] = '&nbsp;';
         $row[] = '&nbsp;';
@@ -237,10 +238,10 @@ function theme__taxonomy_access_permissions_form($form) {
         $row = array();
         $row[] = array('data' => '<strong>'.$form['taxonomy_access'][$vid]['#title'].'</strong>');
         foreach ($node_grant_types as $grant) {
-          $row[] = array('data' => form_render($form['taxonomy_access'][$vid]['vocab'][$grant]), 'colspan'=>4);
+          $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['vocab'][$grant]), 'colspan'=>4);
         }
         foreach (array('create', 'list') as $grant) {
-          $row[] = array('data' => form_render($form['taxonomy_access'][$vid]['vocab'][$grant]));
+          $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['vocab'][$grant]));
         }
         $rows[] = $row;
 
@@ -258,12 +259,12 @@ function theme__taxonomy_access_permissions_form($form) {
         $row[] = '<blockquote><em>'.t('Default').'</em></blockquote>';
         foreach (array('view', 'update', 'delete') as $grant) {
           foreach (array_keys($radios) as $value) {
-            $row[] = array('data' => form_render($form['taxonomy_access'][$vid]['default'][$grant][$value]));
+            $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['default'][$grant][$value]));
           }
           $row[] = '&nbsp;&nbsp;';
         }
         foreach (array('create', 'list') as $grant) {
-          $row[] = array('data' => form_render($form['taxonomy_access'][$vid]['default'][$grant]), 'align' => 'center');
+          $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['default'][$grant]), 'align' => 'center');
         }
         $rows[] = $row;
 
@@ -282,12 +283,12 @@ function theme__taxonomy_access_permissions_form($form) {
             $row[] = str_repeat('-',$term->depth).$term->name;
             foreach ($node_grant_types as $grant) {
               foreach (array_keys($radios) as $value) {
-                $row[] = form_render($form['taxonomy_access'][$vid]['term'][$term->tid][$grant][$value]);
+                $row[] = drupal_render($form['taxonomy_access'][$vid]['term'][$term->tid][$grant][$value]);
               }
               $row[] = '&nbsp;&nbsp;';
             }
             foreach (array('create', 'list') as $grant) {
-              $row[] = array('data' => form_render($form['taxonomy_access'][$vid]['term'][$term->tid][$grant]), 'align' => 'center');
+              $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['term'][$term->tid][$grant]), 'align' => 'center');
             }
           $rows[] = $row;
           }
@@ -299,7 +300,7 @@ function theme__taxonomy_access_permissions_form($form) {
       }
     }
   }
-  $output .= form_render($form);
+  $output .= drupal_render($form);
 
   return $output;
 }
@@ -394,7 +395,7 @@ function _taxonomy_access_permissions_form_submit($form_id, $form_values) {
   // redirect to main category permissions menu
   //  $roles = user_roles();
   drupal_set_message(t("Your permission settings for '%role' role have been saved.", array('%role' => $tac_user_roles[$rid])), 'status');
-  drupal_goto('admin/access/category');
+  drupal_goto('admin/user/taxonomy_access');
 
   return;
 }
