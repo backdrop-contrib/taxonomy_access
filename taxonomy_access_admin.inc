@@ -99,17 +99,6 @@ function _taxonomy_access_permissions_form($rid) {
     $form['taxonomy_access'] = array( '#tree' => TRUE);
 
     // Do the row for uncategorized nodes
-    
-/*I need to uncomment this, because i couldn't render the fieldset w/ a <table> in it. (theme__taxonomy_access_permissions_form)
-    $form['taxonomy_access'][0] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Uncategorized nodes'),
-      '#weight' => 3,
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#tree' => TRUE,
-    );*/
-
     foreach ($node_grant_types as $grant) {
       $form['taxonomy_access'][0]['term'][0][$grant] = array(
         '#type' => 'checkbox',
@@ -126,10 +115,6 @@ function _taxonomy_access_permissions_form($rid) {
     foreach ($vocabs as $vocab) {
       $form['taxonomy_access'][$vocab->vid] = array(
         '#title' => $vocab->name,
-/*I need to uncomment this, because i couldn't render the fieldset w/ a <table> in it. (theme__taxonomy_access_permissions_form)
-        '#type' => 'fieldset',
-        '#collapsible' => TRUE,
-        '#collapsed' => TRUE,*/
         '#tree' => TRUE,
        );
 
@@ -194,7 +179,6 @@ function theme__taxonomy_access_permissions_form($form) {
   global $tac_user_roles;
   $rid = arg(3);
 
-  drupal_add_js('misc/collapse.js');
   $vids = array_keys($form['taxonomy_access']);
   $node_grant_types = array('view', 'update', 'delete');
 
@@ -228,7 +212,7 @@ function theme__taxonomy_access_permissions_form($form) {
         $row[] = '&nbsp;';
         $rows[] = $row; 
         $output_table = theme('table', $header, $rows);
-        $output .= '<fieldset class=" collapsible collapsed"><legend>Uncategorized nodes</legend>'.$output_table.'</fieldset>';
+        $output .= theme_fieldset(array('#title'=>'Uncategorized nodes', '#value'=>$output_table, '#collapsible' => TRUE, '#collapsed' => TRUE));
       }
       else {
         //1st row: 'Allow all'... 'Select All'...
@@ -295,7 +279,7 @@ function theme__taxonomy_access_permissions_form($form) {
         }
 
         $output_table = theme('table', $header, $rows);
-        $output .= '<fieldset class=" collapsible collapsed"><legend>'.$form['taxonomy_access'][$vid]['#title'].'</legend>'.$output_table.'</fieldset>';
+        $output .= theme_fieldset(array('#title'=>$form['taxonomy_access'][$vid]['#title'], '#value'=>$output_table, '#collapsible' => TRUE, '#collapsed' => TRUE));
 
       }
     }
