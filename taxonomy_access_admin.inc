@@ -99,7 +99,9 @@ function _taxonomy_access_permissions_form($rid) {
     $form['taxonomy_access'] = array( '#tree' => TRUE);
 
     // Do the row for uncategorized nodes
-/*    $form['taxonomy_access'][0] = array(
+    
+/*I need to uncomment this, because i couldn't render the fieldset w/ a <table> in it. (theme__taxonomy_access_permissions_form)
+    $form['taxonomy_access'][0] = array(
       '#type' => 'fieldset',
       '#title' => t('Uncategorized nodes'),
       '#weight' => 3,
@@ -124,9 +126,10 @@ function _taxonomy_access_permissions_form($rid) {
     foreach ($vocabs as $vocab) {
       $form['taxonomy_access'][$vocab->vid] = array(
         '#title' => $vocab->name,
-//        '#type' => 'fieldset',
-//        '#collapsible' => TRUE,
-//        '#collapsed' => TRUE,
+/*I need to uncomment this, because i couldn't render the fieldset w/ a <table> in it. (theme__taxonomy_access_permissions_form)
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,*/
         '#tree' => TRUE,
        );
 
@@ -253,8 +256,9 @@ function theme__taxonomy_access_permissions_form($form) {
         $row = array();
         $row[] = '<blockquote><em>'.t('Default').'</em></blockquote>';
         foreach (array('view', 'update', 'delete') as $grant) {
-          foreach (array_keys($radios) as $value) {
-            $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['default'][$grant][$value]));
+          foreach (array_keys($radios) as $key) {
+            // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
+            $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['default'][$grant][$key]));
           }
           $row[] = '&nbsp;&nbsp;';
         }
@@ -277,8 +281,9 @@ function theme__taxonomy_access_permissions_form($form) {
             $row = array();
             $row[] = str_repeat('-',$term->depth).$term->name;
             foreach ($node_grant_types as $grant) {
-              foreach (array_keys($radios) as $value) {
-                $row[] = drupal_render($form['taxonomy_access'][$vid]['term'][$term->tid][$grant][$value]);
+            // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
+              foreach (array_keys($radios) as $key) {
+                $row[] = drupal_render($form['taxonomy_access'][$vid]['term'][$term->tid][$grant][$key]);
               }
               $row[] = '&nbsp;&nbsp;';
             }
