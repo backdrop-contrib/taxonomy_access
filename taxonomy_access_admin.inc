@@ -118,8 +118,9 @@ function _taxonomy_access_permissions_form($rid) {
     $vocabs = taxonomy_get_vocabularies();
     $options1 = array( '3' => '--', '1' => t('Allow all'), '0' => t('Ignore all'), '2' => t('Deny all'));
     $options2 = array( '3' => '--', '1' => t('Select all'), '0' => t('Deselect all'));
-    $radios = array('1' => t('Allow'), '0' => t('Ignore'), '2' => t('Deny'));
-
+    //Radios' values: '1' => t('Allow'), '0' => t('Ignore'), '2' => t('Deny')
+    $radios = array('1' => '', '0' => '', '2' => ''); 
+    
     foreach ($vocabs as $vocab) {
       $form['taxonomy_access'][$vocab->vid] = array(
         '#title' => $vocab->name,
@@ -135,14 +136,11 @@ function _taxonomy_access_permissions_form($rid) {
           '#options' => $options1,
           '#default_value' => -1,
          );
-        foreach ($radios as $value => $name) {
-          $form['taxonomy_access'][$vocab->vid]['default'][$grant][$value] = array(
-            '#type' => 'radio', 
-            '#name' => 'edit[taxonomy_access]['.$vocab->vid.'][default]['.$grant.']', 
-            '#return_value' => $value,
-            '#default_value' => $default[$vocab->vid][$grant],
-           );
-        }
+        $form['taxonomy_access'][$vocab->vid]['default'][$grant] = array(
+          '#type' => 'radios', 
+          '#options' => $radios,
+          '#default_value' => $default[$vocab->vid][$grant],
+         );
       }
       foreach (array('create', 'list') as $grant) {
         $form['taxonomy_access'][$vocab->vid]['vocab'][$grant] = array(
@@ -161,14 +159,11 @@ function _taxonomy_access_permissions_form($rid) {
       if ($terms) {
         foreach ($terms as $term) {
           foreach ($node_grant_types as $grant) {
-            foreach ($radios as $value => $name) {
-              $form['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant][$value] = array (
-                '#name' => 'edit[taxonomy_access]['.$vocab->vid.'][term]['.$term->tid.']['.$grant.']', 
-                '#return_value' => $value,
-                '#type' => 'radio', 
-                '#default_value' => $perm[$term->tid][$grant],
-               );
-            }
+            $form['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant] = array(
+              '#type' => 'radios', 
+              '#options' => $radios,
+              '#default_value' => $perm[$term->tid][$grant],
+             );
           }
           foreach (array('create', 'list') as $grant) {
             $form['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant] = array (
