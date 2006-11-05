@@ -22,8 +22,6 @@ function _taxonomy_access_admin_settings_submit($form_id, $form_values) {
   $op = $form_values['op'];
   if ($op == t('Reset to defaults')) {
     variable_del('taxonomy_access_enabled');
-    // do we need this cache_clear_all()?
-    cache_clear_all();
   }
   if ($op == t('Reset to defaults')) {
     drupal_set_message(t('The configuration options of taxonomy access have been reset to their default values.'));
@@ -354,8 +352,13 @@ function _taxonomy_access_permissions_form_submit($form_id, $form_values) {
     }
   }
 
-  // Reflect changes made to term_access table in node_access table
-  _refresh_node_access_table($rid);
+  // Force to rebuild the node_access table according changes made to term_access table
+
+  //Todo: 1. Possibly optimizing when values changes for only one user role (permission matrix submit)
+  //         _refresh_node_access_table($rid);
+  //      2. Run this when changes were made to 'View/Update/Delete' permissions
+  node_access_rebuild();
+
 
   // Clear the cache, as we might have changed the anonymous user's
   // permissions.

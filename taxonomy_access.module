@@ -72,6 +72,7 @@ function taxonomy_access_enable() {
 function taxonomy_access_disable() {
   taxonomy_access_disabling(TRUE);
   node_access_rebuild();
+
 }
 
 /**
@@ -445,167 +446,162 @@ function taxonomy_access_user($op, &$edit, &$user, $category = NULL) {
     } 
   }
 }  
-  
+
+/*
+ * Housekeeping for the term_access and term_access_defaults tables
+ *
+ * Called when the TAC module is enabled to reflect the changes since it was disabled:
+ * 1: Check for new/deleted taxonomy terms and make approprate entries into term_access table (according to term_access_defaults)
+ * 2: Check for new/deleted user roles and make approprate entries into term_access table
+ * 3: Check for new/deleted taxonomy vocabularies and user roles to update term_access_defaults table
+ * 4: Force to rebuild the node_access table based on the new changes in the Taxonomy Access system
+ */
 function _taxonomy_access_update_db($current_rids = NULL, $old_rids = NULL) {
-         // the module was just enabled; node_access table must initialized or updated to reflect the changes since it was disabled:
-         // Check for new taxonomies and make appropriate entries into node_access table;
-         // Check for new roles and make approprate entries into node_access and term_access table;
-         // Check for deleted roles and make appropriate entries into node_access and term_access table;
-         // Permissions for nodes will be the same as when the module was previously enabled.
+  // BEGIN: term_access table housekeeping
+  // Update the term_access table to reflect any changes that may have occured since module was disabled.
+  $tids = array();
+  $rids = array();
 
-    // BEGIN: term_access table housekeeping
-    // Update the term_access table to reflect any changes that may have occured since module was disabled.
-    $tids = array();
-    $rids = array();
+  // Create list of all term and role ids
+  $query = db_query('SELECT tid FROM {term_data}');
+  while ($result = db_fetch_array($query)) {
+    $current_tids[] = $result['tid'];
+  }
+  $current_tids[] = 0;
 
-    // Create list of all term and role ids
-    $query = db_query('SELECT tid FROM {term_data}');
+  if (!$current_rids) {
+    $query = db_query('SELECT rid FROM {role}');
     while ($result = db_fetch_array($query)) {
-      $current_tids[] = $result['tid'];
+      $current_rids[] = $result['rid'];
     }
-    $current_tids[] = 0;
+  // $current_rids[] = 0; no default non-roled access
+  }
+  $current_vids = array();
+  $query = db_query('SELECT vid FROM {vocabulary}');
+  while ($result = db_fetch_array($query)) {
+    $current_vids[] = $result['vid'];
+  }
 
-    if (!$current_rids) {
-      $query = db_query('SELECT rid FROM {role}');
-      while ($result = db_fetch_array($query)) {
-        $current_rids[] = $result['rid'];
-      }
-    // $current_rids[] = 0; no default non-roled access
-    }
-    $current_vids = array();
-    $query = db_query('SELECT vid FROM {vocabulary}');
-    while ($result = db_fetch_array($query)) {
-      $current_vids[] = $result['vid'];
-    }
+  // Get old list of term and role ids from when term_access was disabled
+  $old_tids[] = 0;
+  $query = db_query('SELECT DISTINCT(tid) FROM {term_access}');
+  while ($result = db_fetch_array($query)) {
+    $old_tids[] = $result['tid'];
+  }
 
-    // Get old list of term and role ids from when term_access was disabled
-    $old_tids[] = 0;
-    $query = db_query('SELECT DISTINCT(tid) FROM {term_access}');
-    while ($result = db_fetch_array($query)) {
-      $old_tids[] = $result['tid'];
-    }
-
-    if (!$old_rids) {
-      $query = db_query('SELECT DISTINCT(rid) FROM {term_access}');
-      while($result = db_fetch_array($query)) {
-        $old_rids[] = $result['rid'];
-      }
-    }
-    $old_vids = array();
-    $query = db_query('SELECT vid FROM {term_access_defaults}');
+  if (!$old_rids) {
+    $query = db_query('SELECT DISTINCT(rid) FROM {term_access}');
     while($result = db_fetch_array($query)) {
-      $old_vids[] = $result['vid'];
+      $old_rids[] = $result['rid'];
     }
+  }
+  $old_vids = array();
+  $query = db_query('SELECT vid FROM {term_access_defaults}');
+  while($result = db_fetch_array($query)) {
+    $old_vids[] = $result['vid'];
+  }
 
-    // Get the difference between old and current
-    if (is_array($old_tids))
-      $delete_tids = array_diff($old_tids, $current_tids);
-    if (is_array($old_rids))  
-      $delete_rids = array_diff($old_rids, $current_rids);
-    if (is_array($old_vids))  
-      $delete_vids = array_diff($old_vids, $current_vids);
+  // Get the difference between old and current
+  if (is_array($old_tids))
+    $delete_tids = array_diff($old_tids, $current_tids);
+  if (is_array($old_rids))  
+    $delete_rids = array_diff($old_rids, $current_rids);
+  if (is_array($old_vids))  
+    $delete_vids = array_diff($old_vids, $current_vids);
 
-    // Delete all rows with role and term ids that no longer exist from the term_access table
-    if (is_array($delete_rids)) {
-      foreach ($delete_rids as $rid) {
-        db_query('DELETE FROM {term_access} WHERE rid = %d', $rid);
+  // Delete all rows with role and term ids that no longer exist from the term_access table
+  if (is_array($delete_rids)) {
+    foreach ($delete_rids as $rid) {
+      db_query('DELETE FROM {term_access} WHERE rid = %d', $rid);
+    }
+  }
+  foreach ($delete_tids as $tid) {
+    db_query('DELETE FROM {term_access} WHERE tid = %d', $tid);
+  }
+
+  // Set permissions for nodes without categories if they aren't already set
+  $query = db_query('SELECT tid FROM {term_access} where tid = 0');
+  if (!db_result($query) && is_array($current_rids)) {
+    foreach ($current_rids as $rid) {
+      $query = db_query('SELECT tid FROM {term_access} where tid=0 AND rid=%d', $rid);
+      if (!db_fetch_object($query)) {
+        db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0, 1, 1)', $rid);
       }
     }
-    foreach ($delete_tids as $tid) {
-      db_query('DELETE FROM {term_access} WHERE tid = %d', $tid);
-    }
+  }
 
-    // Set permissions for nodes without categories if they aren't already set
-    $query = db_query('SELECT tid FROM {term_access} where tid = 0');
-    if (!db_result($query) && is_array($current_rids)) {
-      foreach ($current_rids as $rid) {
-        $query = db_query('SELECT tid FROM {term_access} where tid=0 AND rid=%d', $rid);
-        if (!db_fetch_object($query)) {
-          db_query('INSERT INTO {term_access} VALUES (0, %d, 1, 0, 0, 1, 1)', $rid);
-        }
+  // Add new role and term ids to term_access table since module was last disabled and assign them default permissions
+  $all_rids = $add_tids = $add_rids = $add_vids = array();
+  $add_tids = array_diff($current_tids, $old_tids);
+  $add_vids = array_diff($current_vids, $old_vids);
+  if (is_array($current_rids) && is_array($old_rids)) {
+    $add_rids = array_diff($current_rids, $old_rids);
+    $all_rids = array_merge($add_rids, $current_rids);
+  }
+
+  // Add role permissions for each new taxonomy terms.
+  // nysus : Default permissions assume all users can not read content in the new taxonomy
+  // pyromanfo : Drupal default is actually view only, as is the case with node_access
+  foreach ($add_tids as $tid) {
+    if ($tid != 0) {
+      foreach ($all_rids as $rid) {
+        db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1, 1)', $tid, $rid);
       }
     }
+  }
 
-    // Add new role and term ids to term_access table since module was last disabled and assign them default permissions
-    $all_rids = $add_tids = $add_rids = $add_vids = array();
-    $add_tids = array_diff($current_tids, $old_tids);
-    $add_vids = array_diff($current_vids, $old_vids);
-    if (is_array($current_rids) && is_array($old_rids)) {
-      $add_rids = array_diff($current_rids, $old_rids);
-      $all_rids = array_merge($add_rids, $current_rids);
-    }
-
-    // Add role permissions for each new taxonomy terms.
-    // nysus : Default permissions assume all users can not read content in the new taxonomy
-    // pyromanfo : Drupal default is actually view only, as is the case with node_access
-    foreach ($add_tids as $tid) {
-      if ($tid != 0) {
-        foreach ($all_rids as $rid) {
+  // Add role permissions for all old taxonomy terms.
+  // nysus : Default permissions assume new role does not have access to content in any category
+  // pyromanfo : Drupal default is actually view only, as is the case with node_access
+  foreach ($current_tids as $tid) {
+    if ($tid != 0) {
+      if (is_array($add_rids)) {
+        foreach ($add_rids as $rid) {
           db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1, 1)', $tid, $rid);
         }
       }
     }
+  }
+  // END: term_access table housekeeping
 
-    // Add role permissions for all old taxonomy terms.
-    // nysus : Default permissions assume new role does not have access to content in any category
-    // pyromanfo : Drupal default is actually view only, as is the case with node_access
-    foreach ($current_tids as $tid) {
-      if ($tid != 0) {
-        if (is_array($add_rids)) {
-          foreach ($add_rids as $rid) {
-            db_query('INSERT INTO {term_access} VALUES (%d, %d, 1, 0, 0, 1, 1)', $tid, $rid);
-          }
+  // BEGIN: term_access_defaults housekeeping
+  // Setup defaults
+  if (is_array($delete_rids)) {
+    foreach ($delete_rids as $rid) {
+      db_query("DELETE FROM {term_access_defaults} WHERE rid='%d'",$rid);
+    }
+  }
+  if (is_array($delete_vids)) {
+    foreach ($delete_vids as $vid) {
+      db_query("DELETE FROM {term_access_defaults} WHERE vid='%d'",$vid);
+    }
+  }
+
+  if (is_array($current_vids)) {
+    foreach ($current_vids as $vid) {
+      if (is_array($add_rids)) {
+        foreach ($add_rids as $rid) {
+          db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
+          db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1,1)",$vocab->vid,$rid);
         }
       }
     }
-    // END: term_access table housekeeping
+  }
 
-    // BEGIN: term_access_defaults housekeeping
-    // Setup defaults
-    if (is_array($delete_rids)) {
-      foreach ($delete_rids as $rid) {
-        db_query("DELETE FROM {term_access_defaults} WHERE rid='%d'",$rid);
-      }
-    }
-    if (is_array($delete_vids)) {
-      foreach ($delete_vids as $vid) {
-        db_query("DELETE FROM {term_access_defaults} WHERE vid='%d'",$vid);
-      }
-    }
-
-    if (is_array($current_vids)) {
-      foreach ($current_vids as $vid) {
-        if (is_array($add_rids)) {
-          foreach ($add_rids as $rid) {
-            db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
-            db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1,1)",$vocab->vid,$rid);
-          }
+  if (is_array($add_vids)) {
+    foreach ($add_vids as $vid) {
+      if (is_array($current_rids)) {
+        foreach ($current_rids as $rid) {
+          db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
+          db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1,1)",$vocab->vid,$rid);
         }
       }
     }
+  }
+  // END: term_access_defaults housekeeping
 
-    if (is_array($add_vids)) {
-      foreach ($add_vids as $vid) {
-        if (is_array($current_rids)) {
-          foreach ($current_rids as $rid) {
-            db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vocab->vid, $rid);
-            db_query("INSERT INTO {term_access_defaults} VALUES (%d,%d,1,0,0,1,1)",$vocab->vid,$rid);
-          }
-        }
-      }
-    }
-    // END: term_access_defaults housekeeping
-
-    // Force to rebuild node_access_table to reflect the changes made to term_access table
-    node_access_rebuild();
-}
-
-// Update the node_access table to reflect any changes made to the term_access table
-function _refresh_node_access_table($rid = NULL, $nid = NULL ) {
-  
-//Todo: Possibly optimizing when values changes for only one user role (permission matrix submit)
+  // Force to rebuild node_access_table to reflect the changes made to term_access table
   node_access_rebuild();
-
 }
 
 /**
