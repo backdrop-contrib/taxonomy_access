@@ -159,5 +159,5 @@ function taxonomy_access_uninstall() {
   db_query('DROP TABLE {term_access}');
   db_query('DROP TABLE {term_access_defaults}');
   //variable_del('taxonomy_access_enabled');
-  drupal_set_message(t('Taxonomy Access is uninstalled successfully.'));
+  drupal_set_message(t('Taxonomy Access have been successfully uninstalled.'));
 }
