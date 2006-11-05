@@ -1,33 +1,48 @@
-TO INSTALL, simply add the database and activate the module, in these steps.
+TO INSTALL, simply install and enable the module, in these steps.
 
-PLEASE CHECK, that you use the right version of Taxonomy Access for DRUPAL-4.7. (taxonomy_access-4.7.0.tar.gz)
+PLEASE CHECK, that you use the right version of Taxonomy Access for DRUPAL.
+  (For 4.7.x, use taxonomy_access-4.7.0.tar.gz)
 
-NOTE: Personally, I DO NOT RECOMMAND USING TWO OR MORE "ACCESS" MODULE AT THE SAME TIME (e.g: OG, node_privacy_by_role, taxonomy access, etc.)at the same time, only in case you know exactly what you are doing, and if you tested it thoroughly. 
-  (If you used other access modules before, read the 'Troubleshooting' section)
-
-PLEASE NOTE: There is no need to patch the taxonomy.module. (it was neccessary only in previuos versions of Drupal 4.5 and 4.6)
+NOTE: If you want to USE TWO OR MORE "ACCESS" MODULE AT THE SAME TIME, TEST IT 
+      CAREFULLY. (e.g: OG, node_privacy_by_role, taxonomy access, etc.)
+     (This has been made easier with the new node_access system in 5.x.)
 
 TO UPDATE from previous versions of taxonomy_access: PLEASE READ UPDATE.TXT!
-  WHEN UPDATING, ALWAYS disable the module first (admin/settings/taxonomy_access) and then remove it (admin/modules) before uploading the new module.
+  WHEN UPDATING, ALWAYS disable the module first (admin/modules) before uploading
+  the new module.
 
+-----------------------
 INSTALLATION:
+-----------------------
 
-1) COPY taxonomy_access.module and taxonomy_access.install to your drupal installation's module directory
+1) COPY all files in the taxonomy_access directory to your drupal installation's
+   module directory (/sites/all/taxonomy_access/)
 
-2) ACTIVATE THE MODULE from administer >> modules
+2) ENABLE THE MODULE on page: "Administer >> Site building >> Modules"
 
-3) ENABLE TAXONOMY ACCESS SETTINGS: Go to administer >> settings >> taxonomy_access and enable the module
+3) CONFIGURE OPTIONS FOR TAXONOMY ACCESS: Go to page:
+   "Administer >> Site configuration >> Taxonomy Access settings".
 
-4) CONFIGURE ACCESS PERMISSIONS to the various categories from administer >> access control >> category permissions
+4) SET PERMISSION 'Administer Access Controll' FOR ADMINISTRATORS on page: 
+   "Administer >> User Management >> Access Control".
 
-NOTE: DATABASE TABLES are automatically added to database. Module creates two tables in database: 'term_access' and
-  'term_access_defaults'.
+5) CONFIGURE ACCESS PERMISSIONS to the various categories from 
+   "Administer >> User Management >> Taxonomy Access permissions".
 
+NOTE: DATABASE TABLES are automatically added to database. Module creates two 
+      tables in database: 'term_access' and 'term_access_defaults'.
+
+-----------------------
 TROUBLESHOOTING:
+-----------------------
 
-For general housekeeping of the 'node_access' table, go to /admin/settings/taxonmy_access: First 'Disable', then 'Enable the taxonomy_access module'.
-  This regenerates the 'node_access' table (only the values related to taxonomy_access) according to taxonomy_access settings (stored in table 'term_access').
+In case of: 
+- You have any troubles with node access 
+    (users can view/edit pages, they do not have permission),
+- Or for general database housekeeping of tables 'node_access'
+    (also 'term_access' and 'term_access_defaults'): 
 
-If you have troubles with node access (users can view/edit pages, they do not have permission), and you used other access modules before (OG, node_privacy_by_role, etc.). 
-  Try this: after backing up the database, try deleting values from the "node_access" table ( TRUNCATE 'node_access' ).  Then for regenerating the "node_access" table (according to TAC settings) go to /admin/settings/taxonmy_access: First 'Dsable', then 'Enable the taxonomy_access module'.
-  
+Do the following:
+- First 'Disable', then 'Re-enable' the 'Taxonomy Access Module' on page: 
+    "Administer >> Site building >> Modules".
+  This will force the complete rebuild of the 'node_access' table.

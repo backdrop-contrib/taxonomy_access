@@ -17,8 +17,6 @@ is authorized, almost identical to node_access.
 DATABASE TABLES: Module creates two tables in database: 'term_access' and
 'term_access_defaults'
 
-(PLEASE NOTE: For HEAD version, there is no need to patch the taxonomy.module.)
-
 For more information about how to control access permissions with the Taxonomy
 Access Control module, see the module's help page (admin/help/taxonomy_access).
 
