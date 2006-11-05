@@ -10,13 +10,7 @@
  * Menu callback; presents the adminitrator settings page for TAC (/admin/settings/taxonomy_access).
  */
 function _taxonomy_access_admin_settings() {
-  $form['taxonomy_access_enabled'] = array(
-    '#title' => t('Taxonomy Access Control Activation'),
-    '#type' => 'radios', 
-    '#default_value' => variable_get('taxonomy_access_enabled', 0),
-    '#options' => array( 1 => t('Activate'), 0 => t('Deactivate'))
-  );
-
+  //preserving for adding more options soon.
   return system_settings_form($form);
 }
 
@@ -24,17 +18,12 @@ function _taxonomy_access_admin_settings() {
  * Save the administrator settings.
  */
 function _taxonomy_access_admin_settings_submit($form_id, $form_values) {
+  //preserving for adding more options soon.
   $op = $form_values['op'];
   if ($op == t('Reset to defaults')) {
     variable_del('taxonomy_access_enabled');
-  }
-  else {
-    $settings_changed = (variable_get('taxonomy_access_enabled', 0) == $form_values['taxonomy_access_enabled']) ? FALSE : TRUE;
-    variable_set('taxonomy_access_enabled', $form_values['taxonomy_access_enabled']);
-  }
-  if ($settings_changed || $op == t('Reset to defaults')) {
+    // do we need this cache_clear_all()?
     cache_clear_all();
-    _taxonomy_access_update_db();
   }
   if ($op == t('Reset to defaults')) {
     drupal_set_message(t('The configuration options of taxonomy access have been reset to their default values.'));
@@ -50,11 +39,6 @@ function _taxonomy_access_admin_settings_submit($form_id, $form_values) {
  * Menu callback; presents the category permissions page of TAC (admin/user/taxonomy_access).
  */
 function _taxonomy_access_permissions_page($edit = array()) {
-  // Checking if TAC is activated
-  if (!variable_get('taxonomy_access_enabled', 0)) {
-    return '';
-  }
-
   global $tac_user_roles;
   $rid = arg(3);
   $output = '';
