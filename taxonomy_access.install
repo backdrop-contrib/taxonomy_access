@@ -56,6 +56,12 @@ function taxonomy_access_update_3() {
   return $ret;
 }
 
+// Update#4: Delete variable 'taxonomy_access_enabled'
+function taxonomy_access_update_4() {
+  variable_del('taxonomy_access_enabled');
+  return array();
+}
+
 /**
  * Implementation of hook_install.
  * Adding tables to database: 'term_access', 'term_access_defaults'
@@ -142,10 +148,16 @@ function taxonomy_access_install() {
 
   // Notify of changes
   if ($success) {
-    drupal_set_message(t('Taxonomy Access module installed tables successfully.').'<br>'.t('For activation, please view the <a href="%settings">Taxonomy Access settings page</a>.', array('%settings' => url('admin/settings/taxonomy_access'))));
+    drupal_set_message(t('Taxonomy Access module installed tables successfully.'));
   }
   else {
     drupal_set_message(t('The installation of Taxonomy Access module was unsuccessful.'), 'error');
   }
 }
-?>
+
+function taxonomy_access_uninstall() {
+  db_query('DROP TABLE {term_access}');
+  db_query('DROP TABLE {term_access_defaults}');
+  //variable_del('taxonomy_access_enabled');
+  drupal_set_message(t('Taxonomy Access is uninstalled successfully.'));
+}
