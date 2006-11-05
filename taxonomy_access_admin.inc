@@ -24,7 +24,7 @@ function _taxonomy_access_admin_settings() {
  * Save the administrator settings.
  */
 function _taxonomy_access_admin_settings_submit($form_id, $form_values) {
-  $op = isset($_POST['op']) ? $_POST['op'] : '';
+  $op = $form_values['op'];
   if ($op == t('Reset to defaults')) {
     variable_del('taxonomy_access_enabled');
   }
