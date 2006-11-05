@@ -173,7 +173,7 @@ function taxonomy_access_menu($may_cache) {
         'title' => t('Category permissions'),
         'description' => t('Sophisticated access control for content items based on category'),
         'callback' => '_taxonomy_access_permissions_page',
-        'access' => user_access('administer users'),
+        'access' => user_access('administer access control'),
       );
   }
 
