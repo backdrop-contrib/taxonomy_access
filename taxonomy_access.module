@@ -162,7 +162,7 @@ function taxonomy_access_menu($may_cache) {
   if ($may_cache) {
     $items[] = array(
         'path' => 'admin/settings/taxonomy_access',
-        'title' => t('Taxonomy access settings'),
+        'title' => t('Taxonomy Access settings'),
 //        'description' => t('Configure Taxonomy Access Control'),
         'callback' => 'drupal_get_form',
         'callback arguments' => array('_taxonomy_access_admin_settings'),
@@ -170,7 +170,7 @@ function taxonomy_access_menu($may_cache) {
       );
     $items[] = array(
         'path' => 'admin/user/taxonomy_access',
-        'title' => t('Category permissions'),
+        'title' => t('Taxonyom Access permissions'),
         'description' => t('Sophisticated access control for content items based on category'),
         'callback' => '_taxonomy_access_permissions_page',
         'access' => user_access('administer access control'),
