@@ -23,6 +23,7 @@ function taxonomy_access_help($section) {
 
     case 'admin/help#taxonomy_access':
       $message = '<p>'.t('The Taxonomy Access Control module allows users to specify how each category can be used by various roles.').'</p>';
+      $message .= '<p>'.t('Permissions can be set differently to each USER ROLES. When a USER is assigned to TWO OR MORE USER ROLES, then he receives permissions from ALL OF HIS USER ROLES.').'</p>';
       $message .= '<p>'.t('On the category permissions page for each role, each category displays a list of the terms within it, each with five types of permission: <em>View, Update, Delete, Create</em> and <em>List</em>:').'</p>';
       $message .= '<ul>';
       $message .= '<li>'.t('<strong>VIEW</strong> enables the user to access content (nodes) with given term.').'</li>';
