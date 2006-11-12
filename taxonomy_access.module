@@ -640,7 +640,7 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
     else {
       $clause[$op][$field] = $taxonomy_access_sql_clause[$op][$field];
     }
-    $return['where'] = ($clause[$op][$field]) ? "$table.$field IN ('".$clause[$op][$field]."')" : 'FALSE';
+    $return['where'] = ($clause[$op][$field]) ? "$table.$field IN ('".$clause[$op][$field]."')" : "$table.$field IS NULL";
     return $return;
   }
   else {
