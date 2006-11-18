@@ -359,10 +359,6 @@ function _taxonomy_access_permissions_form_submit($form_id, $form_values) {
   //      2. Run this when changes were made to 'View/Update/Delete' permissions
   node_access_rebuild();
 
-
-  // Clear the cache, as we might have changed the anonymous user's
-  // permissions.
-  cache_clear_all();
   // redirect to main category permissions menu
   //  $roles = user_roles();
   drupal_set_message(t("Your permission settings for '%role' role have been saved.", array('%role' => $tac_user_roles[$rid])), 'status');
