@@ -109,7 +109,7 @@ function _taxonomy_access_permissions_form($rid) {
         $form['taxonomy_access'][$vocab->vid]['default'][$grant] = array(
           '#type' => 'radios', 
           '#options' => $radios,
-          '#default_value' => $default[$vocab->vid][$grant],
+          '#default_value' => isset($default[$vocab->vid][$grant]) ? $default[$vocab->vid][$grant] : 0,
          );
       }
       foreach (array('create', 'list') as $grant) {
@@ -119,7 +119,7 @@ function _taxonomy_access_permissions_form($rid) {
          );
         $form['taxonomy_access'][$vocab->vid]['default'][$grant] = array(
           '#type' => 'checkbox', 
-          '#default_value' => $default[$vocab->vid][$grant],
+          '#default_value' => isset($default[$vocab->vid][$grant]) ? $default[$vocab->vid][$grant] : 0,
          );
        }
 
@@ -132,13 +132,13 @@ function _taxonomy_access_permissions_form($rid) {
             $form['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant] = array(
               '#type' => 'radios', 
               '#options' => $radios,
-              '#default_value' => $perm[$term->tid][$grant],
+              '#default_value' => isset($perm[$term->tid][$grant]) ? $perm[$term->tid][$grant] : 0,
              );
           }
           foreach (array('create', 'list') as $grant) {
             $form['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant] = array (
               '#type' => 'checkbox', 
-              '#default_value' => $perm[$term->tid][$grant],
+              '#default_value' => isset($perm[$term->tid][$grant]) ? $perm[$term->tid][$grant] : 0,
              );
           }
         }
