@@ -1,6 +1,7 @@
 <?php
 // $Id$
 // Based on original taxonomy_access.module made by pyromanfo
+//   $version .= str_replace(array('$Re'.'vision:', '$Da'.'te:', '$'), array('', '', ''), '<p style="font-size:x-small">Login Toboggan version: <b>$Revision$</b>, $Date$</p>');
 
 /**
  * @file
