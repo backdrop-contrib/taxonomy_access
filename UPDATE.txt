@@ -14,19 +14,20 @@ UPDATING
 
 2. BACKUP your database
 
-3. LOG ON AS MAIN ADMINISTRATOR (user with user ID 1)
+3. UPLOAD the new module files
 
-4. RUN UPDATE.PHP by visiting "http://www.example.com/update.php"
+4. LOG ON AS MAIN ADMINISTRATOR (user with user ID 1)
 
 5. ENABLE THE MODULE on page: "Administer >> Site building >> Modules"
 
-6. SET PERMISSION 'Administer Access Controll' FOR ADMINISTRATORS on page: 
+6. RUN UPDATE.PHP by visiting "http://www.example.com/update.php"
+
+7. SET OPTIONS FOR TAXONOMY ACCESS SETTINGS: Go to page: "Administer >> Site configuration >> 
+      Taxonomy Access: Settings"
+
+8. SET PERMISSION 'Administer Access Controll' FOR ADMINISTRATORS on page: 
      "Administer >> User Management >> Access Control".
     (In versions before 5.x permission was 'Administer users')
-
-7. SET ACTIVATE TAXONOMY ACCESS SETTINGS: Go to administer >> settings >> 
-      taxonomy_access and activate the Taxonomy Access System
-
 
 -----------------------
 TAXONOMY ACCESS UPDATES
