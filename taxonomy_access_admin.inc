@@ -7,362 +7,563 @@
  */
 
 /**
- * Menu callback; presents the adminitrator settings page for TAC (/admin/settings/taxonomy_access).
+ * Cache roles
  */
-function _taxonomy_access_admin_settings() {
-  //preserving for adding more options soon.
-  return system_settings_form($form);
-}
-
-/**
- * Save the administrator settings.
- */
-function _taxonomy_access_admin_settings_submit($form_id, $form_values) {
-  //preserving for adding more options soon.
-  $op = $form_values['op'];
-  if ($op == t('Reset to defaults')) {
-    variable_del('taxonomy_access_enabled');
+function _user_roles() {
+  static $roles;
+  if (!is_array($roles)) {
+    $roles = user_roles();
   }
-  if ($op == t('Reset to defaults')) {
-    drupal_set_message(t('The configuration options of taxonomy access have been reset to their default values.'));
-    drupal_goto('admin/settings/taxonomy_access');
-  }
-  else {
-    drupal_set_message(t('The configuration options of taxonomy access have been saved.'));
-  }
-  return;
+  return $roles;
 }
 
 /**
  * Menu callback; presents the category permissions page of TAC (admin/user/taxonomy_access).
  */
-function _taxonomy_access_permissions_page($edit = array()) {
-  global $tac_user_roles;
-  $rid = arg(3);
-  $output = '';
-  $tac_user_roles = user_roles();
-
-  // Making permission matrix only if user_role is choosen
-  if (isset($tac_user_roles[$rid])) {
-    return drupal_get_form('_taxonomy_access_permissions_form', $rid);
+function taxonomy_access_admin($op = NULL, $rid=NULL, $arg=NULL) {
+  $roles = _user_roles();
+  if (is_numeric($rid) AND isset($roles[$rid])) {
+    switch ($op) {
+    case 'edit':
+      return drupal_get_form('taxonomy_access_admin_form', $rid);
+    case 'delete':
+      return drupal_get_form('taxonomy_access_admin_delete_role', $rid);
+    }
   }
-  else {
-    return theme_taxonomy_access_permissions_page();
+  else if (!isset($op) AND !isset($rid)) {
+    return theme_taxonomy_access_admin();
   }
+  //TODO something odd happens here
+  else return drupal_not_found();
 }
 
 /**
  * Renders the main page of category permissions
  */
-function theme_taxonomy_access_permissions_page() {
-  global $tac_user_roles;
+function theme_taxonomy_access_admin() {
+  $roles = _user_roles();
 
   // Render role/permission overview:
-  $header = array(t('Role'), '&nbsp;' );
+  $header = array(t('Role'), array('data' => '&nbsp;'));
   $rows = array();
-  foreach ($tac_user_roles as $rid => $name) {
-   $rows[] = array($name, array('data'=>l(t("edit"),"admin/user/taxonomy_access/$rid"), 'align'=>'right'));
+  
+  $result = db_query('SELECT rid FROM {term_access_defaults} WHERE vid=0 ');
+  $active = array();
+  while ($role = db_fetch_array($result)) {
+    $active[$role['rid']] = TRUE;
+  }
+  foreach ($roles as $rid => $name) {
+    $ops = array();
+    if ($active[$rid]) {
+      //only allow delete for "extra" roles
+      if ($rid > 2) {
+        $ops[] = l(t("disable"), "admin/user/taxonomy_access/delete/$rid");
+      }
+      $ops[] = l(t("edit"), "admin/user/taxonomy_access/edit/$rid");
+    } else {
+      $ops = array(l(t("enable"), "admin/user/taxonomy_access/edit/$rid"));
+    }
+    $rows[] = array($name, array('data' => implode(' | ', $ops), 'align' => 'right'));
   }
 
   return theme('table', $header, $rows);
 }
 
+function taxonomy_access_admin_delete_role($rid) {
+  if (is_numeric($rid) AND $rid > 2 AND db_fetch_array(db_query('SELECT rid FROM {term_access_defaults} WHERE vid=0 AND rid=%d', $rid))) {
+    if ($_POST['confirm']) {
+      // issue #167977 - klance
+      $affected_nodes = _taxonomy_access_get_nodes_for_role($rid);
+      db_query('DELETE FROM {term_access} WHERE rid=%d', $rid);
+      db_query('DELETE FROM {term_access_defaults} WHERE rid=%d', $rid);
+      // issue #167977 - klance
+      //node_access_rebuild();
+      _taxonomy_access_node_access_update($affected_nodes);            
+      drupal_set_message("All term access rules deleted for role $rid.");
+      drupal_goto('admin/user/taxonomy_access');
+    }
+    else {
+      return confirm_form($form,
+                          t('Are you sure you want to delete all grant rules for role %rid?', array('%rid' => $rid)),
+                          'admin/user/taxonomy_access', t('This action cannot be undone.'),
+                          t('Delete all'), t('Cancel'));
+    }
+  }
+  else return drupal_not_found();
+}
+
+// TODO: clarify list VS create grants
+function taxonomy_access_admin_build_row($grants = NULL) {
+  $form['#title'] = $title;
+  $form['#tree'] = TRUE;
+  foreach (array('view', 'update', 'delete') as $grant) {
+    $form[$grant] = array(
+      '#type' => 'radios', 
+      '#options' => array('1' => '', '0' => '', '2' => ''), //1: Allow, 0: Ignore, 2: Deny
+      '#default_value' => is_string($grants['grant_'. $grant]) ? $grants['grant_'. $grant] : '0',
+      '#required' => TRUE,
+     );
+  }
+  foreach (array('create', 'list') as $grant) {
+    $form[$grant] = array(
+      '#type' => 'checkbox', 
+      '#default_value' => is_string($grants['grant_'.$grant]) ? $grants['grant_'.$grant] : '0',
+     );
+  }
+  return $form;
+}
+
 /**
- * Generating the category permissions form for choosen user role.
+ * Form for managing grants by role.
  */
+function taxonomy_access_admin_form($rid) {
+  // Fetch all default grants
+  $result = db_query('SELECT * FROM {term_access_defaults} WHERE rid=%d', $rid);
+  while ($row = db_fetch_array($result)) {
+    $default_grants[$row['vid']] = $row;
+  }
 
-function _taxonomy_access_permissions_form($rid) {
-    $node_grant_types = array('view', 'update', 'delete');
+  // Fetch all grants
+  $result = db_query('SELECT * FROM {term_access} WHERE rid = %d', $rid);
+  while ($row = db_fetch_array($result)) {
+    $grants[$row['tid']] = $row;
+  }
 
-    // Get all category permissions
-    $perm = taxonomy_access_get_grants($rid);
-    $default = taxonomy_access_get_default_grants($rid);
-    
-    $form['taxonomy_access'] = array( '#tree' => TRUE);
+  $form['rid'] = array('#type' => 'value', '#value' => $rid);
+  $form['grants'] = $form['selected_terms'] = $form['selected_defaults'] = array('#tree' => TRUE);
+  
+  //Global default
+  $form['vocabs'][0]['#title'] = 'Global';
+  $form['grants'][0][0] = taxonomy_access_admin_build_row($default_grants[0]);
+  $form['selected_defaults'][0] = array(
+     '#type' => 'checkbox',
+     '#disabled' => TRUE,
+     '#title' => '<em>default<em>',
+     '#description' => 'can\'t be disabled without disabling TAC for this role'
+  );
 
-    // Do the row for uncategorized nodes
-    foreach ($node_grant_types as $grant) {
-      $form['taxonomy_access'][0]['term'][0][$grant] = array(
-        '#type' => 'checkbox',
-        '#default_value' => $perm[0][$grant],
+  foreach (taxonomy_get_vocabularies() as $vid => $vocabulary) {
+    $form['vocabs'][$vid]['#title'] = check_plain($vocabulary->name);
+    if (isset($default_grants[$vid])) {
+      $form['grants'][$vid][0] = taxonomy_access_admin_build_row($default_grants[$vid]);
+      $form['selected_defaults'][$vid] = array(
+         '#type' => 'checkbox',
+         '#title' => '<em>default<em>',
       );
     }
+    else $add_items[$vocabulary->name]["default $vid"] = '*default*';
 
-    $vocabs = taxonomy_get_vocabularies();
-    $options1 = array( '3' => '--', '1' => t('Allow all'), '0' => t('Ignore all'), '2' => t('Deny all'));
-    $options2 = array( '3' => '--', '1' => t('Select all'), '0' => t('Deselect all'));
-    //Radios' values: '1' => t('Allow'), '0' => t('Ignore'), '2' => t('Deny')
-    $radios = array('1' => '', '0' => '', '2' => ''); 
-    
-    foreach ($vocabs as $vocab) {
-      $form['taxonomy_access'][$vocab->vid] = array(
-        '#title' => $vocab->name,
-        '#tree' => TRUE,
-       );
 
-      foreach ($node_grant_types as $grant) {
-        $form['taxonomy_access'][$vocab->vid]['vocab'][$grant] = array(
-          '#type' => 'select', 
-          '#options' => $options1,
-          '#default_value' => -1,
-         );
-        $form['taxonomy_access'][$vocab->vid]['default'][$grant] = array(
-          '#type' => 'radios', 
-          '#options' => $radios,
-          '#default_value' => isset($default[$vocab->vid][$grant]) ? $default[$vocab->vid][$grant] : 0,
-         );
-      }
-      foreach (array('create', 'list') as $grant) {
-        $form['taxonomy_access'][$vocab->vid]['vocab'][$grant] = array(
-          '#type' => 'select', 
-          '#options' => $options2,
-         );
-        $form['taxonomy_access'][$vocab->vid]['default'][$grant] = array(
-          '#type' => 'checkbox', 
-          '#default_value' => isset($default[$vocab->vid][$grant]) ? $default[$vocab->vid][$grant] : 0,
-         );
-       }
-
-      // Defining form elements for each term in vocabulary
-      $terms = array();
-      $terms = taxonomy_get_tree($vocab->vid);
-      if ($terms) {
-        foreach ($terms as $term) {
-          foreach ($node_grant_types as $grant) {
-            $form['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant] = array(
-              '#type' => 'radios', 
-              '#options' => $radios,
-              '#default_value' => isset($perm[$term->tid][$grant]) ? $perm[$term->tid][$grant] : 0,
-             );
-          }
-          foreach (array('create', 'list') as $grant) {
-            $form['taxonomy_access'][$vocab->vid]['term'][$term->tid][$grant] = array (
-              '#type' => 'checkbox', 
-              '#default_value' => isset($perm[$term->tid][$grant]) ? $perm[$term->tid][$grant] : 0,
-             );
-          }
+    if ($tree = taxonomy_get_tree($vid)) {
+      foreach ($tree as $term) {
+        if (isset($grants[$term->tid])) {
+          $form['grants'][$vid][$term->tid] = taxonomy_access_admin_build_row($grants[$term->tid]);
+          $form['selected_terms'][$term->tid] = array(
+             '#type' => 'checkbox',
+             '#title' => str_repeat('&nbsp;&nbsp;', $term->depth). check_plain($term->name),
+          );
+        }
+        else {
+          $add_items[$vocabulary->name]["term $term->tid"] = str_repeat('-', $term->depth). check_plain($term->name);
         }
       }
     }
-
-    $form['taxonomy_access']['submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save category permissions'),
-      '#name' => 'save',
-      '#button_type' => 'submit',
+  }
+  //New grant row
+  if (isset($add_items)) {
+    $form['new']['grants'] = taxonomy_access_admin_build_row();
+    $form['new']['#tree'] = TRUE;
+    $form['new']['item'] = array(
+      '#type' => 'select',
+      '#options' => $add_items,
     );
+    $form['new']['add'] = array(
+      '#type' => 'submit',
+      '#value' => t('Add'),
+    );
+  }
+  
+  $form['delete'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete selected'),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save all'),
+  );
+
   return $form;
 }
 
 /**
  * Renders the permission matrix user form for choosen user role.
  */
-function theme__taxonomy_access_permissions_form($form) {
-  global $tac_user_roles;
-  $rid = arg(3);
-
-  $vids = array_keys($form['taxonomy_access']);
+function theme_taxonomy_access_admin_form($form) {
+  $roles = _user_roles();
+  $header = array(
+    array( 'data' => t('Category'), 'colspan'=> 3),
+    array( 'data' => t('View'), 'colspan'=> 4),
+    array( 'data' => t('Update'), 'colspan'=> 4),
+    array( 'data' => t('Delete'), 'colspan'=> 4),
+    array( 'data' => t('Create')),
+    array( 'data' => t('List')),
+  );
+  $sub_header = array(
+    '&nbsp;<strong>'. t('A') .'</strong>',
+    '&nbsp;<strong>'. t('I') .'</strong>',
+    '&nbsp;<strong>'. t('D') .'</strong>',
+    '&nbsp;',
+  );
+  $sub_header = array_merge(array('&nbsp;'), $sub_header, $sub_header, $sub_header);
+  $sub_header = array_pad($sub_header, 15, '&nbsp;');
   $node_grant_types = array('view', 'update', 'delete');
-
-  $header = array();
-  $header[] = array( 'data'=>t('Category')); 
-  $header[] = array( 'data'=>t('View'), 'colspan'=>4);
-  $header[] = array( 'data'=>t('Update'), 'colspan'=>4);
-  $header[] = array( 'data'=>t('Delete'), 'colspan'=>4);
-  $header[] = array( 'data'=>t('Create'));
-  $header[] = array( 'data'=>t('List'));
-
-  $sub_header[] = '&nbsp;<strong>'.t('A').'</strong>';
-  $sub_header[] = '&nbsp;<strong>'.t('I').'</strong>';
-  $sub_header[] = '&nbsp;<strong>'.t('D').'</strong>';
-  $sub_header[] = '&nbsp;';
 
   $radios = array('1' => t('Allow'), '0' => t('Ignore'), '2' => t('Deny'));
 
-  $output = '<h2>'.t('Permissions for')." '".$tac_user_roles[$rid]."'</h2><p>";
-  foreach ($vids as $vid) {
-    if (is_integer($vid)) {
-      $rows = array();
-      if ($vid == 0) {
-        // Do the row for uncategorized nodes
-        $row = array();
-        $row[] = '<strong>'.t('Uncategorized nodes').'</strong>';
-        foreach ($node_grant_types as $grant) {
-          $row[] = array('data' => drupal_render($form['taxonomy_access'][0]['term'][0][$grant]), 'colspan'=>4);
-        }
-        $row[] = '&nbsp;';
-        $row[] = '&nbsp;';
-        $rows[] = $row; 
-        $output_table = theme('table', $header, $rows);
-        $output .= theme_fieldset(array('#title'=>'Uncategorized nodes', '#value'=>$output_table, '#collapsible' => TRUE, '#collapsed' => TRUE));
-      }
-      else {
-        //1st row: 'Allow all'... 'Select All'...
-        unset($row);
-        $row = array();
-        $row[] = array('data' => '<strong>'.$form['taxonomy_access'][$vid]['#title'].'</strong>');
-        foreach ($node_grant_types as $grant) {
-          $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['vocab'][$grant]), 'colspan'=>4);
-        }
-        foreach (array('create', 'list') as $grant) {
-          $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['vocab'][$grant]));
-        }
-        $rows[] = $row;
+  drupal_set_title(t('Grants for %role', array('%role' => $roles[$form['rid']['#value']])));
 
-        //2nd row: 'A' 'I' 'D'
-        $row = array();
-        $row[] = '&nbsp;';
-        foreach ($node_grant_types as $grant) {
-          $row = array_merge($row, $sub_header);
-        }
-        $row[] = array('data'=>'&nbsp;', 'colspan'=>2);
-        $rows[] = $row;
+  $rows = array();
 
-        //3rd row: Defaults
-        $row = array();
-        $row[] = '<blockquote><em>'.t('Default').'</em></blockquote>';
-        foreach (array('view', 'update', 'delete') as $grant) {
-          foreach (array_keys($radios) as $key) {
-            // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
-            $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['default'][$grant][$key]));
-          }
-          $row[] = '&nbsp;&nbsp;';
-        }
-        foreach (array('create', 'list') as $grant) {
-          $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['default'][$grant]), 'align' => 'center');
-        }
-        $rows[] = $row;
-
-        //4th row: Empty row
-        $row = array();
-        $row[] = array('data'=>'&nbsp;', 'colspan'=>15);
-        $rows[] = $row;
-
-        // Rows for each term in vocabulary
-        $terms = array();
-        $terms = taxonomy_get_tree($vid);
-
-        if ($terms) {
-          foreach ($terms as $term) {
-            $row = array();
-            $row[] = str_repeat('-',$term->depth).$term->name;
-            foreach ($node_grant_types as $grant) {
-            // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
-              foreach (array_keys($radios) as $key) {
-                $row[] = drupal_render($form['taxonomy_access'][$vid]['term'][$term->tid][$grant][$key]);
-              }
-              $row[] = '&nbsp;&nbsp;';
+  foreach (array_keys($form['vocabs']) as $vid) {
+    if (is_numeric($vid) AND isset($form['grants'][$vid])) {
+      $row = $sub_header;
+      $row[0] = array('data' => '<h3>'. check_plain($form['vocabs'][$vid]['#title']) .'</h3>', 'colspan' => 3);
+      $rows[] = $row;
+      foreach (array_keys($form['grants'][$vid]) as $tid) {
+        if (is_numeric($tid)) {
+          $select_key = $tid? 'selected_terms' : 'selected_defaults';
+          $select_id = $tid? $tid : $vid;
+          $row = array(
+            array('data' => drupal_render($form[$select_key][$select_id]), 'colspan' => 3),
+          );
+          foreach ($node_grant_types as $grant) {
+            foreach (array_keys($radios) as $key) {
+              // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
+              $row[] = array('data' => drupal_render($form['grants'][$vid][$tid][$grant][$key]));
             }
-            foreach (array('create', 'list') as $grant) {
-              $row[] = array('data' => drupal_render($form['taxonomy_access'][$vid]['term'][$term->tid][$grant]), 'align' => 'center');
-            }
-          $rows[] = $row;
+            $row[] = '&nbsp;';
           }
+          foreach (array('create', 'list') as $grant) {
+            $row[] = array('data' => drupal_render($form['grants'][$vid][$tid][$grant]));
+          }
+          $rows[] = $row; 
         }
-
-        $output_table = theme('table', $header, $rows);
-        $output .= theme_fieldset(array('#title'=>$form['taxonomy_access'][$vid]['#title'], '#value'=>$output_table, '#collapsible' => TRUE, '#collapsed' => TRUE));
-
       }
     }
   }
+  if (isset($form['new'])) {
+    $row = array(
+             array('data' => drupal_render($form['new']['item']), 'colspan' => 2), 
+             drupal_render($form['new']['add'])
+           );
+    foreach ($node_grant_types as $grant) {
+      foreach (array_keys($radios) as $key) {
+        // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
+        $row[] = array('data' => drupal_render($form['new']['grants'][$grant][$key]));
+      }
+      $row[] = '&nbsp;';
+    }
+    foreach (array('create', 'list') as $grant) {
+      $row[] = array('data' => drupal_render($form['new']['grants'][$grant]));
+    }
+    $rows[] = $row; 
+    $row = array();
+  }
+
+  $output .= theme('table', $header, $rows);
   $output .= drupal_render($form);
 
   return $output;
 }
 
-/**
- * Saves the category permissions matrix for choosen user role, after editing.
- */
-function _taxonomy_access_permissions_form_submit($form_id, $form_values) {
-  global $tac_user_roles;
-  $vids = array_keys($form_values['taxonomy_access']);
-  $rid = arg(3);
-  $grant_types = array('view', 'update', 'delete', 'create', 'list');
-  $edit = $form_values['taxonomy_access'];
-
-  foreach ($vids as $vid) {
-    if (is_numeric($vid)) {
-    // Process input data and use it to make changes to the database.
-      if (is_array($edit[$vid]['term'])) {
-        $tids = array_keys($edit[$vid]['term']);
-        foreach ($tids as $tid) {
-          // The $edit array is filled out with zeroes here to
-          // reduce code complexity when we update the term_access table.
-          if (!$edit[$vid]['term'][$tid]) {
-            foreach ($grant_types as $grant) {
-              $edit[$vid]['term'][$tid][$grant] = 0;
-            }
-          }
-          else {
-              foreach ($grant_types as $grant) {
-                if (!isset($edit[$vid][$tid][$grant])) {
-                  // Enter a '0' for any permission that has not been set or for any checkbox that has been left unchecked by the user
-                  $edit[$vid][$tid][$grant] = 0;
-                }
-                else {
-                  if ($grant == 'create' || $grant == 'list') {
-                    // For any permission checkbox checked by user, set it to a value of '1'
-                    $edit[$vid][$tid][$grant] = 1;
-                  }
-                }
-              }
-          }
-          
-          // Make the changes to the term_access table
-          taxonomy_access_grant_update($tid, $rid, $edit[$vid]['term'][$tid]);
+function taxonomy_access_admin_form_submit($form_id, $form_values) {
+  switch($form_values['op']) {
+  case t('Delete selected'):
+    if (is_array($form_values['selected_terms'])) {
+      foreach($form_values['selected_terms'] as $tid => $enabled) {
+        if ($enabled) {
+          // issue #167977 - klance
+          $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
+          db_query('DELETE FROM {term_access} WHERE rid = %d AND tid = %d', $form_values['rid'], $tid);
+          // issue #167977 - klance
+          _taxonomy_access_node_access_update($affected_nodes);
         }
       }
+    }
+    if (is_array($form_values['selected_defaults'])) {
+      foreach($form_values['selected_defaults'] as $vid => $enabled) {
+        if ($enabled) {
+          // issue #167977 - klance
+          $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $form_values['rid']);
+          db_query('DELETE FROM {term_access_defaults} WHERE rid = %d AND vid = %d', $form_values['rid'], $vid);
+          // issue #167977 - klance
+          _taxonomy_access_node_access_update($affected_nodes);
+        }
+      }
+    }
+    // issue #167977 - klance
+    //node_access_rebuild();
+    break;
+  case t('Add'):
+    $new = $form_values['new'];
+    list($type, $id) = explode(' ', $new['item']);
+    if ($type == 'term') {
+      taxonomy_access_grant_update($id, $form_values['rid'], $new['grants']);
+    } elseif ($type == 'default') {
+      taxonomy_access_defaults_update($id, $form_values['rid'], $new['grants']);
+    }
+    // issue #167977 - klance
+    //node_access_rebuild();
+    break;
+  case t('Save all'):
+    foreach($form_values['grants'] as $vid => $rows) {
+      foreach($rows as $tid => $grants) {
+        if ($tid == 0) {
+          taxonomy_access_defaults_update($vid, $form_values['rid'], $grants);
+        } else {
+          taxonomy_access_grant_update($tid, $form_values['rid'], $grants);
+        }
+      }
+    }
+    // issue #167977 - klance
+    //node_access_rebuild();
+    drupal_goto('admin/user/taxonomy_access');
+  }
+}
 
-    // Now to the same for vocabularies
-      if ($vid !=0) {
-        // The $edit array is filled out with zeroes here to
-        // reduce code complexity when we update the term_access table.
-        $changed = false;
-        if (!array_key_exists($vid, $edit)) {
-          foreach ($grant_types as $grant) {
-            $edit[$vid]['vocab'][$grant] = 0;
-          }
+/**
+ * Updates permissions for a role for a term
+ * @param $tid
+ *   The term to add the permission for.
+ * @param $rid
+ *   The role id to add the permission for.
+ * @param $grants
+ *   A hash of the grants in the form of $grants['perm'] = boolean
+ *   A value of 1 will grant the permission for this user and term.
+**/
+function taxonomy_access_grant_update($tid, $rid = null, $grants = null) {
+  if (!isset($tid) OR !is_numeric($rid)) {
+    return FALSE;
+  }
+  
+  $ta_sql = "INSERT INTO {term_access} (tid";
+  $ta_sql_values = " VALUES ($tid";
+  if (isset($rid)) {
+    $ta_sql .= ",rid";
+    $ta_sql_values .= ",$rid";
+  }
+  $sql = "";
+  if (isset($grants)) {
+    foreach ($grants as $perm => $value) {
+      $sql .= ",grant_$perm";
+      $ta_sql_values .= is_array($value) ? ",".$value[0] : ",$value";
+    }
+    $sql .= ")";
+    $ta_sql_values .= ")";
+  }
+  else {
+    $sql .= ")";
+    $ta_sql_values .= ")";
+  }
+  $ta_sql .= $sql . $ta_sql_values;
+  
+  // issue #167977 - klance
+  $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
+  db_query("DELETE FROM {term_access} WHERE tid=%d AND rid=%d", $tid, ($rid));
+  db_query($ta_sql);  // insert into term_access
+  // issue #167977 - klance
+  _taxonomy_access_node_access_update($affected_nodes);
+}
+
+/**
+ * Updates default permissions for a role for a vocabulary
+ * @param $vid
+ *   The vocab to add the permission for.
+ * @param $rid
+ *   The role id to add the permission to.
+ * @param $grants
+ *   A hash of the grants in the form of $grants['perm'] = boolean
+ *   A value of 1 will grant the permission for this user and term.
+**/
+function taxonomy_access_defaults_update($vid, $rid = null, $grants = null) {
+  if (!isset($vid) OR !is_numeric($rid)) {
+    return FALSE;
+  }
+  
+  $ta_sql = "INSERT INTO {term_access_defaults} (vid";
+  $ta_sql_values = " VALUES ($vid";
+  if (isset($rid)) {
+    $ta_sql .= ",rid";
+    $ta_sql_values .= ",$rid";
+  }
+  $sql = "";
+  if (isset($grants)) {
+    foreach ($grants as $perm => $value) {
+      $sql .= ",grant_$perm";
+      $ta_sql_values .= ",$value";
+    }
+    $sql .= ")";
+    $ta_sql_values .= ")";
+  }
+  else {
+    $sql .= ")";
+    $ta_sql_values .= ")";
+  }
+  $ta_sql .= $sql . $ta_sql_values;
+
+  // issue #167977 - klance
+  $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $rid);
+  db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vid, $rid);
+  db_query($ta_sql);  // insert into term_access_defaults
+  // issue #167977 - klance
+  _taxonomy_access_node_access_update($affected_nodes);
+}
+
+/**
+ * Gets permissions for a given role
+ * @param $rid
+ *   The role id to retrieve the permissions for.
+ * @return
+ *   A two dimensional hash of the form $grants[tid][grant] where
+ *   tid is the term id and
+ *   grant is the permission (i.e. 'view','delete',ect.)
+ *   this entry in the hash is true if permission is granted, false otherwise
+**/
+function taxonomy_access_get_grants($rid) {
+  if (!isset($rid)) {
+    return false;
+  }
+  if (isset($rid) && !is_numeric($rid)) {
+    $rid = db_result(db_query("SELECT rid FROM {role} WHERE name='$rid'"));
+  }
+  $result = db_query("SELECT * FROM {term_access} WHERE rid='$rid'");
+  $grants = array();
+  while ($grant = db_fetch_array($result)) {
+    $tid = $grant['tid'];
+    foreach ($grant as $key => $grant_val) {
+      if (strpos($key,'grant_') !== FALSE) {
+        $grant_name = '';
+        $grant_name = str_replace('grant_', '', $key);
+        if (!isset($grants[$tid][$grant_name]) || !($grants[$tid][$grant_name])) {
+          // If there's conflicting DB rules, take the most lenient
+          $grants[$tid][$grant_name] = $grant_val;
         }
-        else {
-          foreach ($grant_types as $grant) {
-            if (($edit[$vid]['vocab'][$grant] === NULL) || !in_array($edit[$vid]['vocab'][$grant], array( 0, 1, 2))) {
-              $edit[$vid]['vocab'][$grant] = 3;
-            }
-            else {
-              $changed = true;
-            }
-            // Enter a '0' for any permission that has been left unchecked by the user
-            // For any permission checked by user, set it to a value of '1'
-            if ($grant == 'create' || $grant == 'list') {
-              $edit[$vid]['default'][$grant] = $edit[$vid]['default'][$grant] ? 1 : 0;
-            }
-            else {
-              $edit[$vid]['default'][$grant] = $edit[$vid]['default'][$grant][0];
-            }
-          }
-        }
-        // Make the changes to the term_access table
-        if ($changed) {
-          taxonomy_access_grant_vocab_update($vid, $rid, $edit);
-        }
-        // set the defaults
-        taxonomy_access_defaults_update($vid,$rid,$edit[$vid]['default']);
       }
     }
   }
+  return $grants;
+}
+/**
+ * Gets default permissions for a given role
+ * @param $rid
+ *   The role id to retrieve the permissions for.
+ * @return
+ *   A two dimensional hash of the form $grants[vid][grant] where
+ *   vid is the vocab id and
+ *   grant is the permission (i.e. 'view','delete',ect.)
+ *   this entry in the hash is true if permission is granted, false otherwise
+**/
+function taxonomy_access_get_default_grants($rid) {
+  if (!is_numeric($rid)) {
+    return false;
+  }
+  $result = db_query("SELECT * FROM {term_access_defaults} WHERE rid=%d", $rid);
+  $grants = array();
+  while ($grant = db_fetch_array($result)) {
+    $vid = $grant['vid'];
+    foreach ($grant as $key => $grant_val) {
+      if (strpos($key, 'grant_') !== FALSE) {
+        $grant_name = '';
+        $grant_name = str_replace('grant_','',$key);
+        if (!isset($grants[$vid][$grant_name]) || !($grants[$vid][$grant_name])) {
+          // If there's conflicting DB rules, take the most lenient
+          $grants[$vid][$grant_name] = $grant_val;
+        }
+      }
+    }
+  }
+  return $grants;
+}
 
-  // Force to rebuild the node_access table according changes made to term_access table
+/*
+ * Issue #167977 - klance
+ * Gets node ids associated with a given term
+ * @param $tid
+ *    The term id for which to retrieve associated nodes
+ * @return $nid
+ *    An array of node ids associated with the given term
+ */
+function _taxonomy_access_get_nodes_for_term($tid) {
+  $nid = array();
+  $result = db_query("SELECT nid FROM {term_node} WHERE tid = '$tid'");
+  
+  while($node = db_fetch_object($result)) {
+    $nid[] = $node->nid;
+  }
+  return $nid;
+}
 
-  //Todo: 1. Possibly optimizing when values changes for only one user role (permission matrix submit)
-  //         _refresh_node_access_table($rid);
-  //      2. Run this when changes were made to 'View/Update/Delete' permissions
-  node_access_rebuild();
+/*
+ * Issue #167977 - klance
+ * Gets node ids associated with a given vocabulary
+ * @param $vid
+ *    The vocabulary id for which to retrieve associated term ids
+ * @params $rid
+ *    The role id for which to retrieve associated term ids
+ * @return $nid
+ *    An array of node ids associated with the given term
+ */
+function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
+  $nid = array();
+  $query = "SELECT n.nid FROM {term_node} n
+    LEFT JOIN {term_data} d ON n.tid = d.tid
+    LEFT JOIN {term_access} a ON n.tid = a.tid
+    WHERE d.vid = '$vid'";
+  if(!is_null($rid)) {
+    $query .= " AND a.rid = '$rid'";
+  }
+  $result = db_query($query);
+  
+  while($node = db_fetch_object($result)) {
+    $nid[] = $node->nid;
+  }
+  return $nid;
+}
 
-  // redirect to main category permissions menu
-  //  $roles = user_roles();
-  drupal_set_message(t("Your permission settings for '%role' role have been saved.", array('%role' => $tac_user_roles[$rid])), 'status');
-  drupal_goto('admin/user/taxonomy_access');
+/*
+ * Issue #167977 - klance
+ * Gets node ids associated with the given role
+ * @param $rid
+ *    The role id for which to retrieve term ids that are
+ *    access-controlled for this role
+ * @return $nid
+ *    An array of node ids associated with the given term
+ */
+function _taxonomy_access_get_nodes_for_role($rid) {
+  $nid = array();
+  $result = db_query("
+    SELECT n.nid FROM {term_node} n LEFT JOIN {term_access} a ON n.tid = a.tid WHERE a.rid = '$rid'
+  ");
+  
+  while($node = db_fetch_object($result)) {
+    $nid[] = $node->nid;
+  }
+  return $nid;
+}
 
-  return;
+/*
+ * Issue #167977
+ * Gets node ids associated with the given term
+ * @return $nid
+ *    An array of node ids for which to acquire access permissions
+ */
+function _taxonomy_access_node_access_update($nid) {
+  foreach($nid as $node) {
+    $loaded_node = node_load($node, NULL, TRUE);
+    if (!empty($loaded_node)) {
+      node_access_acquire_grants($loaded_node);
+    }
+  }
+  return TRUE;
 }

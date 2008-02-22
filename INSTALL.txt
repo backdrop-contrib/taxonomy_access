@@ -3,6 +3,9 @@ TO INSTALL, simply install and enable the module, in these steps.
 PLEASE CHECK, that you use the right version of Taxonomy Access for DRUPAL.
   (For 4.7.x, use taxonomy_access-4.7.0.tar.gz)
 
+IMPORTANT: This is a complicated module. When you try to learn using this module,
+  ALWAYS TRY IT FIRST ON A TEST SITE.
+
 NOTE: If you want to USE TWO OR MORE "ACCESS" MODULE AT THE SAME TIME, TEST IT 
       CAREFULLY. (e.g: OG, node_privacy_by_role, taxonomy access, etc.)
      (This has been made easier with the new node_access system in 5.x.)
@@ -16,33 +19,18 @@ INSTALLATION:
 -----------------------
 
 1) COPY all files in the taxonomy_access directory to your drupal installation's
-   module directory (/sites/all/taxonomy_access/)
+   module directory (by default: /sites/all/modules/taxonomy_access/)
 
 2) ENABLE THE MODULE on page: "Administer >> Site building >> Modules"
 
 3) CONFIGURE OPTIONS FOR TAXONOMY ACCESS: Go to page:
-   "Administer >> Site configuration >> Taxonomy Access settings".
+   "Administer >> Site configuration >> Taxonomy Access: Settings".
 
 4) SET PERMISSION 'Administer Access Controll' FOR ADMINISTRATORS on page: 
    "Administer >> User Management >> Access Control".
 
 5) CONFIGURE ACCESS PERMISSIONS to the various categories from 
-   "Administer >> User Management >> Taxonomy Access permissions".
+   "Administer >> User Management >> Taxonomy Access: Permissions".
 
 NOTE: DATABASE TABLES are automatically added to database. Module creates two 
       tables in database: 'term_access' and 'term_access_defaults'.
-
------------------------
-TROUBLESHOOTING:
------------------------
-
-In case of: 
-- You have any troubles with node access 
-    (users can view/edit pages, they do not have permission),
-- Or for general database housekeeping of tables 'node_access'
-    (also 'term_access' and 'term_access_defaults'): 
-
-Do the following:
-- First 'Disable', then 'Re-enable' the 'Taxonomy Access Module' on page: 
-    "Administer >> Site building >> Modules".
-  This will force the complete rebuild of the 'node_access' table.

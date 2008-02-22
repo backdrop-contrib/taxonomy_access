@@ -15,7 +15,7 @@ function taxonomy_access_update_2() {
   switch ($GLOBALS['db_type']) {
     case 'pgsql':
       // Checking if column 'grant_list' exists
-      if (db_result(db_query("SELECT a.attname FROM pg_attribute a LEFT JOIN pg_class c ON c.oid = a.attrelid WHERE c.relname = 'term_access' AND a.attname = 'grant_list'"))) {
+      if (db_result(db_query("SELECT a.attname FROM {pg_attribute} a LEFT JOIN {pg_class} c ON c.oid = a.attrelid WHERE c.relname = 'term_access' AND a.attname = 'grant_list'"))) {
         drupal_set_message(t("Taxonomy Access - Update #2: No queries executed. Field 'grant_list' already exists in tables 'term_access'."), 'error');
         $ret = array();
       }
@@ -62,6 +62,17 @@ function taxonomy_access_update_4() {
   return array();
 }
 
+// Update#5: Move global default records from term_access to term_access defaults
+function taxonomy_access_update_5() {
+  $result = db_query('SELECT rid, grant_view, grant_update, grant_delete, grant_create, grant_list FROM {term_access} WHERE tid=0');
+  while ($row = db_fetch_array($result)) {
+    if ($row['rid'] > 0) { // just in case we have a weird row with 0, 0
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, %d, %d, %d, %d, %d, %d)', $row);
+    } 
+  }
+  db_query('DELETE FROM {term_access} WHERE tid=0');
+  return array();
+}
 /**
  * Implementation of hook_install.
  * Adding tables to database: 'term_access', 'term_access_defaults'
@@ -110,7 +121,12 @@ function taxonomy_access_install() {
 
       // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
       db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
+      
+      // default global perms for roles 1 and 2
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 1, 1)');
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 1, 1)');
 
+      
       $success = TRUE; 
       break;
 
@@ -141,6 +157,10 @@ function taxonomy_access_install() {
 
       // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
       db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
+
+      // default global perms for roles 1 and 2
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 1, 1)');
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 1, 1)');
 
       $success = TRUE; 
       break;
