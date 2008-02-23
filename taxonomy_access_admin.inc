@@ -60,7 +60,8 @@ function theme_taxonomy_access_admin() {
         $ops[] = l(t("disable"), "admin/user/taxonomy_access/delete/$rid");
       }
       $ops[] = l(t("edit"), "admin/user/taxonomy_access/edit/$rid");
-    } else {
+    }
+    else {
       $ops = array(l(t("enable"), "admin/user/taxonomy_access/edit/$rid"));
     }
     $rows[] = array($name, array('data' => implode(' | ', $ops), 'align' => 'right'));
@@ -118,7 +119,7 @@ function taxonomy_access_admin_build_row($grants = NULL) {
  */
 function taxonomy_access_admin_form($rid) {
   // Fetch all default grants
-  $result = db_query('SELECT * FROM {term_access_defaults} WHERE rid=%d', $rid);
+  $result = db_query('SELECT * FROM {term_access_defaults} WHERE rid = %d', $rid);
   while ($row = db_fetch_array($result)) {
     $default_grants[$row['vid']] = $row;
   }
@@ -151,8 +152,9 @@ function taxonomy_access_admin_form($rid) {
          '#title' => '<em>default<em>',
       );
     }
-    else $add_items[$vocabulary->name]["default $vid"] = '*default*';
-
+    else {
+      $add_items[$vocabulary->name]["default $vid"] = '*default*';
+    }
 
     if ($tree = taxonomy_get_tree($vid)) {
       foreach ($tree as $term) {
@@ -202,10 +204,10 @@ function taxonomy_access_admin_form($rid) {
 function theme_taxonomy_access_admin_form($form) {
   $roles = _user_roles();
   $header = array(
-    array( 'data' => t('Category'), 'colspan'=> 3),
-    array( 'data' => t('View'), 'colspan'=> 4),
-    array( 'data' => t('Update'), 'colspan'=> 4),
-    array( 'data' => t('Delete'), 'colspan'=> 4),
+    array( 'data' => t('Category'), 'colspan' => 3),
+    array( 'data' => t('View'), 'colspan' => 4),
+    array( 'data' => t('Update'), 'colspan' => 4),
+    array( 'data' => t('Delete'), 'colspan' => 4),
     array( 'data' => t('Create')),
     array( 'data' => t('List')),
   );
@@ -351,13 +353,13 @@ function taxonomy_access_grant_update($tid, $rid = null, $grants = null) {
   $ta_sql_values = " VALUES ($tid";
   if (isset($rid)) {
     $ta_sql .= ",rid";
-    $ta_sql_values .= ",$rid";
+    $ta_sql_values .= ", $rid";
   }
   $sql = "";
   if (isset($grants)) {
     foreach ($grants as $perm => $value) {
       $sql .= ",grant_$perm";
-      $ta_sql_values .= is_array($value) ? ",".$value[0] : ",$value";
+      $ta_sql_values .= is_array($value) ? ",". $value[0] : ",$value";
     }
     $sql .= ")";
     $ta_sql_values .= ")";
@@ -435,14 +437,14 @@ function taxonomy_access_get_grants($rid) {
     return false;
   }
   if (isset($rid) && !is_numeric($rid)) {
-    $rid = db_result(db_query("SELECT rid FROM {role} WHERE name='$rid'"));
+    $rid = db_result(db_query("SELECT rid FROM {role} WHERE name='%s'", $rid));
   }
-  $result = db_query("SELECT * FROM {term_access} WHERE rid='$rid'");
+  $result = db_query("SELECT * FROM {term_access} WHERE rid=%d", $rid);
   $grants = array();
   while ($grant = db_fetch_array($result)) {
     $tid = $grant['tid'];
     foreach ($grant as $key => $grant_val) {
-      if (strpos($key,'grant_') !== FALSE) {
+      if (strpos($key, 'grant_') !== FALSE) {
         $grant_name = '';
         $grant_name = str_replace('grant_', '', $key);
         if (!isset($grants[$tid][$grant_name]) || !($grants[$tid][$grant_name])) {
