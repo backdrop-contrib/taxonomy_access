@@ -108,7 +108,7 @@ function taxonomy_access_admin_build_row($grants = NULL) {
   foreach (array('create', 'list') as $grant) {
     $form[$grant] = array(
       '#type' => 'checkbox', 
-      '#default_value' => is_string($grants['grant_'.$grant]) ? $grants['grant_'.$grant] : '0',
+      '#default_value' => is_string($grants['grant_'. $grant]) ? $grants['grant_'.$grant] : '0',
      );
   }
   return $form;
@@ -162,11 +162,11 @@ function taxonomy_access_admin_form($rid) {
           $form['grants'][$vid][$term->tid] = taxonomy_access_admin_build_row($grants[$term->tid]);
           $form['selected_terms'][$term->tid] = array(
              '#type' => 'checkbox',
-             '#title' => str_repeat('&nbsp;&nbsp;', $term->depth). check_plain($term->name),
+             '#title' => str_repeat('&nbsp;&nbsp;', $term->depth) . check_plain($term->name),
           );
         }
         else {
-          $add_items[$vocabulary->name]["term $term->tid"] = str_repeat('-', $term->depth). check_plain($term->name);
+          $add_items[$vocabulary->name]["term $term->tid"] = str_repeat('-', $term->depth) . check_plain($term->name);
         }
       }
     }
@@ -312,7 +312,8 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
     list($type, $id) = explode(' ', $new['item']);
     if ($type == 'term') {
       taxonomy_access_grant_update($id, $form_values['rid'], $new['grants']);
-    } elseif ($type == 'default') {
+    }
+    elseif ($type == 'default') {
       taxonomy_access_defaults_update($id, $form_values['rid'], $new['grants']);
     }
     // issue #167977 - klance
@@ -323,7 +324,8 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
       foreach($rows as $tid => $grants) {
         if ($tid == 0) {
           taxonomy_access_defaults_update($vid, $form_values['rid'], $grants);
-        } else {
+        }
+        else {
           taxonomy_access_grant_update($tid, $form_values['rid'], $grants);
         }
       }
@@ -353,7 +355,7 @@ function taxonomy_access_grant_update($tid, $rid = null, $grants = null) {
   $ta_sql_values = " VALUES ($tid";
   if (isset($rid)) {
     $ta_sql .= ",rid";
-    $ta_sql_values .= ", $rid";
+    $ta_sql_values .= ",$rid";
   }
   $sql = "";
   if (isset($grants)) {
@@ -477,7 +479,7 @@ function taxonomy_access_get_default_grants($rid) {
     foreach ($grant as $key => $grant_val) {
       if (strpos($key, 'grant_') !== FALSE) {
         $grant_name = '';
-        $grant_name = str_replace('grant_','',$key);
+        $grant_name = str_replace('grant_','', $key);
         if (!isset($grants[$vid][$grant_name]) || !($grants[$vid][$grant_name])) {
           // If there's conflicting DB rules, take the most lenient
           $grants[$vid][$grant_name] = $grant_val;

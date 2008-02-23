@@ -226,7 +226,6 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
   }
 }
 
-
 /**
  * Implementation of hook_taxonomy
  * Hook_taxonomy is called when changes are made to the taxonomy structure
@@ -237,7 +236,7 @@ function taxonomy_access_taxonomy($op, $type, $array = NULL) {
       case 'delete': // delete everything from term_access and node_access
         // issue #167977 - klance
         $affected_nodes = _taxonomy_access_get_nodes_for_term($array['tid']);
-        db_query('DELETE FROM {term_access} WHERE tid = %d',$array['tid']);
+        db_query('DELETE FROM {term_access} WHERE tid = %d', $array['tid']);
         // issue #167977 - klance
         _taxonomy_access_node_access_update($affected_nodes);
         //node_access_rebuild();
@@ -249,7 +248,7 @@ function taxonomy_access_taxonomy($op, $type, $array = NULL) {
       case 'delete': // delete vocabulary from table 'term_access_defaults'
         // issue #167977 - klance
         $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($array['vid'], NULL);
-        db_query('DELETE FROM {term_access_defaults} WHERE vid = %d',$array['vid']);
+        db_query('DELETE FROM {term_access_defaults} WHERE vid = %d', $array['vid']);
         // issue #167977 - klance
         _taxonomy_access_node_access_update($affected_nodes);
         // TODO: need rebuild here? can we avoid multiple rebuilds on large vocab delete?
@@ -276,11 +275,11 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
   if (!user_access('administer taxonomy') && ($field =='vid' || $field =='tid')) {
     global $user;
     $op = (arg(0) == 'node' && (arg(1) == 'add' || arg(2) == 'edit')) ? 'create' : 'list';
-    
+
     // let's cache
     static $taxonomy_access_sql_clause;
     $clause = array();
-    
+
     if (!isset($taxonomy_access_sql_clause)) {
       $taxonomy_access_sql_clause = array();
     }
@@ -296,7 +295,7 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
                       INNER JOIN {term_access_defaults} tdg ON tdg.vid=0
                       LEFT JOIN {term_access_defaults} td ON td.vid=t.vid AND td.rid=tdg.rid
                       LEFT JOIN {term_access} ta ON ta.tid=t.tid AND ta.rid=tdg.rid
-                      WHERE tdg.rid IN ('. implode(',',$rids) .")
+                      WHERE tdg.rid IN ('. implode(',', $rids) .")
                       GROUP BY t.tid, t.vid HAVING BIT_OR(COALESCE(ta.grant_$op, td.grant_$op, tdg.grant_$op)) > 0");
                       // issue #172675 - Ddaffyd
                       // GROUP BY t.tid HAVING BIT_OR(COALESCE(ta.grant_$op, td.grant_$op, tdg.grant_$op))");
