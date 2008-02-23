@@ -67,28 +67,6 @@ function taxonomy_access_enable() {
 }
 
 /**
- * Implementation of hook_disable().
- *
- * Need to force a rebuild of the node access table when TAC is disabled
- * to ensure that its entries are removed from the table.
- */
-function taxonomy_access_disable() {
-  taxonomy_access_disabling(TRUE);
-}
-
-/**
- * Simple function to make sure we don't respond with grants when disabling
- * ourselves.
- */
-function taxonomy_access_disabling($set = NULL) {
-  static $disabling = false;
-  if ($set !== NULL) {
-    $disabling = $set;
-  }
-  return $disabling;
-} 
-
-/**
  * Implementation of hook_node_grants()
  * Gives access to taxonomies based on the taxonomy_access table
  */
@@ -101,10 +79,6 @@ function taxonomy_access_node_grants($user, $op) {
  * TODO: change query to behave properly when no term or vocab record is present
  */
 function taxonomy_access_node_access_records($node) {
-  if (taxonomy_access_disabling() || !isset($node->nid)) {
-    return;
-  }
-
   $grants = array();
 
   if (is_array($node->taxonomy) AND count($node->taxonomy)) {
