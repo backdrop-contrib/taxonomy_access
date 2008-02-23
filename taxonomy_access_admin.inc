@@ -108,7 +108,7 @@ function taxonomy_access_admin_build_row($grants = NULL) {
   foreach (array('create', 'list') as $grant) {
     $form[$grant] = array(
       '#type' => 'checkbox', 
-      '#default_value' => is_string($grants['grant_'. $grant]) ? $grants['grant_'.$grant] : '0',
+      '#default_value' => is_string($grants['grant_'. $grant]) ? $grants['grant_'. $grant] : '0',
      );
   }
   return $form;
@@ -117,7 +117,7 @@ function taxonomy_access_admin_build_row($grants = NULL) {
 /**
  * Form for managing grants by role.
  */
-function taxonomy_access_admin_form($rid) {
+function taxonomy_access_admin_form($form_state, $rid = NULL) {
   // Fetch all default grants
   $result = db_query('SELECT * FROM {term_access_defaults} WHERE rid = %d', $rid);
   while ($row = db_fetch_array($result)) {
@@ -279,8 +279,10 @@ function theme_taxonomy_access_admin_form($form) {
   return $output;
 }
 
-function taxonomy_access_admin_form_submit($form_id, $form_values) {
-  switch($form_values['op']) {
+function taxonomy_access_admin_form_submit($form, &$form_state) {
+  $values = $form_state['values'];
+
+  switch ($values['op']) {
   case t('Delete selected'):
     if (is_array($form_values['selected_terms'])) {
       foreach($form_values['selected_terms'] as $tid => $enabled) {
@@ -308,25 +310,25 @@ function taxonomy_access_admin_form_submit($form_id, $form_values) {
     //node_access_rebuild();
     break;
   case t('Add'):
-    $new = $form_values['new'];
+    $new = $values['new'];
     list($type, $id) = explode(' ', $new['item']);
     if ($type == 'term') {
-      taxonomy_access_grant_update($id, $form_values['rid'], $new['grants']);
+      taxonomy_access_grant_update($id, $values['rid'], $new['grants']);
     }
     elseif ($type == 'default') {
-      taxonomy_access_defaults_update($id, $form_values['rid'], $new['grants']);
+      taxonomy_access_defaults_update($id, $values['rid'], $new['grants']);
     }
     // issue #167977 - klance
     //node_access_rebuild();
     break;
   case t('Save all'):
-    foreach($form_values['grants'] as $vid => $rows) {
-      foreach($rows as $tid => $grants) {
+    foreach ($values['grants'] as $vid => $rows) {
+      foreach ($rows as $tid => $grants) {
         if ($tid == 0) {
-          taxonomy_access_defaults_update($vid, $form_values['rid'], $grants);
+          taxonomy_access_defaults_update($vid, $values['rid'], $grants);
         }
         else {
-          taxonomy_access_grant_update($tid, $form_values['rid'], $grants);
+          taxonomy_access_grant_update($tid, $values['rid'], $grants);
         }
       }
     }
@@ -479,7 +481,7 @@ function taxonomy_access_get_default_grants($rid) {
     foreach ($grant as $key => $grant_val) {
       if (strpos($key, 'grant_') !== FALSE) {
         $grant_name = '';
-        $grant_name = str_replace('grant_','', $key);
+        $grant_name = str_replace('grant_', '', $key);
         if (!isset($grants[$vid][$grant_name]) || !($grants[$vid][$grant_name])) {
           // If there's conflicting DB rules, take the most lenient
           $grants[$vid][$grant_name] = $grant_val;

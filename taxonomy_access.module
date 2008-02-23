@@ -11,8 +11,8 @@
 /**
  * Implementation of hook_help
  */
-function taxonomy_access_help($section) {
-  switch ($section) {
+function taxonomy_access_help($path, $arg) {
+  switch ($path) {
     case 'admin/help#taxonomy_access':
       $message = '<p>'. t('The Taxonomy Access Control module allows users to specify how each category can be used by various roles.') .'</p>';
       $message .= '<p>'. t('Permissions can be set differently to each USER ROLES. Be aware that setting Taxonony Access permissions works ONLY WITHIN ONE USER ROLE. <br /><em>(For users with multiple user roles, see section "GOOD TO KNOW" below.)</em>') .'</p>';
@@ -37,7 +37,7 @@ function taxonomy_access_help($section) {
       
       // TODO: update help
     /*    default:
-      if (strpos($section,'admin/user/taxonomy_access') === 0) {
+      if (strpos($path,'admin/user/taxonomy_access') === 0) {
         $rid = arg(3);
         if (isset($tac_user_roles[$rid]) && $tac_user_roles[$rid]) {
           $output = t('<p><strong>Vocabulary Settings:</strong> Each vocabulary displays a list of the terms within it, each with five types of permission: <em>View, Update, Delete, Create</em> and <em>List</em>.</p><p>For a detailed description of these permissions and how to use them, see <a href="@taxonomy_access_help">Taxonomy Access Control help</a>. If you are new to Taxonomy Access Control, it is very important that you read the help page.</p>', array('@taxonomy_access_help' => url('admin/help/taxonomy_access')));
@@ -64,7 +64,6 @@ function taxonomy_access_enable() {
   db_query('DELETE tad FROM {term_access_defaults} tad LEFT JOIN {vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND ISNULL(v.vid)');
   db_query('DELETE ta FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE ISNULL(r.rid)');
   db_query('DELETE tad FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE ISNULL(r.rid)');
-  node_access_rebuild();
 }
 
 /**
@@ -75,7 +74,6 @@ function taxonomy_access_enable() {
  */
 function taxonomy_access_disable() {
   taxonomy_access_disabling(TRUE);
-  node_access_rebuild();
 }
 
 /**
@@ -148,38 +146,52 @@ function taxonomy_access_node_access_records($node) {
 }
 
 /**
+ * Implementation of hook_init
+ */
+function taxonomy_access_init() {
+  if (arg(0) == 'admin' AND ((arg(1) == 'user' AND arg(2) == 'taxonomy_access') OR (arg(1) == 'content' AND arg(2) == 'taxonomy'))) {
+    // Only include administrative callbacks and css if we are viewing an admin page.
+    $path = drupal_get_path('module', 'taxonomy_access');
+    include_once($path .'/taxonomy_access_admin.inc');
+    drupal_add_css($path .'/admin.css');
+  }
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function taxonomy_access_theme() {
+  return array(
+    'taxonomy_access_admin_form' => array(
+      'arguments' => array('form' => NULL),
+    ),
+  );
+}
+
+/**
  * Implementation of hook_menu
  */
-function taxonomy_access_menu($may_cache) {
+function taxonomy_access_menu() {
   $items = array();
 
-  if ($may_cache) {
-    $items[] = array(
-        'path' => 'admin/user/taxonomy_access',
-        'title' => t('Taxonomy access permissions'),
-        'description' => t('Taxonomy-based access control for content'),
-        'callback' => 'taxonomy_access_admin',
-        'access' => user_access('administer access control'),
-      );
-    $items[] = array(
-        'path' => 'admin/user/taxonomy_access/delete',
-        'type' => MENU_CALLBACK,
-        'callback' => 'drupal_get_form',
-        'callback arguments' => array('taxonomy_access_admin_delete_role'),
-      );
-    $items[] = array(
-        'path' => 'admin/user/taxonomy_access/edit',
-        'type' => MENU_CALLBACK,
-        'callback' => 'drupal_get_form',
-        'callback arguments' => array('taxonomy_access_admin_form'),
-      );
-  }
-  // Only include administrative callbacks and css if we are viewing an admin page.
-  else if (arg(0) == 'admin' AND ((arg(1) == 'user' AND arg(2) == 'taxonomy_access') OR (arg(1) == 'content' AND arg(2) == 'taxonomy'))) {
-    $path = drupal_get_path('module', 'taxonomy_access');
-    include_once($path . '/taxonomy_access_admin.inc');
-    drupal_add_css($path . '/admin.css');
-  }
+  $items['admin/user/taxonomy_access'] = array(
+      'title' => t('Taxonomy access permissions'),
+      'description' => t('Taxonomy-based access control for content'),
+      'page callback' => 'taxonomy_access_admin',
+      'access arguments' => array('administer access control'),
+    );
+  $items['admin/user/taxonomy_access/delete'] = array(
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('taxonomy_access_admin_delete_role'),
+      'access arguments' => array('administer access control'),
+    );
+  $items['admin/user/taxonomy_access/edit'] = array(
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('taxonomy_access_admin_form'),
+      'access arguments' => array('administer access control'),
+    );
 
   return $items;
 }
@@ -187,13 +199,13 @@ function taxonomy_access_menu($may_cache) {
 /**
  * Implementation of hook_form_alter()
  */
-function taxonomy_access_form_alter($form_id, &$form) {
+function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
   //TODO: Move control of "create" op here
   //TODO: look at feasability to eliminate _restore_terms and _preserve_terms by simply setting the '#access' attribute for those terms
   if ($form['#id'] == 'node-form' && is_numeric($form['nid']['#value'])) { 
     $form['tac_protected_terms'] = array(
       '#type' => 'value',
-      '#value' => taxonomy_access_preserve_terms($form['nid']['#value'])
+      '#value' => taxonomy_access_preserve_terms($form['#node'])
     );
   }
 }
@@ -203,7 +215,7 @@ function taxonomy_access_form_alter($form_id, &$form) {
  */
 function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
   switch ($op) {
-    case 'submit':
+    case 'presave':
       // When TAC grants 'update' access to edit node,
       // Changing $node->uid back to original creator (changed by node_submit)
       // TODO: do we still need this? (with node_revisions table etc)
@@ -246,6 +258,7 @@ function taxonomy_access_taxonomy($op, $type, $array = NULL) {
   if ($type == 'vocabulary') {
     switch ($op) {
       case 'delete': // delete vocabulary from table 'term_access_defaults'
+
         // issue #167977 - klance
         $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($array['vid'], NULL);
         db_query('DELETE FROM {term_access_defaults} WHERE vid = %d', $array['vid']);
@@ -336,7 +349,8 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
  * Called by hook_form_alter()
  */  
  // TODO: should be possible to replace this with #access per term-field
-function taxonomy_access_preserve_terms($nid = FALSE) {
+function taxonomy_access_preserve_terms($node) {
+  $nid = $node->nid;
 
   // prepare/cache return value
   static $tids = array();
@@ -353,7 +367,7 @@ function taxonomy_access_preserve_terms($nid = FALSE) {
   
   // get a list of terms this user has access to/over
   // (invokes hook_db_rewrite_sql() to limit access)
-  $user_terms = taxonomy_node_get_terms($nid);
+  $user_terms = taxonomy_node_get_terms($node);
 
   // get a list of all terms this node is in regardless of user's
   // access settings. Don't use db_rewrite_sql() api call here (or
@@ -383,7 +397,7 @@ function taxonomy_access_restore_terms($nid, $protected_terms) {
   if (isset($protected_terms)) {
     $terms = $protected_terms;
     if (count($terms)) {
-      db_query('DELETE FROM {term_node} WHERE nid = %d AND tid IN ('. implode(',', $terms). ')', $nid);
+      db_query('DELETE FROM {term_node} WHERE nid = %d AND tid IN ('. implode(',', $terms) .')', $nid);
       foreach ($terms as $tid) {
         $replace_terms[] = '('. $nid .','. $tid .')';
       }
