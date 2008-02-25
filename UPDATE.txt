@@ -30,6 +30,16 @@ UPDATING
     (In versions before 5.x permission was 'Administer users')
 
 -----------------------
+UPDATING FROM VERSION 5.1 OR PREVIOUS
+-----------------------
+
+If one upgrades an existing site using an older version (5.1 or before) of TAC, then no 
+performance gains will be made until the admin goes through each role and "rebuilds" 
+the permissions settings for each role from scratch (i.e. disable TAC for that role, 
+then set it up again with just the categories and terms to apply TAC settings to).
+
+
+-----------------------
 TAXONOMY ACCESS UPDATES
 -----------------------
 
