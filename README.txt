@@ -39,6 +39,8 @@ HELP PAGES
 For more information about how to control access permissions with the Taxonomy
 Access Control module, see the module's help page (admin/help/taxonomy_access).
 
+Also see, help page at drupal.org: http://drupal.org/node/31601
+
 
 -----------------------
 TROUBLESHOOTING:
