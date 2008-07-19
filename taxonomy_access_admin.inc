@@ -70,7 +70,7 @@ function theme_taxonomy_access_admin() {
   return theme('table', $header, $rows);
 }
 
-function taxonomy_access_admin_delete_role($rid) {
+function taxonomy_access_admin_delete_role($form_state, $rid) {
   if (is_numeric($rid) AND $rid > 2 AND db_fetch_array(db_query('SELECT rid FROM {term_access_defaults} WHERE vid=0 AND rid=%d', $rid))) {
     if ($_POST['confirm']) {
       // issue #167977 - klance
