@@ -140,7 +140,7 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
      '#type' => 'checkbox',
      '#disabled' => TRUE,
      '#title' => '<em>default<em>',
-     '#description' => 'can\'t be disabled without disabling TAC for this role'
+     '#description' => "can't be disabled without disabling TAC for this role"
   );
 
   foreach (taxonomy_get_vocabularies() as $vid => $vocabulary) {
