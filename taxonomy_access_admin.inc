@@ -284,23 +284,23 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
 
   switch ($values['op']) {
   case t('Delete selected'):
-    if (is_array($form_values['selected_terms'])) {
-      foreach($form_values['selected_terms'] as $tid => $enabled) {
+    if (is_array($values['selected_terms'])) {
+      foreach($values['selected_terms'] as $tid => $enabled) {
         if ($enabled) {
           // issue #167977 - klance
           $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
-          db_query('DELETE FROM {term_access} WHERE rid = %d AND tid = %d', $form_values['rid'], $tid);
+          db_query('DELETE FROM {term_access} WHERE rid = %d AND tid = %d', $values['rid'], $tid);
           // issue #167977 - klance
           _taxonomy_access_node_access_update($affected_nodes);
         }
       }
     }
-    if (is_array($form_values['selected_defaults'])) {
-      foreach($form_values['selected_defaults'] as $vid => $enabled) {
+    if (is_array($values['selected_defaults'])) {
+      foreach($values['selected_defaults'] as $vid => $enabled) {
         if ($enabled) {
           // issue #167977 - klance
-          $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $form_values['rid']);
-          db_query('DELETE FROM {term_access_defaults} WHERE rid = %d AND vid = %d', $form_values['rid'], $vid);
+          $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $values['rid']);
+          db_query('DELETE FROM {term_access_defaults} WHERE rid = %d AND vid = %d', $values['rid'], $vid);
           // issue #167977 - klance
           _taxonomy_access_node_access_update($affected_nodes);
         }
