@@ -3,20 +3,20 @@
 # Swedish translation of Drupal (taxonomy_access)
 # Copyright 2008 Magnus Gunnarsson <seals@passagen.se>
 # Generated from files:
-#  taxonomy_access_admin.inc,v 1.14 2008/02/23 20:45:19 keve
+#  taxonomy_access_admin.inc,v 1.15.2.2 2008/07/21 14:11:11 cpugeniusmv
 #  taxonomy_access.module,v 1.107 2008/02/23 20:48:48 keve
 #  taxonomy_access.install,v 1.9 2008/02/22 20:50:27 keve
 #  taxonomy_access.info,v 1.5 2008/02/23 20:45:19 keve
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Taxonomy Access Controll 6.x\n"
-"POT-Creation-Date: 2008-04-05 09:36+0200\n"
-"PO-Revision-Date: 2008-04-05 12:17+0100\n"
+"Project-Id-Version: Taxonomy Access Control 6.x\n"
+"POT-Creation-Date: 2008-07-26 02:00+0200\n"
+"PO-Revision-Date: 2008-07-26 02:17+0100\n"
 "Last-Translator: Magnus Gunnarsson <seals@passagen.se>\n"
 "Language-Team: drupalsverige.se\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
 "X-Poedit-Language: Swedish\n"
@@ -55,6 +55,18 @@ msgstr "Radera allt"
 msgid "Cancel"
 msgstr "Avbryt"
 
+#: taxonomy_access_admin.inc:142;152
+msgid "<em>default</em>"
+msgstr "<em>standard</em>"
+
+#: taxonomy_access_admin.inc:143
+msgid "can't be disabled without disabling TAC for this role"
+msgstr "kan inte inaktiveras utan att TAC inaktiveras för denna roll"
+
+#: taxonomy_access_admin.inc:156
+msgid "*default*"
+msgstr "*standard*"
+
 #: taxonomy_access_admin.inc:184;312
 msgid "Add"
 msgstr "Lägg till"
@@ -81,7 +93,7 @@ msgstr "Uppdatera"
 
 #: taxonomy_access_admin.inc:210
 msgid "Delete"
-msgstr "Ta bort"
+msgstr "Radera"
 
 #: taxonomy_access_admin.inc:211
 msgid "Create"
@@ -89,7 +101,7 @@ msgstr "Skapa"
 
 #: taxonomy_access_admin.inc:212
 msgid "List"
-msgstr "Lista"
+msgstr "Visa"
 
 #: taxonomy_access_admin.inc:215
 msgid "A"
@@ -185,7 +197,7 @@ msgstr "<br><strong>Inmatningsformat:</strong <u>Redigera/radera noder är spär
 
 #: taxonomy_access.module:152
 msgid "Taxonomy access permissions"
-msgstr "Rättigheter för taxonomibehörighet."
+msgstr "Taxonomibehörigheter"
 
 #: taxonomy_access.module:153
 msgid "Taxonomy-based access control for content"

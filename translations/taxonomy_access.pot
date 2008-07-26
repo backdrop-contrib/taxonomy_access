@@ -1,9 +1,9 @@
 # $Id$
 #
-# LANGUAGE translation of Drupal (general)
+# LANGUAGE translation of Drupal (taxonomy_access)
 # Copyright YEAR NAME <EMAIL@ADDRESS>
 # Generated from files:
-#  taxonomy_access_admin.inc,v 1.14 2008/02/23 20:45:19 keve
+#  taxonomy_access_admin.inc,v 1.15.2.2 2008/07/21 14:11:11 cpugeniusmv
 #  taxonomy_access.module,v 1.107 2008/02/23 20:48:48 keve
 #  taxonomy_access.install,v 1.9 2008/02/22 20:50:27 keve
 #  taxonomy_access.info,v 1.5 2008/02/23 20:45:19 keve
@@ -11,8 +11,8 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PROJECT VERSION\n"
-"POT-Creation-Date: 2008-04-05 09:36+0200\n"
+"Project-Id-Version: Taxonomy Access Control 6.x\n"
+"POT-Creation-Date: 2008-07-26 02:28+0200\n"
 "PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
 "Last-Translator: NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
@@ -51,6 +51,18 @@ msgstr ""
 
 #: taxonomy_access_admin.inc:90
 msgid "Cancel"
+msgstr ""
+
+#: taxonomy_access_admin.inc:142;152
+msgid "<em>default</em>"
+msgstr ""
+
+#: taxonomy_access_admin.inc:143
+msgid "can't be disabled without disabling TAC for this role"
+msgstr ""
+
+#: taxonomy_access_admin.inc:156
+msgid "*default*"
 msgstr ""
 
 #: taxonomy_access_admin.inc:184;312
