@@ -139,8 +139,8 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
   $form['selected_defaults'][0] = array(
      '#type' => 'checkbox',
      '#disabled' => TRUE,
-     '#title' => '<em>default<em>',
-     '#description' => "can't be disabled without disabling TAC for this role"
+     '#title' => t('<em>default</em>'),
+     '#description' => t("can't be disabled without disabling TAC for this role"),
   );
 
   foreach (taxonomy_get_vocabularies() as $vid => $vocabulary) {
@@ -149,11 +149,11 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
       $form['grants'][$vid][0] = taxonomy_access_admin_build_row($default_grants[$vid]);
       $form['selected_defaults'][$vid] = array(
          '#type' => 'checkbox',
-         '#title' => '<em>default<em>',
+         '#title' => t('<em>default</em>'),
       );
     }
     else {
-      $add_items[$vocabulary->name]["default $vid"] = '*default*';
+      $add_items[$vocabulary->name]["default $vid"] = t('*default*');
     }
 
     if ($tree = taxonomy_get_tree($vid)) {
