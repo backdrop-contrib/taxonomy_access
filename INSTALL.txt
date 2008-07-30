@@ -23,7 +23,7 @@ INSTALLATION:
 
 2) ENABLE THE MODULE on page: "Administer >> Site building >> Modules"
 
-3) SET PERMISSION 'Administer Access Control' FOR ADMINISTRATORS on page: 
+3) SET PERMISSION 'Administer Permissions' FOR ADMINISTRATORS on page: 
    "Administer >> User Management >> Permissions".
 
 4) CONFIGURE ACCESS PERMISSIONS to the various categories from 

@@ -152,19 +152,19 @@ function taxonomy_access_menu() {
       'title' => t('Taxonomy access permissions'),
       'description' => t('Taxonomy-based access control for content'),
       'page callback' => 'taxonomy_access_admin',
-      'access arguments' => array('administer access control'),
+      'access arguments' => array('administer permissions'),
     );
   $items['admin/user/taxonomy_access/delete'] = array(
       'type' => MENU_CALLBACK,
       'page callback' => 'drupal_get_form',
       'page arguments' => array('taxonomy_access_admin_delete_role'),
-      'access arguments' => array('administer access control'),
+      'access arguments' => array('administer permissions'),
     );
   $items['admin/user/taxonomy_access/edit'] = array(
       'type' => MENU_CALLBACK,
       'page callback' => 'drupal_get_form',
       'page arguments' => array('taxonomy_access_admin_form'),
-      'access arguments' => array('administer access control'),
+      'access arguments' => array('administer permissions'),
     );
 
   return $items;
