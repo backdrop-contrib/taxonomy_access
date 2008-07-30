@@ -23,14 +23,11 @@ INSTALLATION:
 
 2) ENABLE THE MODULE on page: "Administer >> Site building >> Modules"
 
-3) CONFIGURE OPTIONS FOR TAXONOMY ACCESS: Go to page:
-   "Administer >> Site configuration >> Taxonomy Access: Settings".
+3) SET PERMISSION 'Administer Access Control' FOR ADMINISTRATORS on page: 
+   "Administer >> User Management >> Permissions".
 
-4) SET PERMISSION 'Administer Access Controll' FOR ADMINISTRATORS on page: 
-   "Administer >> User Management >> Access Control".
-
-5) CONFIGURE ACCESS PERMISSIONS to the various categories from 
-   "Administer >> User Management >> Taxonomy Access: Permissions".
+4) CONFIGURE ACCESS PERMISSIONS to the various categories from 
+   "Administer >> User Management >> Taxonomy Access Permissions".
 
 NOTE: DATABASE TABLES are automatically added to database. Module creates two 
       tables in database: 'term_access' and 'term_access_defaults'.
