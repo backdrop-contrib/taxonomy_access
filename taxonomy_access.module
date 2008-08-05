@@ -123,7 +123,7 @@ function taxonomy_access_node_access_records($node) {
  * Implementation of hook_init
  */
 function taxonomy_access_init() {
-  if (arg(0) == 'admin' AND ((arg(1) == 'user' AND arg(2) == 'taxonomy_access') OR (arg(1) == 'content' AND arg(2) == 'taxonomy'))) {
+  if (arg(0) == 'admin') {
     // Only include administrative callbacks and css if we are viewing an admin page.
     $path = drupal_get_path('module', 'taxonomy_access');
     include_once($path .'/taxonomy_access_admin.inc');
