@@ -3,16 +3,16 @@
 # Swedish translation of Drupal (taxonomy_access)
 # Copyright 2008 Magnus Gunnarsson <seals@passagen.se>
 # Generated from files:
-#  taxonomy_access_admin.inc,v 1.15.2.2 2008/07/21 14:11:11 cpugeniusmv
-#  taxonomy_access.module,v 1.107 2008/02/23 20:48:48 keve
+#  taxonomy_access_admin.inc,v 1.15.2.3 2008/07/29 17:47:58 cpugeniusmv
+#  taxonomy_access.module,v 1.107.2.2 2008/08/05 14:29:31 cpugeniusmv
 #  taxonomy_access.install,v 1.9 2008/02/22 20:50:27 keve
 #  taxonomy_access.info,v 1.5 2008/02/23 20:45:19 keve
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: Taxonomy Access Control 6.x\n"
-"POT-Creation-Date: 2008-07-26 02:00+0200\n"
-"PO-Revision-Date: 2008-07-26 02:17+0100\n"
+"POT-Creation-Date: 2008-08-12 14:59+0200\n"
+"PO-Revision-Date: 2008-08-12 15:13+0100\n"
 "Last-Translator: Magnus Gunnarsson <seals@passagen.se>\n"
 "Language-Team: drupalsverige.se\n"
 "MIME-Version: 1.0\n"
@@ -37,7 +37,7 @@ msgstr "redigera"
 
 #: taxonomy_access_admin.inc:65
 msgid "enable"
-msgstr "Aktivera"
+msgstr "aktivera"
 
 #: taxonomy_access_admin.inc:88
 msgid "Are you sure you want to delete all grant rules for role %rid?"
