@@ -60,10 +60,10 @@ function taxonomy_access_help($path, $arg) {
  * 4: rebuild node_access
  */
 function taxonomy_access_enable() {
-  db_query('DELETE ta FROM {term_access} ta LEFT JOIN {term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND ISNULL(td.tid)');
-  db_query('DELETE tad FROM {term_access_defaults} tad LEFT JOIN {vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND ISNULL(v.vid)');
-  db_query('DELETE ta FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE ISNULL(r.rid)');
-  db_query('DELETE tad FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE ISNULL(r.rid)');
+  db_query('DELETE FROM {term_access} ta LEFT JOIN {term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND ISNULL(td.tid)');
+  db_query('DELETE FROM {term_access_defaults} tad LEFT JOIN {vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND ISNULL(v.vid)');
+  db_query('DELETE FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE ISNULL(r.rid)');
+  db_query('DELETE FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE ISNULL(r.rid)');
 }
 
 /**
