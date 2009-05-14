@@ -104,8 +104,8 @@ function taxonomy_access_node_access_records($node) {
                        INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0
                        LEFT JOIN {term_access_defaults} tad ON tad.vid = t.vid AND tad.rid = tadg.rid
                        LEFT JOIN {term_access} ta ON ta.tid = t.tid AND ta.rid = tadg.rid
-                       WHERE tn.nid = %d
-                       GROUP BY tadg.rid', $node->nid);
+                       WHERE tn.vid = %d
+                       GROUP BY tadg.rid', $node->vid);
   }
   else {
     // Use the default for nodes with no category
@@ -219,7 +219,7 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
 
     case 'update':
       // restore terms that the user shouldn't have access to delete
-      taxonomy_access_restore_terms($node->nid, $node->tac_protected_terms);
+      taxonomy_access_restore_terms($node->nid, $node->vid, $node->tac_protected_terms);
       break;
   }
 }
@@ -359,7 +359,7 @@ function taxonomy_access_preserve_terms($node) {
   // access settings. Don't use db_rewrite_sql() api call here (or
   // any other API call, the taxonomy API functions all use 
   // db_rewrite_sql() so we must query the database tables directly)
-  $result = db_query('SELECT tid FROM {term_node} WHERE nid = %d', $nid);
+  $result = db_query('SELECT tid FROM {term_node} WHERE vid = %d', $node->vid);
   while ($row = db_fetch_array($result)) {
     // only include those terms the current user does not have access to
     if (!isset($user_terms[$row['tid']])) {
@@ -379,15 +379,15 @@ function taxonomy_access_preserve_terms($node) {
  *
  * Called by taxonomy_access_nodeapi()
  */
-function taxonomy_access_restore_terms($nid, $protected_terms) {
+function taxonomy_access_restore_terms($nid, $vid, $protected_terms) {
   if (isset($protected_terms)) {
     $terms = $protected_terms;
     if (count($terms)) {
-      db_query('DELETE FROM {term_node} WHERE nid = %d AND tid IN ('. implode(',', $terms) .')', $nid);
+      db_query('DELETE FROM {term_node} WHERE nid = %d AND vid = %d AND tid IN ('. implode(',', $terms) .')', $nid, $vid);
       foreach ($terms as $tid) {
-        $replace_terms[] = '('. $nid .','. $tid .')';
+        $replace_terms[] = '('. $nid .','. $vid .','. $tid .')';
       }
-      db_query('INSERT INTO {term_node} (nid,tid) VALUES '. implode(',', $replace_terms));
+      db_query('INSERT INTO {term_node} (nid,vid,tid) VALUES '. implode(',', $replace_terms));
     }
   }
 }
