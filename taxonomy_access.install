@@ -123,8 +123,8 @@ function taxonomy_access_install() {
       db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
       
       // default global perms for roles 1 and 2
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 1, 1)');
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 1, 1)');
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 0, 1)');
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 0, 1)');
 
       
       $success = TRUE; 
@@ -159,8 +159,8 @@ function taxonomy_access_install() {
       db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
 
       // default global perms for roles 1 and 2
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 1, 1)');
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 1, 1)');
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 0, 1)');
+      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 0, 1)');
 
       $success = TRUE; 
       break;
