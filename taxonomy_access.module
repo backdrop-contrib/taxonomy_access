@@ -64,16 +64,33 @@ function taxonomy_access_enable() {
   switch ($db_type) {
     case 'mysql':
     case 'mysqli':
+      // TODO: Test our PostgreSQL code with MySQL and replace this DB-specific
+      //       code with it, if it works.
       db_query('DELETE ta FROM {term_access} ta LEFT JOIN {term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND ISNULL(td.tid)');
       db_query('DELETE tad FROM {term_access_defaults} tad LEFT JOIN {vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND ISNULL(v.vid)');
       db_query('DELETE ta FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE ISNULL(r.rid)');
       db_query('DELETE tad FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE ISNULL(r.rid)');
       break;
     case 'pgsql':
-      db_query('DELETE FROM {term_access} ta LEFT JOIN {term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND ISNULL(td.tid)');
-      db_query('DELETE FROM {term_access_defaults} tad LEFT JOIN {vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND ISNULL(v.vid)');
-      db_query('DELETE FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE ISNULL(r.rid)');
-      db_query('DELETE FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE ISNULL(r.rid)');
+      $queries = array(
+        'tax' => "SELECT ta.tid,ta.rid FROM {term_access} ta LEFT JOIN {term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND td.tid IS NULL",
+        'tadx' => "SELECT tad.vid,tad.rid FROM {term_access_defaults} tad LEFT JOIN {vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND v.vid IS NULL",
+        'tar' => "SELECT ta.tid,ta.rid FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE r.rid IS NULL",
+        'tadr' => "SELECT tad.vid,tad.rid FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE r.rid IS NULL"
+      );
+      foreach($queries as $type => $sql) {
+        $result = db_query($sql);
+        while($args = db_fetch_array($result)) {
+          if($args) {
+            if($type == 'tax' || $type == 'tar') {
+              db_query("DELETE FROM {term_access} WHERE tid = %d AND rid = %d", $args);
+            }
+            else {
+              db_query("DELETE FROM {term_access_defaults} WHERE vid = %d AND rid = %d", $args);        
+            }
+          }
+        }
+      }
       break;
   }
 }
