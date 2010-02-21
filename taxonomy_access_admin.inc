@@ -30,7 +30,7 @@ function taxonomy_access_admin($op = NULL, $rid=NULL, $arg=NULL) {
       return drupal_get_form('taxonomy_access_admin_delete_role', $rid);
     }
   }
-  else if (!isset($op) AND !isset($rid)) {
+  elseif (!isset($op) AND !isset($rid)) {
     return theme_taxonomy_access_admin();
   }
   //TODO something odd happens here
@@ -80,7 +80,7 @@ function taxonomy_access_admin_delete_role($form_state, $rid) {
       // issue #167977 - klance
       //node_access_rebuild();
       _taxonomy_access_node_access_update($affected_nodes);            
-      drupal_set_message("All term access rules deleted for role $rid.");
+      drupal_set_message(t('All term access rules deleted for role %rid.', array('%rid' => $rid)));
       drupal_goto('admin/user/taxonomy_access');
     }
     else {
@@ -285,7 +285,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
   switch ($values['op']) {
   case t('Delete selected'):
     if (is_array($values['selected_terms'])) {
-      foreach($values['selected_terms'] as $tid => $enabled) {
+      foreach ($values['selected_terms'] as $tid => $enabled) {
         if ($enabled) {
           // issue #167977 - klance
           $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
@@ -296,7 +296,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
       }
     }
     if (is_array($values['selected_defaults'])) {
-      foreach($values['selected_defaults'] as $vid => $enabled) {
+      foreach ($values['selected_defaults'] as $vid => $enabled) {
         if ($enabled) {
           // issue #167977 - klance
           $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $values['rid']);
@@ -348,7 +348,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
 **/
-function taxonomy_access_grant_update($tid, $rid = null, $grants = null) {
+function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL) {
   if (!isset($tid) OR !is_numeric($rid)) {
     return FALSE;
   }
@@ -392,7 +392,7 @@ function taxonomy_access_grant_update($tid, $rid = null, $grants = null) {
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
 **/
-function taxonomy_access_defaults_update($vid, $rid = null, $grants = null) {
+function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL) {
   if (!isset($vid) OR !is_numeric($rid)) {
     return FALSE;
   }
@@ -438,7 +438,7 @@ function taxonomy_access_defaults_update($vid, $rid = null, $grants = null) {
 **/
 function taxonomy_access_get_grants($rid) {
   if (!isset($rid)) {
-    return false;
+    return FALSE;
   }
   if (isset($rid) && !is_numeric($rid)) {
     $rid = db_result(db_query("SELECT rid FROM {role} WHERE name='%s'", $rid));
@@ -472,7 +472,7 @@ function taxonomy_access_get_grants($rid) {
 **/
 function taxonomy_access_get_default_grants($rid) {
   if (!is_numeric($rid)) {
-    return false;
+    return FALSE;
   }
   $result = db_query("SELECT * FROM {term_access_defaults} WHERE rid=%d", $rid);
   $grants = array();
@@ -502,9 +502,9 @@ function taxonomy_access_get_default_grants($rid) {
  */
 function _taxonomy_access_get_nodes_for_term($tid) {
   $nid = array();
-  $result = db_query("SELECT nid FROM {term_node} WHERE tid = '$tid'");
+  $result = db_query("SELECT nid FROM {term_node} WHERE tid = %d", $tid);
   
-  while($node = db_fetch_object($result)) {
+  while ($node = db_fetch_object($result)) {
     $nid[] = $node->nid;
   }
   return $nid;
@@ -526,12 +526,12 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
     LEFT JOIN {term_data} d ON n.tid = d.tid
     LEFT JOIN {term_access} a ON n.tid = a.tid
     WHERE d.vid = '$vid'";
-  if(!is_null($rid)) {
+  if (!is_null($rid)) {
     $query .= " AND a.rid = '$rid'";
   }
   $result = db_query($query);
   
-  while($node = db_fetch_object($result)) {
+  while ($node = db_fetch_object($result)) {
     $nid[] = $node->nid;
   }
   return $nid;
@@ -552,7 +552,7 @@ function _taxonomy_access_get_nodes_for_role($rid) {
     SELECT n.nid FROM {term_node} n LEFT JOIN {term_access} a ON n.tid = a.tid WHERE a.rid = '$rid'
   ");
   
-  while($node = db_fetch_object($result)) {
+  while ($node = db_fetch_object($result)) {
     $nid[] = $node->nid;
   }
   return $nid;
@@ -565,7 +565,7 @@ function _taxonomy_access_get_nodes_for_role($rid) {
  *    An array of node ids for which to acquire access permissions
  */
 function _taxonomy_access_node_access_update($nid) {
-  foreach($nid as $node) {
+  foreach ($nid as $node) {
     $loaded_node = node_load($node, NULL, TRUE);
     if (!empty($loaded_node)) {
       node_access_acquire_grants($loaded_node);

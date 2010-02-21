@@ -2,6 +2,7 @@
 // $Id$
 
 /**
+ * @file
  *  Implementations of hook_update (called by update.php)
  */
 

@@ -78,11 +78,11 @@ function taxonomy_access_enable() {
         'tar' => "SELECT ta.tid,ta.rid FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE r.rid IS NULL",
         'tadr' => "SELECT tad.vid,tad.rid FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE r.rid IS NULL"
       );
-      foreach($queries as $type => $sql) {
+      foreach ($queries as $type => $sql) {
         $result = db_query($sql);
-        while($args = db_fetch_array($result)) {
-          if($args) {
-            if($type == 'tax' || $type == 'tar') {
+        while ($args = db_fetch_array($result)) {
+          if ($args) {
+            if ($type == 'tax' || $type == 'tar') {
               db_query("DELETE FROM {term_access} WHERE tid = %d AND rid = %d", $args);
             }
             else {
@@ -178,8 +178,8 @@ function taxonomy_access_menu() {
   $items = array();
 
   $items['admin/user/taxonomy_access'] = array(
-      'title' => t('Taxonomy access permissions'),
-      'description' => t('Taxonomy-based access control for content'),
+      'title' => 'Taxonomy access permissions',
+      'description' => 'Taxonomy-based access control for content',
       'page callback' => 'taxonomy_access_admin',
       'access arguments' => array('administer permissions'),
     );
@@ -373,6 +373,7 @@ function taxonomy_access_preserve_terms($node) {
   // any other API call, the taxonomy API functions all use 
   // db_rewrite_sql() so we must query the database tables directly)
   $result = db_query('SELECT tid FROM {term_node} WHERE vid = %d', $node->vid);
+  $tids[$nid] = array();
   while ($row = db_fetch_array($result)) {
     // only include those terms the current user does not have access to
     if (!isset($user_terms[$row['tid']])) {
