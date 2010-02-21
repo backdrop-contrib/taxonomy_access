@@ -238,6 +238,12 @@ function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
       // restore terms that the user shouldn't have access to delete
       taxonomy_access_restore_terms($node->nid, $node->vid, $node->tac_protected_terms);
       break;
+
+    case 'delete':
+      // Remove our entries for this node from table {node_access}.
+      //INFO: node_access_write_grants($node, $grants, $realm = NULL, $delete = TRUE)
+      node_access_write_grants($node, array(), 'term_access');
+      break;
   }
 }
 
