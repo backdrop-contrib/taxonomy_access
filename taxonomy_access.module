@@ -405,3 +405,151 @@ function taxonomy_access_restore_terms($nid, $vid, $protected_terms) {
     }
   }
 }
+
+/**
+ * Gets permissions for a given role
+ * @param $rid
+ *   The role id to retrieve the permissions for.
+ * @return
+ *   A two dimensional hash of the form $grants[tid][grant] where
+ *   tid is the term id and
+ *   grant is the permission (i.e. 'view','delete',ect.)
+ *   this entry in the hash is true if permission is granted, false otherwise
+**/
+function taxonomy_access_get_grants($rid) {
+  if (!isset($rid)) {
+    return FALSE;
+  }
+  if (isset($rid) && !is_numeric($rid)) {
+    $rid = db_result(db_query("SELECT rid FROM {role} WHERE name='%s'", $rid));
+  }
+  $result = db_query("SELECT * FROM {term_access} WHERE rid=%d", $rid);
+  $grants = array();
+  while ($grant = db_fetch_array($result)) {
+    $tid = $grant['tid'];
+    foreach ($grant as $key => $grant_val) {
+      if (strpos($key, 'grant_') !== FALSE) {
+        $grant_name = '';
+        $grant_name = str_replace('grant_', '', $key);
+        if (!isset($grants[$tid][$grant_name]) || !($grants[$tid][$grant_name])) {
+          // If there's conflicting DB rules, take the most lenient
+          $grants[$tid][$grant_name] = $grant_val;
+        }
+      }
+    }
+  }
+  return $grants;
+}
+/**
+ * Gets default permissions for a given role
+ * @param $rid
+ *   The role id to retrieve the permissions for.
+ * @return
+ *   A two dimensional hash of the form $grants[vid][grant] where
+ *   vid is the vocab id and
+ *   grant is the permission (i.e. 'view','delete',ect.)
+ *   this entry in the hash is true if permission is granted, false otherwise
+**/
+function taxonomy_access_get_default_grants($rid) {
+  if (!is_numeric($rid)) {
+    return FALSE;
+  }
+  $result = db_query("SELECT * FROM {term_access_defaults} WHERE rid=%d", $rid);
+  $grants = array();
+  while ($grant = db_fetch_array($result)) {
+    $vid = $grant['vid'];
+    foreach ($grant as $key => $grant_val) {
+      if (strpos($key, 'grant_') !== FALSE) {
+        $grant_name = '';
+        $grant_name = str_replace('grant_', '', $key);
+        if (!isset($grants[$vid][$grant_name]) || !($grants[$vid][$grant_name])) {
+          // If there's conflicting DB rules, take the most lenient
+          $grants[$vid][$grant_name] = $grant_val;
+        }
+      }
+    }
+  }
+  return $grants;
+}
+
+/*
+ * Issue #167977 - klance
+ * Gets node ids associated with a given term
+ * @param $tid
+ *    The term id for which to retrieve associated nodes
+ * @return $nid
+ *    An array of node ids associated with the given term
+ */
+function _taxonomy_access_get_nodes_for_term($tid) {
+  $nid = array();
+  $result = db_query("SELECT nid FROM {term_node} WHERE tid = %d", $tid);
+  
+  while ($node = db_fetch_object($result)) {
+    $nid[] = $node->nid;
+  }
+  return $nid;
+}
+
+/*
+ * Issue #167977 - klance
+ * Gets node ids associated with a given vocabulary
+ * @param $vid
+ *    The vocabulary id for which to retrieve associated term ids
+ * @params $rid
+ *    The role id for which to retrieve associated term ids
+ * @return $nid
+ *    An array of node ids associated with the given term
+ */
+function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
+  $nid = array();
+  $query = "SELECT n.nid FROM {term_node} n
+    LEFT JOIN {term_data} d ON n.tid = d.tid
+    LEFT JOIN {term_access} a ON n.tid = a.tid
+    WHERE d.vid = '$vid'";
+  if (!is_null($rid)) {
+    $query .= " AND a.rid = '$rid'";
+  }
+  $result = db_query($query);
+  
+  while ($node = db_fetch_object($result)) {
+    $nid[] = $node->nid;
+  }
+  return $nid;
+}
+
+/*
+ * Issue #167977 - klance
+ * Gets node ids associated with the given role
+ * @param $rid
+ *    The role id for which to retrieve term ids that are
+ *    access-controlled for this role
+ * @return $nid
+ *    An array of node ids associated with the given term
+ */
+function _taxonomy_access_get_nodes_for_role($rid) {
+  $nid = array();
+  $result = db_query("
+    SELECT n.nid FROM {term_node} n LEFT JOIN {term_access} a ON n.tid = a.tid WHERE a.rid = '$rid'
+  ");
+  
+  while ($node = db_fetch_object($result)) {
+    $nid[] = $node->nid;
+  }
+  return $nid;
+}
+
+/*
+ * Issue #167977
+ * Gets node ids associated with the given term
+ * @return $nid
+ *    An array of node ids for which to acquire access permissions
+ */
+function _taxonomy_access_node_access_update($nid) {
+  foreach ($nid as $node) {
+    $loaded_node = node_load($node, NULL, TRUE);
+    if (!empty($loaded_node)) {
+      node_access_acquire_grants($loaded_node);
+    }
+  }
+  return TRUE;
+}
