@@ -97,76 +97,27 @@ function taxonomy_access_install() {
           stype = smallint
         );");
       }
-
-      db_query("CREATE TABLE {term_access} (
-        tid integer  NOT NULL default '0',
-        rid integer  NOT NULL default '0',
-        grant_view smallint NOT NULL default '0',
-        grant_update smallint NOT NULL default '0',
-        grant_delete smallint NOT NULL default '0',
-        grant_create smallint NOT NULL default '0',
-        grant_list smallint NOT NULL default '0',
-        PRIMARY KEY  (tid,rid)
-      );");
-
-      db_query("CREATE TABLE {term_access_defaults} (
-        vid integer  NOT NULL default '0',
-        rid integer  NOT NULL default '0',
-        grant_view smallint NOT NULL default '0',
-        grant_update smallint NOT NULL default '0',
-        grant_delete smallint NOT NULL default '0',
-        grant_create smallint NOT NULL default '0',
-        grant_list smallint NOT NULL default '0',
-        PRIMARY KEY  (vid,rid)
-      );");
-
-      // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
-      db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
-      
-      // default global perms for roles 1 and 2
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 0, 1)');
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 0, 1)');
-
-      
-      $success = TRUE; 
       break;
 
-    case 'mysql':
-    case 'mysqli':
-
-      db_query("CREATE TABLE {term_access} (
-        tid int(10) unsigned NOT NULL default '0',
-        rid int(10) unsigned NOT NULL default '0',
-        grant_view tinyint(1) unsigned NOT NULL default '0',
-        grant_update tinyint(1) unsigned NOT NULL default '0',
-        grant_delete tinyint(1) unsigned NOT NULL default '0',
-        grant_create tinyint(1) unsigned NOT NULL default '0',
-        grant_list tinyint(1) unsigned NOT NULL default '0',
-        PRIMARY KEY  (tid,rid)
-      ) TYPE=MyISAM /*!40100 DEFAULT CHARACTER SET utf8 */;");
-
-      db_query("CREATE TABLE {term_access_defaults} (
-        vid int(10) unsigned NOT NULL default '0',
-        rid int(10) unsigned NOT NULL default '0',
-        grant_view tinyint(1) unsigned NOT NULL default '0',
-        grant_update tinyint(1) unsigned NOT NULL default '0',
-        grant_delete tinyint(1) unsigned NOT NULL default '0',
-        grant_create tinyint(1) unsigned NOT NULL default '0',
-        grant_list tinyint(1) unsigned NOT NULL default '0',
-        PRIMARY KEY  (vid,rid)
-      ) TYPE=MyISAM /*!40100 DEFAULT CHARACTER SET utf8 */;");
-
-      // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
-      db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
-
-      // default global perms for roles 1 and 2
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 0, 1)');
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 0, 1)');
-
-      $success = TRUE; 
-      break;
   } // End case 
 
+  // Use Schema API to install tables.
+  $status = drupal_install_schema('taxonomy_access');
+
+  // drupal_install_schema() returns an array of the results of each query;
+  // each entry includes 'status' which is 0 for failure or 1 for success.
+  $success = 1;
+  foreach ($status as $s) {
+    $success = $success * $s['success'];
+  }
+
+ // Default global perms for roles 1 (anonymous) and 2 (authenticated).
+  db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 0, 1)');
+  db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 0, 1)');
+
+  // Weight taxonomy_access below most modules, but above the very last ones.
+  db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
+      
   // Notify of changes
   if ($success) {
     drupal_set_message(t('Taxonomy Access module installed tables successfully.'));
@@ -177,8 +128,137 @@ function taxonomy_access_install() {
 }
 
 function taxonomy_access_uninstall() {
-  db_query('DROP TABLE {term_access}');
-  db_query('DROP TABLE {term_access_defaults}');
-  //variable_del('taxonomy_access_enabled');
+  drupal_uninstall_schema('taxonomy_access');
   drupal_set_message(t('Taxonomy Access have been successfully uninstalled.'));
+}
+
+/**
+ * Implements hook_schema().
+ */
+function taxonomy_access_schema() {
+  $schema = array();
+
+  $schema['term_access'] = array(
+    'description' => t('Identifies which roles may view, update, delete, create, and list nodes with a given term.'),
+    'fields' => array(
+      'tid' => array(
+        'description' => t('The term_data.tid this record affects.  Overrides vocabulary default in term_access_defaults.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'rid' => array(
+        'description' => t("The role.rid a user must possess to gain this row's privileges on nodes for this term."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_view' => array(
+        'description' => t('Whether this role can view nodes with this term. 0=>Ignore, 1=>Allow, 2=>Deny.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_update' => array(
+        'description' => t('Whether this role can edit nodes with this term. 0=>Ignore, 1=>Allow, 2=>Deny.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_delete' => array(
+        'description' => t('Whether this role can delete nodes with this term. 0=>Ignore, 1=>Allow, 2=>Deny.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_create' => array(
+        'description' => t('Whether this role can set this term when adding or editing a node. 0=>No, 1=>Yes.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_list' => array(
+        'description' => t('Whether this role can view the name of this term on a node or in category lists. 0=>No, 1=>Yes.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('tid', 'rid'),
+  );
+
+  $schema['term_access_defaults'] = array(
+    'description' => t('Sets vocabulary defaults which roles may view, update, delete, create, and list nodes with a given term. Overridden by {term_access}/'),
+    'fields' => array(
+      'vid' => array(
+        'description' => t('The vocabulary.vid for which this row sets defaults.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'rid' => array(
+        'description' => t("The role.rid a user must possess to gain this row's privileges on nodes for terms in this vocabulary."),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_view' => array(
+        'description' => t('Whether this role can view nodes with terms in this vocabulary. 0=>Ignore, 1=>Allow, 2=>Deny.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_update' => array(
+        'description' => t('Whether this role can edit nodes with terms in this vocabulary. 0=>Ignore, 1=>Allow, 2=>Deny.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_delete' => array(
+        'description' => t('Whether this role can delete nodes with terms in this vocabulary. 0=>Ignore, 1=>Allow, 2=>Deny.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_create' => array(
+        'description' => t('Whether this role can set terms in this vocabulary when adding or editing a node. 0=>No, 1=>Yes.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'grant_list' => array(
+        'description' => t('Whether this role can view the name of terms in this vocabulary on a node or in category lists. 0=>No, 1=>Yes.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('vid', 'rid'),
+  );
+
+  return $schema;
 }
