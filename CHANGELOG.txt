@@ -2,4 +2,5 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+ o #689668 by mr.andrey, xjm: Option to add child terms with parent term on administration form.
  o #723668 by xjm: Implement hook_schema().

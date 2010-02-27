@@ -179,6 +179,11 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
       '#type' => 'select',
       '#options' => $add_items,
     );
+    $form['new']['recursive'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('with children'),
+      '#description' => t('Add child terms recursively with these values.'),
+    );
     $form['new']['add'] = array(
       '#type' => 'submit',
       '#value' => t('Add'),
@@ -255,10 +260,18 @@ function theme_taxonomy_access_admin_form($form) {
     }
   }
   if (isset($form['new'])) {
+    $row = $sub_header;
+    $row[0] = array('data' => '<h3>'. t('New') .'</h3>', 'colspan' => 3);
+    $rows[] = $row;
+
     $row = array(
-             array('data' => drupal_render($form['new']['item']), 'colspan' => 2), 
-             drupal_render($form['new']['add'])
-           );
+      array(
+        'data' => drupal_render($form['new']['item'])
+        . drupal_render($form['new']['recursive']), 
+        'colspan' => '2',
+      ),
+      drupal_render($form['new']['add']),
+    );
     foreach ($node_grant_types as $grant) {
       foreach (array_keys($radios) as $key) {
         // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
@@ -313,7 +326,11 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
     $new = $values['new'];
     list($type, $id) = explode(' ', $new['item']);
     if ($type == 'term') {
-      taxonomy_access_grant_update($id, $values['rid'], $new['grants']);
+      if ($new['recursive'] == 1) {
+		taxonomy_access_recursive_grant_update($id, $values['rid'], $new['grants']);
+	  } else {
+	    taxonomy_access_grant_update($id, $values['rid'], $new['grants']);
+	  }
     }
     elseif ($type == 'default') {
       taxonomy_access_defaults_update($id, $values['rid'], $new['grants']);
@@ -380,6 +397,35 @@ function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL) {
   db_query($ta_sql);  // insert into term_access
   // issue #167977 - klance
   _taxonomy_access_node_access_update($affected_nodes);
+}
+
+/**
+ * Recursively updates permissions for a role for a term
+ */
+function taxonomy_access_recursive_grant_update($tid, $rid = null, $grants = null) {
+  // run the original
+  taxonomy_access_grant_update($tid, $rid, $grants);
+  // process the children
+  $ran_tids = array(); // tids that have been processed
+  $run_tids = array($tid); // tids that are in the queue to be processed
+  while(count($run_tids) > 0) { // while there are tids to be processed, run the following
+	foreach($run_tids as $run_key => $run_tid) {
+	  // some basic loop protection
+	  if (array_search($run_tid, $ran_tids) == true) {
+		drupal_set_message("Loop detected for tid <b>".$run_tid."</b>. Stopping.");
+		$run_tids = array(); // stop the execution
+	  } else {
+		$result = db_query('SELECT th.tid FROM {term_hierarchy} th WHERE th.parent = %d', $run_tid);
+		// if this tid has children, update grants and queue the children up for processing
+		while ($row = db_fetch_array($result)) {
+		  taxonomy_access_grant_update($row['tid'], $rid, $grants);
+		  $run_tids[] = $row['tid'];
+		}
+		unset($run_tids[$run_key]); // remove this tid from queue
+		$ran_tids[] = $run_tid; // mark this tid as processed
+	  }
+	}
+  }
 }
 
 /**
