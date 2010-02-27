@@ -129,7 +129,7 @@ function taxonomy_access_install() {
 
 function taxonomy_access_uninstall() {
   drupal_uninstall_schema('taxonomy_access');
-  drupal_set_message(t('Taxonomy Access have been successfully uninstalled.'));
+  drupal_set_message(t('Taxonomy Access has been successfully uninstalled.'));
 }
 
 /**
