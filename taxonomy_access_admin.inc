@@ -9,7 +9,7 @@
 /**
  * Cache roles
  */
-function _user_roles() {
+function _taxonomy_access_user_roles() {
   static $roles;
   if (!is_array($roles)) {
     $roles = user_roles();
@@ -21,7 +21,7 @@ function _user_roles() {
  * Menu callback; presents the category permissions page of TAC (admin/user/taxonomy_access).
  */
 function taxonomy_access_admin($op = NULL, $rid=NULL, $arg=NULL) {
-  $roles = _user_roles();
+  $roles = _taxonomy_access_user_roles();
   if (is_numeric($rid) AND isset($roles[$rid])) {
     switch ($op) {
     case 'edit':
@@ -41,7 +41,7 @@ function taxonomy_access_admin($op = NULL, $rid=NULL, $arg=NULL) {
  * Renders the main page of category permissions
  */
 function theme_taxonomy_access_admin() {
-  $roles = _user_roles();
+  $roles = _taxonomy_access_user_roles();
 
   // Render role/permission overview:
   $header = array(t('Role'), array('data' => '&nbsp;'));
@@ -207,7 +207,7 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
  * Renders the permission matrix user form for choosen user role.
  */
 function theme_taxonomy_access_admin_form($form) {
-  $roles = _user_roles();
+  $roles = _taxonomy_access_user_roles();
   $header = array(
     array( 'data' => t('Category'), 'colspan' => 3),
     array( 'data' => t('View'), 'colspan' => 4),
