@@ -2,6 +2,7 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+ o #727648 by xjm: Whitespace cleanup in taxonomy_access_admin_form_submit().
  o #256669 by xjm: Rename _user_roles() to _taxonomy_access_user_roles() for namespace reasons.
  o #689668 by mr.andrey, xjm: Option to add child terms with parent term on administration form.
  o #723668 by xjm: Implement hook_schema().

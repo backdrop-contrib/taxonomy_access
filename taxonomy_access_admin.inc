@@ -294,64 +294,67 @@ function theme_taxonomy_access_admin_form($form) {
 
 function taxonomy_access_admin_form_submit($form, &$form_state) {
   $values = $form_state['values'];
-
+  
   switch ($values['op']) {
-  case t('Delete selected'):
-    if (is_array($values['selected_terms'])) {
-      foreach ($values['selected_terms'] as $tid => $enabled) {
-        if ($enabled) {
-          // issue #167977 - klance
-          $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
-          db_query('DELETE FROM {term_access} WHERE rid = %d AND tid = %d', $values['rid'], $tid);
-          // issue #167977 - klance
-          _taxonomy_access_node_access_update($affected_nodes);
+
+    case t('Delete selected'):
+      if (is_array($values['selected_terms'])) {
+        foreach ($values['selected_terms'] as $tid => $enabled) {
+          if ($enabled) {
+            $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
+            db_query(
+              'DELETE FROM {term_access} WHERE rid = %d AND tid = %d', 
+              $values['rid'], $tid
+            );
+            _taxonomy_access_node_access_update($affected_nodes);
+          }
         }
       }
-    }
-    if (is_array($values['selected_defaults'])) {
-      foreach ($values['selected_defaults'] as $vid => $enabled) {
-        if ($enabled) {
-          // issue #167977 - klance
-          $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $values['rid']);
-          db_query('DELETE FROM {term_access_defaults} WHERE rid = %d AND vid = %d', $values['rid'], $vid);
-          // issue #167977 - klance
-          _taxonomy_access_node_access_update($affected_nodes);
+      if (is_array($values['selected_defaults'])) {
+        foreach ($values['selected_defaults'] as $vid => $enabled) {
+          if ($enabled) {
+            $affected_nodes = 
+              _taxonomy_access_get_nodes_for_vocabulary($vid, $values['rid']);
+            db_query(
+              "DELETE FROM {term_access_defaults} WHERE rid = %d AND vid = %d",
+              $values['rid'], 
+              $vid
+            );
+            _taxonomy_access_node_access_update($affected_nodes);
+          }
         }
       }
-    }
-    // issue #167977 - klance
-    //node_access_rebuild();
-    break;
-  case t('Add'):
-    $new = $values['new'];
-    list($type, $id) = explode(' ', $new['item']);
-    if ($type == 'term') {
-      if ($new['recursive'] == 1) {
-		taxonomy_access_recursive_grant_update($id, $values['rid'], $new['grants']);
-	  } else {
-	    taxonomy_access_grant_update($id, $values['rid'], $new['grants']);
-	  }
-    }
-    elseif ($type == 'default') {
-      taxonomy_access_defaults_update($id, $values['rid'], $new['grants']);
-    }
-    // issue #167977 - klance
-    //node_access_rebuild();
-    break;
-  case t('Save all'):
-    foreach ($values['grants'] as $vid => $rows) {
-      foreach ($rows as $tid => $grants) {
-        if ($tid == 0) {
-          taxonomy_access_defaults_update($vid, $values['rid'], $grants);
-        }
+      break;
+
+    case t('Add'):
+      $new = $values['new'];
+      list($type, $id) = explode(' ', $new['item']);
+      if ($type == 'term') {
+        if ($new['recursive'] == 1) {
+          taxonomy_access_recursive_grant_update($id, $values['rid'], $new['grants']);
+        } 
         else {
-          taxonomy_access_grant_update($tid, $values['rid'], $grants);
+          taxonomy_access_grant_update($id, $values['rid'], $new['grants']);
         }
       }
-    }
-    // issue #167977 - klance
-    //node_access_rebuild();
-    drupal_goto('admin/user/taxonomy_access');
+      elseif ($type == 'default') {
+        taxonomy_access_defaults_update($id, $values['rid'], $new['grants']);
+      }
+      break;
+
+    case t('Save all'):
+      foreach ($values['grants'] as $vid => $rows) {
+        foreach ($rows as $tid => $grants) {
+          if ($tid == 0) {
+            taxonomy_access_defaults_update($vid, $values['rid'], $grants);
+          }
+          else {
+            taxonomy_access_grant_update($tid, $values['rid'], $grants);
+          }
+        }
+      }
+      drupal_goto('admin/user/taxonomy_access');
+      break;
   }
 }
 
