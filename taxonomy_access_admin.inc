@@ -130,6 +130,10 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
     $grants[$row['tid']] = $row;
   }
 
+  $form['instructions'] = array(
+    '#value' => _taxonomy_access_admin_instructions_html(),
+    '#weight' => '20',
+  );
   $form['rid'] = array('#type' => 'value', '#value' => $rid);
   $form['grants'] = $form['selected_terms'] = $form['selected_defaults'] = array('#tree' => TRUE);
   
@@ -217,9 +221,9 @@ function theme_taxonomy_access_admin_form($form) {
     array( 'data' => t('List')),
   );
   $sub_header = array(
-    '&nbsp;<strong>'. t('A') .'</strong>',
-    '&nbsp;<strong>'. t('I') .'</strong>',
-    '&nbsp;<strong>'. t('D') .'</strong>',
+    '&nbsp;<strong>'. t('<acronym title="Allow">A</acronym>') .'</strong>',
+    '&nbsp;<strong>'. t('<acronym title="Ignore">I</acronym>') .'</strong>',
+    '&nbsp;<strong>'. t('<acronym title="Deny">D</acronym>') .'</strong>',
     '&nbsp;',
   );
   $sub_header = array_merge(array('&nbsp;'), $sub_header, $sub_header, $sub_header);
@@ -286,6 +290,8 @@ function theme_taxonomy_access_admin_form($form) {
     $row = array();
   }
 
+
+  $output = '';
   $output .= theme('table', $header, $rows);
   $output .= drupal_render($form);
 
@@ -473,4 +479,108 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL) {
   db_query($ta_sql);  // insert into term_access_defaults
   // issue #167977 - klance
   _taxonomy_access_node_access_update($affected_nodes);
+}
+
+function _taxonomy_access_admin_instructions_html() {
+  $instructions = '';
+  $instructions .= ''
+    . "<br /><br />"
+    . "<div class=\"instructions\">"
+    . "<h2>" . t("Explanation of fields") . "</h2>"
+    . _taxonomy_access_grant_help_table()
+    . "<p>"
+    . t('Options for View, Update, and Delete are <em>Allow</em> (<acronym title="Allow">A</acronym>), <em>Ignore</em> (<acronym title="Ignore">I</acronym>), and <em>Deny</em> (<acronym title="Deny">D</acronym>).')
+    . "</p>\n\n"
+    . "<ul>\n"
+    . "<li>" 
+    . t('<em>Deny</em> (<acronym title="Deny">D</acronym>) overrides <em>Allow</em> (<acronym title="Allow">A</acronym>) within this role.') 
+    . "</li>"
+    . "<li>" 
+    . t('Both <em>Allow</em> (<acronym title="Allow">A</acronym>) and <em>Deny</em> (<acronym title="Deny">D</acronym>) override <em>Ignore</em> (<acronym title="Ignore">I</acronym>) within this role.') 
+    . "</li>"
+    . "<li>" 
+    . t('If a user has <strong>multiple roles</strong>, an <em>Allow</em> (<acronym title="Allow">A</acronym>) from another role <strong>will</strong> override a <em>Deny</em> (<acronym title="Deny">D</acronym>) here.') 
+    . "</li>"
+    . "</ul>\n\n"
+    ;
+  if (arg(4) > 2) { // Role other than Anonymous or Authenticated
+    $instructions .= ''
+      . "<p>"
+      . t('<strong>Remember:</strong> This role <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure
+the authenticated user</a> properly.',
+        array("@url" => url("admin/user/taxonomy_access/edit/2"))
+         )
+      . "</p>\n\n"
+      ;
+  }
+  $instructions .= ''
+    . "<p>"
+    . t('For more information and for troubleshooting guidelines, see the <a href="@help">help page</a> and the !readme.',
+      array(
+        '@help' => url('admin/help/taxonomy_access'),
+        '!readme' => "<code>README.txt</code>"
+      ))
+    . "</p>\n\n"
+    . "</div>\n\n"
+    ;
+
+  return $instructions;
+
+}
+
+
+function _taxonomy_access_grant_help_table() {
+ $header = array();
+
+  $rows = array();
+  $rows[] = array(
+    array('header' => true, 'data' => t("View")),
+    "<p>"
+    . t('Grants this role the ability to view nodes with the term.  (Users must also have this permission to see <em class="perm">nodes</em> with the term listed in Views.)')
+    . "</p>"
+    . "<p>"
+    . t('The role must <strong>have</strong> <em class="perm">access content</em> permission on the <a href="@path">permissions administration form</a>.',
+      array(
+        '@path' => url('admin/user/permissions#module-node'),
+      )),
+  );
+
+  $rows[] = array(
+    array('header' => true, 'data' => t("Update") . ", " . t("Delete")),
+    "<p>"
+    . t("Grants this role the ability to edit or delete nodes with the term, respectively.")
+    . "</p>"
+    . "<p>"
+    . t('The role must <strong>not</strong> have <em class="perm">edit any [type] content</em> or <em class="perm">delete any [type] content</em> permission on the <a href="@path">permissions administration form</a> if you wish to control them here.',
+      array(
+        '@path' => url('admin/user/permissions#module-node'),
+      ))
+    ."</p>",
+  );
+
+  $rows[] = array(
+    array('header' => true, 'data' => t("Create")),
+    "<p>"
+    . t("Grants this role the ability to add the term to a node when creating or updating it.")
+    . "</p>"
+    . "<p>"
+    . t('This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
+      array(
+        '@path' => url('admin/user/permissions#module-node'),
+      ))
+    ."</p>",
+  );
+
+  $rows[] = array(
+    array('header' => true, 'data' => t("List")),
+    "<p>" 
+    . t("Whether this role can see the term listed on node pages and in lists, and whether the user can view the %taxonomy-term-page page for the term.",
+      array(
+        '%taxonomy-term-page' => "taxonomy/term/x"
+      ))
+    . "</p>"
+    . "<p>" . t("This does <strong>not</strong> control whether the role can see the <em>nodes</em> listed in Views, only the <em>term</em>.") . "</p>",
+  );
+
+  return theme('table', $header, $rows, array('class' => 'grant_help'));
 }

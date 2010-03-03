@@ -4,3 +4,16 @@ form#-taxonomy-access-permissions-form .form-radio {
 form#-taxonomy-access-permissions-form .form-select {
  font-size: 10px;
 }
+
+table.grant_help th {
+ vertical-align: top;
+} 
+
+table.grant_help td p {
+ margin-top: 0px;
+ margin-bottom: 8px;
+} 
+
+table.grant_help em.perm {
+  font-weight: bold;
+}

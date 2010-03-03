@@ -19,39 +19,66 @@ define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
 function taxonomy_access_help($path, $arg) {
   switch ($path) {
     case 'admin/help#taxonomy_access':
-      $message = '<p>'. t('The Taxonomy Access Control module allows users to specify how each category can be used by various roles.') .'</p>';
-      $message .= '<p>'. t('Permissions can be set differently to each USER ROLES. Be aware that setting Taxonony Access permissions works ONLY WITHIN ONE USER ROLE. <br /><em>(For users with multiple user roles, see section "GOOD TO KNOW" below.)</em>') .'</p>';
-      $message .= '<p>'. t('On the category permissions page for each role, each category displays a list of the terms within it, each with five types of permission: <em>View, Update, Delete, Create</em> and <em>List</em>:') .'</p>';
-      $message .= '<ul>';
-      $message .= '<li>'. t('<strong>VIEW</strong> enables the user to access content (nodes) with given term.') .'</li>';
-      $message .= '<li>'. t('<strong>UPDATE, DELETE</strong> enables the user to Update/Delete <u>ALL</u> nodes with the given term. <br><em>(These two permissions are <u>administrator permissions</u>, that should be given ONLY to e.g. content administrators.)</em>') .'</li>';
-      $message .= '<li>'. t('<strong>CREATE</strong> enables the user to set that term when adding a new node or when editing a node.') .'</li>';
-      $message .= '<li>'. t('<strong>LIST</strong> enables the user to view the name of the given term below the title of a node or in category lists.  It also controls whether a user can access the taxonomy page for the given term.  (e.g. "taxonomy/term/*")') .'</li>';
-      $message .= '</ul>';
-      $message .= '<p>'. t('VIEW, UPDATE, and DELETE control the node access system.  LIST and CREATE control if a user can view and select a given term.  (Note: In previous versions of Taxonomy Access Control, there was no LIST permission; its functionality was controlled by the VIEW permission.)') .'</p>';
-      $message .= '<p>'. t('<strong>VIEW, UPDATE and DELETE have three options for each term: <u>A</u>llow, <u>I</u>gnore, and <u>D</u>eny.</strong>  Indicate which rights each role should have for each term.') .'</p>';
-      $message .= '<p>'. t('<strong>CREATE and LIST have only two options for each term:  YES (selected) or NO (deselected).</strong>  Indicate what each role should be allowed to do with each term.') .'</p>';
-      $message .= '<p>'. t('<strong>IMPORTANT NOTE:</strong><br><u>The DENY directives are processed after the ALLOW directives. (DENY overrides ALLOW.)</u>  So, if a multicategory node is in Categories "A" and "B" and a user has ALLOW permissions for VIEW in Category "A" and DENY permissions for VIEW in Category "B", then the user will NOT be permitted to VIEW the node. (DENY overrides ALLOW.)<br><u>Access is denied by default.</u> So, if a multicategory node is in Categories "C" and "D" and a user has IGNORE permissions for VIEW in both Category "C" and "D", then the user will NOT be permitted to VIEW the node.<br>(If you are familiar with Apache mod_access, this permission system works similar to directive: <em>ORDER ALLOW, DENY</em>)') .'</p>';
-      $message .= '<p>'. t('<strong>Allow/Ignore/Deny All</strong> or <strong>Select/Deselect All:</strong><br>Beside each vocabulary title there are dropdowns containing the options that can be set for individual terms.  Selecting one of these options using the dropdown effectively <u>selects that option for ALL of the individual terms inside that vocabulary when the options are saved.</u><br>Selecting "--" does not make any automatic changes to the permission of the terms in that vocabulary; only manual changes that you make will be saved.<br>NOTE:  This does <u>not</u> change the "Default" option (described below).') .'</p>';
-      $message .= '<p>'. t('<strong>Default:</strong><br>This option, just underneath the vocabulary title, <u>sets the permission that will automatically be given</u> to the role, <u>for any new terms</u> that are added within the vocabulary.  This includes terms that are added via free tagging.') .'</p>';
-      $message .= '<p><strong>'. t('GOOD TO KNOW:') .'</strong></p>';
-      $message .= '<p>'. t('<strong>Users with multiple user roles:</strong> Allow/Ignore/Deny options are interpreted <u>only within one user role</u>. When a user belongs to multiple user roles, then <u>user gets access if ANY of his user roles</u> has the access granted. <br />In this case, permissions for the given user are calculated, so that the <u>permissions of ALL of his user roles are "OR-ed" together</u>. Meaning that Allow will take precedence over Deny. This is different from how node access permissions (for multi-category nodes) are handled within ONE USER ROLE, as noted above.') .'</p>';
-      $message .= '<p>'. t('<br><strong>Input formats:</strong>  <u>Node editing/deleting is blocked</u>, even when user has <em>UPDATE/DELETE</em> permission to the node, <u>when user is not allowed to use a filter format</u> that the node was saved at.') .'</p>';
-      $message .= '<p>&nbsp;</p>';
+      $message = '';
+      $message .= ''
+        . '<p>'. t('The Taxonomy Access Control module allows users to specify how each category can be used by various roles.') .'</p>'
+        . '<p>'. t('Permissions can be set differently for each user role. Be aware that setting Taxonomy Access permissions works <em>only within one user role</em>.') . '</p>'
+        . '<p>' . t('(For users with multiple user roles, see section <a href="#good-to-know">Good to know</a> below.)') .'</p><hr /><br />'
+        . "<h3>" . t("On this page") . "</h3>"
+        . "<ol>"
+        . '<li><a href="#grant">' . t("Grant types") . '</a></li>'
+        . '<li><a href="#perm">' . t("Permission options") . '</a></li>'
+        . '<li><a href="#defaults">' . t("Global and vocabulary defaults") . '</a></li>'
+        . '<li><a href="#good-to-know">' . t("Good to know") . '</a></li>'
+        . "</ol><hr /><br />"
+        . '<h3 id="grant">' . t("Grant types") . '</h3>'
+        . '<p>'. t('On the category permissions page for each role, administrators can configure five types of permission for each term: <em>View, Update, Delete, Create</em> and <em>List</em>:') .'</p>'
+        . _taxonomy_access_grant_help_table()
+        . '<p>'. t('<em>View</em>, <em>Update</em>, and <em>Delete</em> control the node access system.  <em>List</em> and <em>Create</em> control the terms themselves.  (Note: In previous versions of Taxonomy Access Control, there was no <em>List</em> permission its functionality was controlled by the <em>View</em> permission.)') .'</p><hr /><br />'
+        . '<h3 id="perm">' . t("Permission options") . "</h3>"
+        . '<p>'. t('<strong><em>View</em>, <em>Update</em>, and <em>Delete</em> have three options for each term:</strong> <em>Allow</em> (<acronym title="Allow">A</acronym>), <em>Ignore</em> (<acronym title="Ignore">I</acronym>), and <em>Deny</em> (<acronym title="Deny">D</acronym>).  Indicate which rights each role should have for each term.  If a node is tagged with multiple terms:') .'</p>'
+        . "<ul>\n"
+        . "<li>" 
+        . t('<em>Deny</em> (<acronym title="Deny">D</acronym>) overrides <em>Allow</em> (<acronym title="Allow">A</acronym>) within a role.') 
+        . "</li>"
+        . "<li>" 
+        . t('Both <em>Allow</em> (<acronym title="Allow">A</acronym>) and <em>Deny</em> (<acronym title="Deny">D</acronym>) override <em>Ignore</em> (<acronym title="Ignore">I</acronym>) within a role.') 
+    . "</li>"
+        . "<li>" 
+        . t('If a user has <strong>multiple roles</strong>, an <em>Allow</em> (<acronym title="Allow">A</acronym>) from one role <strong>will</strong> override a <em>Deny</em> (<acronym title="Deny">D</acronym>) in another.  (For more information, see section <a href="#good-to-know">Good to know</a> below.)') 
+        . "</li>"
+        . "</ul>\n\n"
+        . '<p>'. t('<strong><em>Create</em> and <em>List</em> have only two options for each term:</strong>  <em>Yes</em> (selected) or <em>No</em> (deselected).  Indicate what each role should be allowed to do with each term.') .'</p>'
+        . "<h4>" . t("Important notes") . "</h4>"
+        . "<ol>"
+        . "<li>" . t('Custom roles <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure
+the authenticated user</a> properly.',
+          array("@url" => url("admin/user/taxonomy_access/edit/2"))
+           )
+        . "</li\n"
+        . '<li>'
+        . "<p>" . t('The <em>Deny</em> directives are processed after the <em>Allow</em> directives. (<strong><em>Deny</em> overrides <em>Allow</em></strong>.)</em>  So, if a multicategory node is in Categories "A" and "B" and a user has <em>Allow</em> permissions for <em>View</em> in Category "A" and <em>Deny</em> permissions for <em>View</em> in Category "B", then the user will NOT be permitted to <em>View</em> the node.') . '</p>'
+        . '<p>' . t('<em>Access is denied by default.</em> So, if a multicategory node is in Categories "C" and "D" and a user has <em>Ignore</em> permissions for <em>View</em> in both Category "C" and "D", then the user will <strong>not</strong> be permitted to view the node.') . '</p>'
+        . '<p>' . t('(If you are familiar with Apache mod_access, this permission system works similar to directive: <em>ORDER ALLOW, DENY</em>)') .'</p>'
+        . "</li>"
+        . "</ol>"
+        . "<hr /><br />"
+        . '<h3 id="defaults">' . t("Global and vocabulary defaults") . "</h3>"
+        . '<p>'. t('This option, just underneath the vocabulary title, <em>sets the permission that will automatically be given</em> to the role, <em>for any new terms</em> that are added within the vocabulary.  This includes terms that are added via free tagging.') .'</p><hr /><br />'
+        . '<h3 id="good-to-know">'. t('Good to know') .'</h3>'
+        . '<ol>'
+        . '<li>'
+        . '<p>'. t('<strong>Users with multiple user roles:</strong> Allow/Ignore/Deny options are interpreted <em>only within one user role</em>. When a user belongs to multiple user roles, then <strong>the user gets access if <em>any</em> of his/her user roles have the access granted.</strong>') . '</p>'
+        . '<p>' . t('In this case, permissions for the given user are calculated so that the <em>permissions of ALL of his user roles are "OR-ed" together</em>, which means that <em>Allow</em> in one role will take precedence over <em>Deny</em> in the other. This is different from how node access permissions (for multi-category nodes) are handled <em>within one user role</em>, as noted above.') .'</p>'
+        . '</li>'
+        . '<li>'
+        . '<p>'. t('<strong>Input formats:</strong>  <em>Node editing/deleting is blocked</em>, even when the user has <em>Update</em> or <em>Delete</em> permission to the node, <em>when the user is not allowed to use a filter format</em> that the node was saved at.') .'</p>'
+        . '</li>'
+        . '</ol>'
+        .'<hr /><br />'
+        ;
       return $message;
-      
-      // TODO: update help
-    /*    default:
-      if (strpos($path,'admin/user/taxonomy_access') === 0) {
-        $rid = arg(3);
-        if (isset($tac_user_roles[$rid]) && $tac_user_roles[$rid]) {
-          $output = t('<p><strong>Vocabulary Settings:</strong> Each vocabulary displays a list of the terms within it, each with five types of permission: <em>View, Update, Delete, Create</em> and <em>List</em>.</p><p>For a detailed description of these permissions and how to use them, see <a href="@taxonomy_access_help">Taxonomy Access Control help</a>. If you are new to Taxonomy Access Control, it is very important that you read the help page.</p>', array('@taxonomy_access_help' => url('admin/help/taxonomy_access')));
-          return $output;
-        }
-        else {
-          return '<p>'.t('In this area you will define the permissions that each <a href="@role">user role</a> has for each category.  Each category can have <em>View, Update, Delete, Create</em> and <em>List</em> permissions set for each user role.', array('@role' => url('admin/user/roles'))).'</p>';
-        }
-      }*/
+      break;
   }
 }
 
