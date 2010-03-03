@@ -541,7 +541,8 @@ function _taxonomy_access_grant_help_table() {
     . "<p>"
     . t('The role must <strong>have</strong> <em class="perm">access content</em> permission on the <a href="@path">permissions administration form</a>.',
       array(
-        '@path' => url('admin/user/permissions#module-node'),
+        '@path' => url('admin/user/permissions',
+                 array('fragment' => 'module-node')),
       )),
   );
 
@@ -553,7 +554,8 @@ function _taxonomy_access_grant_help_table() {
     . "<p>"
     . t('The role must <strong>not</strong> have <em class="perm">edit any [type] content</em> or <em class="perm">delete any [type] content</em> permission on the <a href="@path">permissions administration form</a> if you wish to control them here.',
       array(
-        '@path' => url('admin/user/permissions#module-node'),
+        '@path' => url('admin/user/permissions',
+                 array('fragment' => 'module-node')),
       ))
     ."</p>",
   );
@@ -566,7 +568,8 @@ function _taxonomy_access_grant_help_table() {
     . "<p>"
     . t('This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
       array(
-        '@path' => url('admin/user/permissions#module-node'),
+        '@path' => url('admin/user/permissions',
+                 array('fragment' => 'module-node')),
       ))
     ."</p>",
   );
