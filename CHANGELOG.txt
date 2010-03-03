@@ -2,6 +2,7 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+ o #729644 by halcyonCorsair: Check for variables correctly before use to avoid notices.
  o #730258 by xjm: Improve help page and add documentation to configuration forms.
  o #723898 by xjm, keve: Update nodes properly on term or vocabulary deletion.
  o #727648 by xjm: Whitespace cleanup in taxonomy_access_admin_form_submit().

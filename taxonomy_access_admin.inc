@@ -54,7 +54,7 @@ function theme_taxonomy_access_admin() {
   }
   foreach ($roles as $rid => $name) {
     $ops = array();
-    if ($active[$rid]) {
+    if (!empty($active[$rid])) {
       //only allow delete for "extra" roles
       if ($rid > 2) {
         $ops[] = l(t("disable"), "admin/user/taxonomy_access/delete/$rid");
@@ -95,7 +95,7 @@ function taxonomy_access_admin_delete_role($form_state, $rid) {
 
 // TODO: clarify list VS create grants
 function taxonomy_access_admin_build_row($grants = NULL) {
-  $form['#title'] = $title;
+  $form['#title'] = '';
   $form['#tree'] = TRUE;
   foreach (array('view', 'update', 'delete') as $grant) {
     $form[$grant] = array(
@@ -138,8 +138,9 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
   $form['grants'] = $form['selected_terms'] = $form['selected_defaults'] = array('#tree' => TRUE);
   
   //Global default
+  $global_defaults = empty($default_grants[0]) ? NULL : $default_grants[0];
   $form['vocabs'][0]['#title'] = 'Global';
-  $form['grants'][0][0] = taxonomy_access_admin_build_row($default_grants[0]);
+  $form['grants'][0][0] = taxonomy_access_admin_build_row($global_defaults);
   $form['selected_defaults'][0] = array(
      '#type' => 'checkbox',
      '#disabled' => TRUE,
