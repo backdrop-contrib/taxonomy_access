@@ -68,10 +68,15 @@ function taxonomy_access_update_5() {
   $result = db_query('SELECT rid, grant_view, grant_update, grant_delete, grant_create, grant_list FROM {term_access} WHERE tid=0');
   while ($row = db_fetch_array($result)) {
     if ($row['rid'] > 0) { // just in case we have a weird row with 0, 0
-      db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, %d, %d, %d, %d, %d, %d)', $row);
+      // Typecast each element to sanitize for use in update_sql.
+      foreach ($row as $key => $value) {
+        $row[$key] = (int) $value;
+      }
+      $row_ints = implode(", ", $row);
+      update_sql('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES (0, $row_ints)');
     } 
   }
-  db_query('DELETE FROM {term_access} WHERE tid=0');
+  update_sql('DELETE FROM {term_access} WHERE tid=0');
   return array();
 }
 /**

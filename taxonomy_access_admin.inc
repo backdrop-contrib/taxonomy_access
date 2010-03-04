@@ -412,29 +412,36 @@ function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL) {
 /**
  * Recursively updates permissions for a role for a term
  */
-function taxonomy_access_recursive_grant_update($tid, $rid = null, $grants = null) {
-  // run the original
+function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NULL) {
+  // First, process the original.
   taxonomy_access_grant_update($tid, $rid, $grants);
-  // process the children
-  $ran_tids = array(); // tids that have been processed
-  $run_tids = array($tid); // tids that are in the queue to be processed
-  while(count($run_tids) > 0) { // while there are tids to be processed, run the following
-	foreach($run_tids as $run_key => $run_tid) {
-	  // some basic loop protection
-	  if (array_search($run_tid, $ran_tids) == true) {
-		drupal_set_message("Loop detected for tid <b>".$run_tid."</b>. Stopping.");
-		$run_tids = array(); // stop the execution
-	  } else {
-		$result = db_query('SELECT th.tid FROM {term_hierarchy} th WHERE th.parent = %d', $run_tid);
-		// if this tid has children, update grants and queue the children up for processing
-		while ($row = db_fetch_array($result)) {
-		  taxonomy_access_grant_update($row['tid'], $rid, $grants);
-		  $run_tids[] = $row['tid'];
-		}
-		unset($run_tids[$run_key]); // remove this tid from queue
-		$ran_tids[] = $run_tid; // mark this tid as processed
-	  }
-	}
+  
+  // Process the children.
+  $ran_tids = array(); // tids that have been processed.
+  $run_tids = array($tid); // tids that are in the queue to be processed.
+  while (count($run_tids) > 0) { 
+    foreach ($run_tids as $run_key => $run_tid) {
+      // Some basic loop protection.
+      if (!(array_search($run_tid, $ran_tids) === FALSE)) {
+        drupal_set_message(
+          t("Loop detected for tid %run_tid. Stopping.",
+            array('%run_tid' => $run_tid)
+           ));
+        $run_tids = array(); // stop the execution
+      } 
+      else {
+        $result = db_query('SELECT th.tid FROM {term_hierarchy} th WHERE th.parent = %d', $run_tid);
+        // If this tid has children, update grants and queue the children
+        while ($row = db_fetch_array($result)) {
+          taxonomy_access_grant_update($row['tid'], $rid, $grants);
+          $run_tids[] = $row['tid'];
+        }
+
+        // Remove this tid from the queue and mark as processed,
+        unset($run_tids[$run_key]);
+        $ran_tids[] = $run_tid;
+      }
+    }
   }
 }
 
@@ -535,7 +542,7 @@ function _taxonomy_access_grant_help_table() {
 
   $rows = array();
   $rows[] = array(
-    array('header' => true, 'data' => t("View")),
+    array('header' => TRUE, 'data' => t("View")),
     "<p>"
     . t('Grants this role the ability to view nodes with the term.  (Users must also have this permission to see <em class="perm">nodes</em> with the term listed in Views.)')
     . "</p>"
@@ -548,7 +555,7 @@ function _taxonomy_access_grant_help_table() {
   );
 
   $rows[] = array(
-    array('header' => true, 'data' => t("Update") . ", " . t("Delete")),
+    array('header' => TRUE, 'data' => t("Update") . ", " . t("Delete")),
     "<p>"
     . t("Grants this role the ability to edit or delete nodes with the term, respectively.")
     . "</p>"
@@ -562,7 +569,7 @@ function _taxonomy_access_grant_help_table() {
   );
 
   $rows[] = array(
-    array('header' => true, 'data' => t("Create")),
+    array('header' => TRUE, 'data' => t("Create")),
     "<p>"
     . t("Grants this role the ability to add the term to a node when creating or updating it.")
     . "</p>"
@@ -576,7 +583,7 @@ function _taxonomy_access_grant_help_table() {
   );
 
   $rows[] = array(
-    array('header' => true, 'data' => t("List")),
+    array('header' => TRUE, 'data' => t("List")),
     "<p>" 
     . t("Whether this role can see the term listed on node pages and in lists, and whether the user can view the %taxonomy-term-page page for the term.",
       array(
