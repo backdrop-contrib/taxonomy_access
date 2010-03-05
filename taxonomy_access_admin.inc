@@ -352,11 +352,22 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
     case t('Save all'):
       foreach ($values['grants'] as $vid => $rows) {
         foreach ($rows as $tid => $grants) {
-          if ($tid == 0) {
-            taxonomy_access_defaults_update($vid, $values['rid'], $grants);
+
+          // Check the default values for this row.
+          $defaults = array();
+          foreach ($grants as $grant_name => $value) {
+            $defaults[$grant_name] = 
+              $form['grants'][$vid][$tid][$grant_name]['#default_value'];
           }
-          else {
-            taxonomy_access_grant_update($tid, $values['rid'], $grants);
+
+          // Proceed if the user changed the row (values differ from defaults).
+          if ($defaults != $grants) {
+            if ($tid == 0) {
+              taxonomy_access_defaults_update($vid, $values['rid'], $grants);
+            }
+            else {
+              taxonomy_access_grant_update($tid, $values['rid'], $grants);
+            }
           }
         }
       }
@@ -446,7 +457,7 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NUL
 }
 
 /**
- * Updates default permissions for a role for a vocabulary
+ * Updates default permissions for a role for a vocabulary.
  * @param $vid
  *   The vocab to add the permission for.
  * @param $rid
@@ -456,37 +467,45 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NUL
  *   A value of 1 will grant the permission for this user and term.
 **/
 function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL) {
-  if (!isset($vid) OR !is_numeric($rid)) {
+  if (!is_numeric($vid) || (isset($rid) && !is_numeric($rid))) {
     return FALSE;
   }
-  
-  $ta_sql = "INSERT INTO {term_access_defaults} (vid";
-  $ta_sql_values = " VALUES ($vid";
-  if (isset($rid)) {
-    $ta_sql .= ",rid";
-    $ta_sql_values .= ",$rid";
-  }
-  $sql = "";
-  if (isset($grants)) {
-    foreach ($grants as $perm => $value) {
-      $sql .= ",grant_$perm";
-      $ta_sql_values .= ",$value";
-    }
-    $sql .= ")";
-    $ta_sql_values .= ")";
-  }
-  else {
-    $sql .= ")";
-    $ta_sql_values .= ")";
-  }
-  $ta_sql .= $sql . $ta_sql_values;
 
-  // issue #167977 - klance
-  $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $rid);
-  db_query("DELETE FROM {term_access_defaults} WHERE vid=%d AND rid=%d", $vid, $rid);
-  db_query($ta_sql);  // insert into term_access_defaults
-  // issue #167977 - klance
-  _taxonomy_access_node_access_update($affected_nodes);
+  // Assemble $row object for Schema API.
+  $row = new stdClass();
+  $row->vid = $vid;
+  $row->rid = $rid;
+  if (isset($grants) && is_array($grants)) {
+    foreach ($grants as $op => $value) {
+      if (is_numeric($value)) {
+        $grant_name = "grant_$op";
+        $row->$grant_name = $value;
+      }
+    }
+  }
+  
+  $affected_nodes = array();
+
+  // If we are updating the global default, flag node access for rebuild.
+  if ($vid === 0) {
+    drupal_set_message(t("You have modified a global default, so you should see a message indicating that content access permissions need to be rebuilt.  However, you can wait to do this until you have finished any other changes you wish to make to the Taxonomy Access Permissions."), 'warning');
+    node_access_needs_rebuild(TRUE);
+  }
+  // Otherwise, fetch a list of nodes tagged with the vocabulary.
+  else {
+    $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $rid);
+  }
+  
+  // Delete old entries.
+  db_query("DELETE FROM {term_access_defaults} WHERE vid = %d AND rid = %d", $vid, $rid);
+  
+  // Insert new entries.
+  drupal_write_record('term_access_defaults', $row);
+
+  // Update node access for any affected nodes.
+  if (sizeof($affected_nodes) > 0) {
+    _taxonomy_access_node_access_update($affected_nodes);
+  }
 }
 
 function _taxonomy_access_admin_instructions_html() {

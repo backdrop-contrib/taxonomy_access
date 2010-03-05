@@ -684,8 +684,7 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
   return $nids;
 }
 
-/*
- * Issue #167977 - klance
+/**
  * Gets node ids associated with a given vocabulary
  * @param $vid
  *    The vocabulary id for which to retrieve associated term ids
@@ -695,20 +694,23 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
  *    An array of node ids associated with the given term
  */
 function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
-  $nid = array();
+  $nids = array();
+
   $query = "SELECT n.nid FROM {term_node} n
     LEFT JOIN {term_data} d ON n.tid = d.tid
-    LEFT JOIN {term_access} a ON n.tid = a.tid
-    WHERE d.vid = '$vid'";
+    LEFT JOIN {term_access_defaults} a ON d.vid = a.vid
+    WHERE d.vid = %d";
+  $args = array($vid);
   if (!is_null($rid)) {
-    $query .= " AND a.rid = '$rid'";
+    $query .= " AND a.rid = %d";
+    $args[] = $rid;
   }
-  $result = db_query($query);
+  $result = db_query($query, $args);
   
   while ($node = db_fetch_object($result)) {
-    $nid[] = $node->nid;
+    $nids[] = $node->nid;
   }
-  return $nid;
+  return $nids;
 }
 
 /*
