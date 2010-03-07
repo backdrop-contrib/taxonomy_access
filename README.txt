@@ -33,16 +33,18 @@ TROUBLESHOOTING:
 
 If users can view or edit pages that they do not have permission for:
 
-1. Make sure the user role does not have 'administer nodes' permission.  This 
+1. Make sure the user role does not have "administer nodes" permission.  This 
    permission will override any settings from Taxonomy Access.
 
-2. Check the user role for "edit any [type] content" permissions under "node 
-   module" on page: 
+2. Check whether the user role has "edit any [type] content" permissions 
+   under "node module" on the page: 
    "Administer >> User management >> Permissions"
    (Drupal path: admin/user/permissions).
 
-   This permission overrides TAC's "Update" permissions for the given content
-   type.  (The same is true of "delete any [type] content" permissions.)
+   Granting his permission overrides TAC's "Update" permissions for the given 
+   content type, so you will not be able to deny the role edit access to any 
+   nodes in that type.  (The same is true of "delete any [type] content" 
+   permissions.)
 
 3. Check to see if the user has other roles that may be granting other 
    permissions. Remember: Deny overrides Allow within a role, but Allow from 
@@ -55,7 +57,7 @@ If users can view or edit pages that they do not have permission for:
    Remember that all custom roles also have the authenticated role, so 
    they gain any permissions granted that role.
 
-5. Check if you have ANY OTHER node access modules installed on your system. 
+5. Check whether you have ANY OTHER node access modules installed.
    IMPORTANT: When using multiple access control modules, permissions are 
    ALWAYS OR-ed together.  If one module grants permissions for a given 
    user or role for a node, then user CAN view/edit/delete even if another 
