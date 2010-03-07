@@ -41,7 +41,7 @@ If users can view or edit pages that they do not have permission for:
    "Administer >> User management >> Permissions"
    (Drupal path: admin/user/permissions).
 
-   Granting his permission overrides TAC's "Update" permissions for the given 
+   Granting this permission overrides TAC's "Update" permissions for the given 
    content type, so you will not be able to deny the role edit access to any 
    nodes in that type.  (The same is true of "delete any [type] content" 
    permissions.)
