@@ -4,39 +4,47 @@ READ THIS FILE if you are updating from previous versions of
 If you are installing taxonomy_access.module for the first time, you may ignore
   this file.
 
-Taxonomy Access uses the AUTOMATED UPDATE SYSTEM of Drupal (since Drupal 4.7)
+Taxonomy Access uses Drupal's AUTOMATED UPDATE SYSTEM (since Drupal 4.7).
 
 --------
 UPDATING
 --------
 
-1. DISABLE THE MODULE on page: "Administer >> Site building >> Modules"
+1. DISABLE THE MODULE on page: 
+   "Administer >> Site building >> Modules"
+   (Drupal path: admin/build/modules).
 
-2. BACKUP your database
+2. BACKUP your database.
 
-3. UPLOAD the new module files
+3. UPLOAD the new module files.
 
-4. LOG ON AS MAIN ADMINISTRATOR (user with user ID 1)
+4. LOG ON AS MAIN ADMINISTRATOR (user with user ID 1).
 
-5. ENABLE THE MODULE on page: "Administer >> Site building >> Modules"
+5. ENABLE THE MODULE on page: 
+   "Administer >> Site building >> Modules"
+   (Drupal path: admin/build/modules).
 
 6. RUN UPDATE.PHP by visiting "http://www.example.com/update.php"
 
-7. SET OPTIONS FOR TAXONOMY ACCESS SETTINGS: Go to page: "Administer >> Site configuration >> 
-      Taxonomy Access: Settings"
+7. GRANT ADMINISTRATORS CONTROL on page:
+   "Administer >> User Management >> Permissions"
+   (Drupal path: admin/user/permissions)
 
-8. SET PERMISSION 'Administer Access Controll' FOR ADMINISTRATORS on page: 
-     "Administer >> User Management >> Access Control".
-    (In versions before 5.x permission was 'Administer users')
+   To administer Taxonomy Access, administrators must have "access 
+   administration pages" checked (under "system module") and "administer 
+   permissions" checked (under "user module"). 
+
+8. TEST YOUR SITE'S PERMISSIONS.  If there are problems, see the README.txt.
 
 -----------------------
 UPDATING FROM VERSION 5.1 OR PREVIOUS
 -----------------------
 
-If one upgrades an existing site using an older version (5.1 or before) of TAC, then no 
-performance gains will be made until the admin goes through each role and "rebuilds" 
-the permissions settings for each role from scratch (i.e. disable TAC for that role, 
-then set it up again with just the categories and terms to apply TAC settings to).
+If one upgrades an existing site using an older version (5.1 or before) of 
+TAC, then no performance gains will be made until the admin goes through each 
+role and "rebuilds" the permissions settings for each role from scratch (i.e. 
+disable TAC for that role, then set it up again with just the categories and 
+terms to apply TAC settings to).
 
 
 -----------------------
