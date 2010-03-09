@@ -459,12 +459,23 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
 
       $sql = db_query('SELECT t.tid AS tid, t.vid AS vid FROM {term_data} t
                       INNER JOIN {term_access_defaults} tdg ON tdg.vid=0
-                      LEFT JOIN {term_access_defaults} td ON td.vid=t.vid AND td.rid=tdg.rid
-                      LEFT JOIN {term_access} ta ON ta.tid=t.tid AND ta.rid=tdg.rid
-                      WHERE tdg.rid IN ('. implode(',', $rids) .")
-                      GROUP BY t.tid, t.vid HAVING BIT_OR(COALESCE(ta.grant_$op, td.grant_$op, tdg.grant_$op)) > 0");
-                      // issue #172675 - Ddaffyd
-                      // GROUP BY t.tid HAVING BIT_OR(COALESCE(ta.grant_$op, td.grant_$op, tdg.grant_$op))");
+                      LEFT JOIN {term_access_defaults} td 
+                        ON td.vid=t.vid AND td.rid=tdg.rid
+                      LEFT JOIN {term_access} ta 
+                        ON ta.tid=t.tid AND ta.rid=tdg.rid
+                      WHERE tdg.rid IN (' . db_placeholders($rids, 'int') .')
+                      GROUP BY t.tid, t.vid 
+                        HAVING BIT_OR(
+                          COALESCE(
+                            ta.' . db_escape_table("grant_$op") . ', 
+                            td.' . db_escape_table("grant_$op") . ',
+                            tdg.' . db_escape_table("grant_$op") . '
+                          )
+                        ) > 0',
+                     $rids);
+
+      $tids = array();
+      $vids = array();
 
       while ($result = db_fetch_object($sql)) {
         $tids[]= $result->tid;
@@ -479,6 +490,14 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
         }
       }
 
+      // Typecast $tids and $vids as ints to sanitize.
+      foreach ($tids as $key => $tid) {
+        $tids[$key] = (int) $tid;
+      }
+      foreach ($vids as $key => $vid) {
+        $vids[$key] = (int) $vid;
+      }
+
       $clause[$op]['tid'] = isset($tids) ? implode("','", $tids) : '';
       $clause[$op]['vid'] = isset($vids) ? implode("','", $vids) : '';
       $taxonomy_access_sql_clause = $clause;
@@ -486,8 +505,19 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
     else {
       $clause[$op][$field] = $taxonomy_access_sql_clause[$op][$field];
     }
-    $return['where'] = ($clause[$op][$field]) ? "$table.$field IN ('". $clause[$op][$field] ."')" : "$table.$field IS NULL";
+
+    $return = array();
+    if ($clause[$op][$field]) {
+      $return['where'] = 
+        db_escape_table($table) . "." . db_escape_table($field) 
+        . " IN ('". $clause[$op][$field] ."')";
+    }
+    else {
+      $return['where'] = 
+        db_escape_table($table) . "." . db_escape_table($field) 
+        . " IS NULL";
     return $return;
+    }
   }
   else {
     return array();
@@ -551,11 +581,19 @@ function taxonomy_access_restore_terms($nid, $vid, $protected_terms) {
   if (isset($protected_terms)) {
     $terms = $protected_terms;
     if (count($terms)) {
-      db_query('DELETE FROM {term_node} WHERE nid = %d AND vid = %d AND tid IN ('. implode(',', $terms) .')', $nid, $vid);
+      $args = array($nid, $vid);
+      $args = array_merge($args, $terms);
+      db_query('DELETE FROM {term_node} WHERE nid = %d AND vid = %d 
+                  AND tid IN ('. db_placeholders($terms, 'int') .')', 
+        $args);
       foreach ($terms as $tid) {
-        $replace_terms[] = '('. $nid .','. $vid .','. $tid .')';
+        // Create row for Schema API.
+        $row = new stdClass();
+        $row->nid = $nid;
+        $row->vid = $vid;
+        $row->tid = $tid;
+        drupal_write_record('term_node', $row);
       }
-      db_query('INSERT INTO {term_node} (nid,vid,tid) VALUES '. implode(',', $replace_terms));
     }
   }
 }
@@ -671,9 +709,9 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
   if ($get_children) {
     $child_tids = _taxonomy_access_get_descendants($tid);
     if (sizeof($child_tids) > 0) {
-      $placeholders = implode(',', array_fill(0, count($child_tids), "%d"));
       $child_r = db_query(
-        "SELECT nid FROM {term_node} WHERE tid IN ($placeholders)", 
+        'SELECT nid FROM {term_node} WHERE tid IN '
+        .'(' . db_placeholders($child_tids, 'int') . ')',
         $child_tids
       );
       while ($node = db_fetch_object($child_r)) {
@@ -724,9 +762,10 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
  */
 function _taxonomy_access_get_nodes_for_role($rid) {
   $nid = array();
-  $result = db_query("
-    SELECT n.nid FROM {term_node} n LEFT JOIN {term_access} a ON n.tid = a.tid WHERE a.rid = '$rid'
-  ");
+  $result = db_query('SELECT n.nid 
+                      FROM {term_node} n 
+                      LEFT JOIN {term_access} a ON n.tid = a.tid 
+                      WHERE a.rid = %d', $rid);
   
   while ($node = db_fetch_object($result)) {
     $nid[] = $node->nid;

@@ -391,32 +391,29 @@ function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL) {
     return FALSE;
   }
   
-  $ta_sql = "INSERT INTO {term_access} (tid";
-  $ta_sql_values = " VALUES ($tid";
+  // Assemble a $row object for Schema API.
+  $row = new stdClass();
+  $row->tid = $tid;
   if (isset($rid)) {
-    $ta_sql .= ",rid";
-    $ta_sql_values .= ",$rid";
+    $row->rid = $rid;
   }
-  $sql = "";
-  if (isset($grants)) {
-    foreach ($grants as $perm => $value) {
-      $sql .= ",grant_$perm";
-      $ta_sql_values .= is_array($value) ? ",". $value[0] : ",$value";
+  if (isset($grants) && is_array($grants)) {
+    foreach ($grants as $op => $value) {
+      if (is_numeric($value)) {
+        $grant_name = "grant_$op";
+        $row->$grant_name = $value;
+      }
     }
-    $sql .= ")";
-    $ta_sql_values .= ")";
   }
-  else {
-    $sql .= ")";
-    $ta_sql_values .= ")";
-  }
-  $ta_sql .= $sql . $ta_sql_values;
   
-  // issue #167977 - klance
   $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
-  db_query("DELETE FROM {term_access} WHERE tid=%d AND rid=%d", $tid, ($rid));
-  db_query($ta_sql);  // insert into term_access
-  // issue #167977 - klance
+
+  // Delete old entries.
+  db_query("DELETE FROM {term_access} WHERE tid=%d AND rid=%d", $tid, $rid);
+
+  // Insert new entries.
+  drupal_write_record('term_access', $row);
+
   _taxonomy_access_node_access_update($affected_nodes);
 }
 
