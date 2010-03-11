@@ -123,6 +123,18 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
   while ($row = db_fetch_array($result)) {
     $default_grants[$row['vid']] = $row;
   }
+  
+  // If we are adding a role, no global default is set yet, so insert it now.
+  if (empty($default_grants[0]) && isset($rid)) {
+    // Assemble a $row object for Schema API.
+    $row = new stdClass();
+    $row->vid = $vid;
+    $row->rid = $rid;
+
+    // Insert the row with defaults for all grants.
+    drupal_write_record('term_access_defaults', $row);
+  }
+  
 
   // Fetch all grants
   $result = db_query('SELECT * FROM {term_access} WHERE rid = %d', $rid);

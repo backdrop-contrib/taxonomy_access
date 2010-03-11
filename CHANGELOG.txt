@@ -2,6 +2,8 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+ o #727648 by xjm: Make sure global default is inserted on role enable.
+    (See comment #10.)
  o by xjm: Properly escape data in queries.
  o #727648 by xjm: Fixed admin submit handler for default changes.
     Changed submit handler to only process updates for changed rows.
