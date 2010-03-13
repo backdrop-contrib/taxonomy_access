@@ -723,25 +723,45 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
 }
 
 /**
- * Gets node ids associated with a given vocabulary
+ * Gets node ids associated with a given vocabulary.
+ *
  * @param $vid
- *    The vocabulary id for which to retrieve associated term ids
- * @params $rid
- *    The role id for which to retrieve associated term ids
+ *    The vocabulary id for which to retrieve associated node ids.
+ * @param $rid
+ *    The role id for which to retrieve node ids, if any.
+ *    This argument has the effect of filtering out nodes in terms that 
+ *    are already controlled invidually for the role.
+ *
  * @return $nid
- *    An array of node ids associated with the given term
+ *    An array of node ids associated with the given vocabulary.
  */
 function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
   $nids = array();
 
-  $query = "SELECT n.nid FROM {term_node} n
-    LEFT JOIN {term_data} d ON n.tid = d.tid
-    LEFT JOIN {term_access_defaults} a ON d.vid = a.vid
-    WHERE d.vid = %d";
+  $query = 
+    "SELECT n.nid FROM {term_node} n
+      LEFT JOIN {term_data} d ON n.tid = d.tid
+      WHERE d.vid = %d ";
   $args = array($vid);
+
   if (!is_null($rid)) {
-    $query .= " AND a.rid = %d";
-    $args[] = $rid;
+    // Get terms in the vocabulary that are controlled for this role.
+    $r = db_query(
+      "SELECT a.tid FROM {term_access} a 
+       INNER JOIN {term_data} d ON d.tid = a.tid
+       WHERE a.rid = %d AND d.vid = %d", $rid, $vid);
+
+    $tids = array();
+    while ($row = db_fetch_object($r)) {
+      $tids[] = $row->tid;
+    }
+    
+    if (!empty($tids)) {
+      // Exclude nodes with those terms from the results.
+      $query .= 
+        " AND n.tid NOT IN (" . db_placeholders($tids, 'int') . ")";
+      $args = array_merge($args, $tids);
+    }
   }
   $result = db_query($query, $args);
   
