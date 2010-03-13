@@ -2,6 +2,8 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+ o #739874 by xjm: Properly update nodes that are controlled by a role's 
+    global or vocabulary defaults when the role is disabled.
  o #739732 by xjm: Update node access properly when a vocab default is added.
  o #727648 by xjm: Make sure global default is inserted on role enable.
     (See comment #10.)

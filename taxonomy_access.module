@@ -771,26 +771,30 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
   return $nids;
 }
 
-/*
- * Issue #167977 - klance
- * Gets node ids associated with the given role
+/**
+ * Gets node ids associated with the given role.
+ *
  * @param $rid
- *    The role id for which to retrieve term ids that are
- *    access-controlled for this role
+ *    The role id.
+ *
  * @return $nid
- *    An array of node ids associated with the given term
+ *    An array of node ids associated with terms or vocabularies that are 
+ *    controlled for the role.
  */
 function _taxonomy_access_get_nodes_for_role($rid) {
-  $nid = array();
-  $result = db_query('SELECT n.nid 
-                      FROM {term_node} n 
-                      LEFT JOIN {term_access} a ON n.tid = a.tid 
-                      WHERE a.rid = %d', $rid);
+  $nids = array();
+  $result = db_query(
+    'SELECT n.nid 
+     FROM {term_node} n 
+     LEFT JOIN {term_data} d ON n.tid = d.tid
+     LEFT JOIN {term_access} a ON n.tid = a.tid 
+     LEFT JOIN {term_access_defaults} ad on ad.vid = d.vid
+     WHERE a.rid = %d OR ad.rid = %d', $rid, $rid);
   
   while ($node = db_fetch_object($result)) {
-    $nid[] = $node->nid;
+    $nids[] = $node->nid;
   }
-  return $nid;
+  return $nids;
 }
 
 /**

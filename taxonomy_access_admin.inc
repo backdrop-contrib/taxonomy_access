@@ -70,27 +70,61 @@ function theme_taxonomy_access_admin() {
   return theme('table', $header, $rows);
 }
 
+/**
+ * Form callback to delete all access rules for a particular role.
+ * @param $rid
+ *     The role id to disable.
+ */
 function taxonomy_access_admin_delete_role($form_state, $rid) {
-  if (is_numeric($rid) AND $rid > 2 AND db_fetch_array(db_query('SELECT rid FROM {term_access_defaults} WHERE vid=0 AND rid=%d', $rid))) {
-    if ($_POST['confirm']) {
-      // issue #167977 - klance
-      $affected_nodes = _taxonomy_access_get_nodes_for_role($rid);
-      db_query('DELETE FROM {term_access} WHERE rid=%d', $rid);
-      db_query('DELETE FROM {term_access_defaults} WHERE rid=%d', $rid);
-      // issue #167977 - klance
-      //node_access_rebuild();
-      _taxonomy_access_node_access_update($affected_nodes);            
-      drupal_set_message(t('All term access rules deleted for role %rid.', array('%rid' => $rid)));
-      drupal_goto('admin/user/taxonomy_access');
-    }
-    else {
-      return confirm_form($form,
-                          t('Are you sure you want to delete all grant rules for role %rid?', array('%rid' => $rid)),
-                          'admin/user/taxonomy_access', t('This action cannot be undone.'),
-                          t('Delete all'), t('Cancel'));
+  if (is_numeric($rid) AND $rid > 2) {
+    $r = db_query(
+      'SELECT grant_view, grant_update, grant_delete
+       FROM {term_access_defaults} 
+       WHERE vid=0 AND rid=%d', $rid);
+    $role_global_default = db_fetch_array($r);
+    if ($role_global_default) {
+      if ($_POST['confirm']) {
+
+        // Compare this role's global default node access to auth user role.
+        $auth_global_default = db_fetch_array(db_query(
+          'SELECT grant_view, grant_update, grant_delete
+           FROM {term_access_defaults} 
+           WHERE vid=0 AND rid=2'));
+ 
+        if ($role_global_default == $auth_global_default) {
+          $affected_nodes = _taxonomy_access_get_nodes_for_role($rid);
+        }
+        else {
+          // If the global default is different, this role's access changes on
+          // all uncontrolled nodes, so flag node access for rebuild.
+          node_access_needs_rebuild(TRUE);
+        }
+        db_query('DELETE FROM {term_access} WHERE rid=%d', $rid);
+        db_query('DELETE FROM {term_access_defaults} WHERE rid=%d', $rid);
+        if (!empty($affected_nodes)) {
+          _taxonomy_access_node_access_update($affected_nodes);
+        }
+
+        drupal_set_message(t('All term access rules deleted for role %rid.', 
+            array('%rid' => $rid)));
+        drupal_goto('admin/user/taxonomy_access');
+      }
+
+      else {
+        return confirm_form($form,
+          t('Are you sure you want to delete all grant rules for role %rid?', 
+            array('%rid' => $rid)),
+          'admin/user/taxonomy_access', 
+          t('This action cannot be undone.'),
+          t('Delete all'), 
+          t('Cancel'));
+      }
+
+      return;
     }
   }
-  else return drupal_not_found();
+
+  return drupal_not_found();
 }
 
 // TODO: clarify list VS create grants
