@@ -803,6 +803,7 @@ function _taxonomy_access_get_nodes_for_role($rid) {
  *    An array of node ids for which to acquire access permissions.
  */
 function _taxonomy_access_node_access_update($nids) {
+
   // Proceed only if node_access_needs_rebuild() is not already flagged.
   if (!node_access_needs_rebuild()) {
 
@@ -840,7 +841,7 @@ function _taxonomy_access_cache_affected_nodes($affected_nodes = NULL) {
 
   // If we were passed a list of nodes, cache.
   if (isset($affected_nodes)) {
-    $nodes = $affected_nodes;
+    $nodes = array_merge($nodes, $affected_nodes);
   }
 
   // Otherwise, return the cached data.

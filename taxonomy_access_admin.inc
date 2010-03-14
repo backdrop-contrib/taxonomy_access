@@ -359,7 +359,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
               'DELETE FROM {term_access} WHERE rid = %d AND tid = %d', 
               $values['rid'], $tid
             );
-            _taxonomy_access_node_access_update($affected_nodes);
+            _taxonomy_access_cache_affected_nodes($affected_nodes);
           }
         }
       }
@@ -373,10 +373,17 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
               $values['rid'], 
               $vid
             );
-            _taxonomy_access_node_access_update($affected_nodes);
+            _taxonomy_access_cache_affected_nodes($affected_nodes);
           }
         }
       }
+
+      // Update any affected nodes.
+      $affected_nodes = _taxonomy_access_cache_affected_nodes();
+      if (!empty($affected_nodes)) {
+        _taxonomy_access_node_access_update($affected_nodes);
+      }
+
       break;
 
     case t('Add'):
@@ -393,6 +400,13 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
       elseif ($type == 'default') {
         taxonomy_access_defaults_update($id, $values['rid'], $new['grants']);
       }
+
+      // Update any affected nodes.
+      $affected_nodes = _taxonomy_access_cache_affected_nodes();
+      if (!empty($affected_nodes)) {
+        _taxonomy_access_node_access_update($affected_nodes);
+      }
+
       break;
 
     case t('Save all'):
@@ -417,13 +431,24 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
           }
         }
       }
+
+      // Update any affected nodes.
+      $affected_nodes = _taxonomy_access_cache_affected_nodes();
+      if (!empty($affected_nodes)) {
+        _taxonomy_access_node_access_update($affected_nodes);
+      }
+
       drupal_goto('admin/user/taxonomy_access');
       break;
   }
 }
 
 /**
- * Updates permissions for a role for a term
+ * Updates permissions for a role for a term.
+ * Note: This function adds nodes to the affected nodes cache.
+ * Callers should run  _taxonomy_access_node_access_update() on
+ * _taxonomy_access_cache_affected_nodes() after all changes are processed.
+ *
  * @param $tid
  *   The term to add the permission for.
  * @param $rid
@@ -460,7 +485,10 @@ function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL) {
   // Insert new entries.
   drupal_write_record('term_access', $row);
 
-  _taxonomy_access_node_access_update($affected_nodes);
+  // Add any affected nodes to the cache to be updated by the submit handler.
+  if (sizeof($affected_nodes) > 0) {
+    _taxonomy_access_cache_affected_nodes($affected_nodes);
+  }
 }
 
 /**
@@ -501,6 +529,10 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NUL
 
 /**
  * Updates default permissions for a role for a vocabulary.
+ * Note: This function adds nodes to the affected nodes cache.
+ * Callers should run  _taxonomy_access_node_access_update() on
+ * _taxonomy_access_cache_affected_nodes() after all changes are processed.
+ *
  * @param $vid
  *   The vocab to add the permission for.
  * @param $rid
@@ -545,9 +577,9 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL) {
   // Insert new entries.
   drupal_write_record('term_access_defaults', $row);
 
-  // Update node access for any affected nodes.
+  // Add any affected nodes to the cache to be updated by the submit handler.
   if (sizeof($affected_nodes) > 0) {
-    _taxonomy_access_node_access_update($affected_nodes);
+    _taxonomy_access_cache_affected_nodes($affected_nodes);
   }
 }
 

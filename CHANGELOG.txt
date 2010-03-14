@@ -2,6 +2,8 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+ o #732844 by xjm: Refactor submit handler to process nodes all at once 
+    (rather than per row).
  o #739874 by xjm: Properly update nodes that are controlled by a role's 
     global or vocabulary defaults when the role is disabled.
  o #739732 by xjm: Update node access properly when a vocab default is added.
