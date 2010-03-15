@@ -2,6 +2,7 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+ o #742336 by xjm: Comment cleanup & trailing whitespace removal.
  o #742072 by xjm: Changed submit handler to skip node updates if only create 
     or list permissions have changed for the row.
  o #732844 by xjm: Refactored submit handler to process nodes all at once 

@@ -3,67 +3,30 @@
 
 /**
  * @file
- *  Implementations of hook_update (called by update.php)
+ *  Install, update, and uninstall functions for Taxonomy Access Control.
  */
 
-// Update#1: updating the tables to UTF-8
-function taxonomy_access_update_1() {
-  return _system_update_utf8(array('term_access', 'term_access_defaults'));
+
+/**
+ * Implements hook_update_last_removed().
+ */
+function taxonomy_access_last_removed() {
+  return 3;
 }
 
-// Update#2: adding field 'grant_list' to tables 'term_access' and 'term_access_defaults'.
-function taxonomy_access_update_2() {
-  switch ($GLOBALS['db_type']) {
-    case 'pgsql':
-      // Checking if column 'grant_list' exists
-      if (db_result(db_query("SELECT a.attname FROM {pg_attribute} a LEFT JOIN {pg_class} c ON c.oid = a.attrelid WHERE c.relname = 'term_access' AND a.attname = 'grant_list'"))) {
-        drupal_set_message(t("Taxonomy Access - Update #2: No queries executed. Field 'grant_list' already exists in tables 'term_access'."), 'error');
-        $ret = array();
-      }
-      else {
-        $ret[] = update_sql("ALTER TABLE {term_access} ADD grant_list smallint");
-        $ret[] = update_sql("ALTER TABLE {term_access} ALTER COLUMN grant_list SET DEFAULT '0'");
-        $ret[] = update_sql("ALTER TABLE {term_access} ALTER COLUMN grant_list SET NOT NULL ");
-        $ret[] = update_sql("UPDATE {term_access} SET grant_list = grant_view");
-        $ret[] = update_sql("ALTER TABLE {term_access_defaults} ADD grant_list smallint");
-        $ret[] = update_sql("ALTER TABLE {term_access_defaults} ALTER COLUMN grant_list SET DEFAULT '0");
-        $ret[] = update_sql("ALTER TABLE {term_access_defaults} ALTER COLUMN grant_list SET NOT NULL ");
-        $ret[] = update_sql("UPDATE {term_access_defaults} SET grant_list = grant_view");
-      }
-      break;
 
-    case 'mysql':
-    case 'mysqli':
-      // Checking if column 'grant_list' exists
-      if (db_result(db_query("DESC {term_access} 'grant_list'"))) {
-        drupal_set_message(t("Taxonomy Access - Update #2: No queries executed. Field 'grant_list' already exists in tables 'term_access'."), 'error');
-        $ret = array();
-      }
-      else {
-        $ret[] = update_sql("ALTER TABLE {term_access} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
-        $ret[] = update_sql("UPDATE {term_access} SET grant_list = grant_view");
-        $ret[] = update_sql("ALTER TABLE {term_access_defaults} ADD grant_list TINYINT(1) UNSIGNED DEFAULT '0'  NOT NULL");
-        $ret[] = update_sql("UPDATE {term_access_defaults} SET grant_list = grant_view");
-      }
-      break;
-  }
-
-  return $ret;
-}
-
-function taxonomy_access_update_3() {
-  // new module weights in core: put taxonomy_access to the bottom (but before the very last ones) in the chain.
-  $ret[] = update_sql("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
-  return $ret;
-}
-
-// Update#4: Delete variable 'taxonomy_access_enabled'
+/**
+ * Delete variable 'taxonomy_access_enabled'.
+ */
 function taxonomy_access_update_4() {
   variable_del('taxonomy_access_enabled');
   return array();
 }
 
-// Update#5: Move global default records from term_access to term_access defaults
+
+/**
+ * Move global default records from term_access to term_access_defaults.
+ */
 function taxonomy_access_update_5() {
   $result = db_query('SELECT rid, grant_view, grant_update, grant_delete, grant_create, grant_list FROM {term_access} WHERE tid=0');
   while ($row = db_fetch_array($result)) {
@@ -74,14 +37,16 @@ function taxonomy_access_update_5() {
       }
       $row_ints = implode(", ", $row);
       update_sql('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES (0, $row_ints)');
-    } 
+    }
   }
   update_sql('DELETE FROM {term_access} WHERE tid=0');
   return array();
 }
+
+
 /**
- * Implementation of hook_install.
- * Adding tables to database: 'term_access', 'term_access_defaults'
+ * Implements hook_install().
+ * Adds tables to database: 'term_access', 'term_access_defaults'
  */
 function taxonomy_access_install() {
   switch ($GLOBALS['db_type']) {
@@ -104,7 +69,7 @@ function taxonomy_access_install() {
       }
       break;
 
-  } // End case 
+  }
 
   // Use Schema API to install tables.
   $status = drupal_install_schema('taxonomy_access');
@@ -122,8 +87,8 @@ function taxonomy_access_install() {
 
   // Weight taxonomy_access below most modules, but above the very last ones.
   db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
-      
-  // Notify of changes
+
+  // Notify user of status.
   if ($success) {
     drupal_set_message(t('Taxonomy Access module installed tables successfully.'));
   }
@@ -132,10 +97,15 @@ function taxonomy_access_install() {
   }
 }
 
+
+/**
+ * Implements hook_uninstall().
+ */
 function taxonomy_access_uninstall() {
   drupal_uninstall_schema('taxonomy_access');
   drupal_set_message(t('Taxonomy Access has been successfully uninstalled.'));
 }
+
 
 /**
  * Implements hook_schema().
