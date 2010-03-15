@@ -192,7 +192,7 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
   if (empty($default_grants[0]) && isset($rid)) {
     // Assemble a $row object for Schema API.
     $row = new stdClass();
-    $row->vid = $vid;
+    $row->vid = 0;
     $row->rid = $rid;
 
     // Insert the row with defaults for all grants.
