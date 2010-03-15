@@ -422,11 +422,20 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
 
           // Proceed if the user changed the row (values differ from defaults).
           if ($defaults != $grants) {
+
+            // If the grants for node access match the defaults, then we
+            // can skip updating node access records for this row.
+            $skip_nodes = TRUE;
+            foreach (array('view', 'update', 'delete') as $op) {
+              if ($defaults[$op] != $grants[$op]) {
+                $skip_nodes = FALSE;
+              }
+            }
             if ($tid == 0) {
-              taxonomy_access_defaults_update($vid, $values['rid'], $grants);
+              taxonomy_access_defaults_update($vid, $values['rid'], $grants, $skip_nodes);
             }
             else {
-              taxonomy_access_grant_update($tid, $values['rid'], $grants);
+              taxonomy_access_grant_update($tid, $values['rid'], $grants, $skip_nodes);
             }
           }
         }
@@ -456,8 +465,10 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
  * @param $grants
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
+ * @param $skip_nodes = FALSE
+ *   A flag indicating whether to skip node updates when processing.
 **/
-function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL) {
+function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL, $skip_nodes = FALSE) {
   if (!isset($tid) OR !is_numeric($rid)) {
     return FALSE;
   }
@@ -477,7 +488,9 @@ function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL) {
     }
   }
   
-  $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
+  if (!$skip_nodes) {
+    $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
+  }
 
   // Delete old entries.
   db_query("DELETE FROM {term_access} WHERE tid=%d AND rid=%d", $tid, $rid);
@@ -486,7 +499,7 @@ function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL) {
   drupal_write_record('term_access', $row);
 
   // Add any affected nodes to the cache to be updated by the submit handler.
-  if (sizeof($affected_nodes) > 0) {
+  if (!empty($affected_nodes)) {
     _taxonomy_access_cache_affected_nodes($affected_nodes);
   }
 }
@@ -540,8 +553,10 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NUL
  * @param $grants
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
+ * @param $skip_nodes = FALSE
+ *   A flag indicating whether to skip node updates when processing.
 **/
-function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL) {
+function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL, $skip_nodes = FALSE) {
   if (!is_numeric($vid) || (isset($rid) && !is_numeric($rid))) {
     return FALSE;
   }
@@ -558,17 +573,17 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL) {
       }
     }
   }
-  
-  $affected_nodes = array();
 
-  // If we are updating the global default, flag node access for rebuild.
-  if ($vid === 0) {
-    drupal_set_message(t("You have modified a global default, so you should see a message indicating that content access permissions need to be rebuilt.  However, you can wait to do this until you have finished any other changes you wish to make to the Taxonomy Access Permissions."), 'warning');
-    node_access_needs_rebuild(TRUE);
-  }
-  // Otherwise, fetch a list of nodes tagged with the vocabulary.
-  else {
-    $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $rid);
+  if (!$skip_nodes) {
+    // If we are updating the global default, flag node access for rebuild.
+    if ($vid === 0) {
+      drupal_set_message(t("You have modified a global default, so you should see a message indicating that content access permissions need to be rebuilt.  However, you can wait to do this until you have finished any other changes you wish to make to the Taxonomy Access Permissions."), 'warning');
+      node_access_needs_rebuild(TRUE);
+    }
+    // Otherwise, fetch a list of nodes tagged with the vocabulary.
+    else {
+      $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $rid);
+    }
   }
   
   // Delete old entries.
@@ -578,7 +593,7 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL) {
   drupal_write_record('term_access_defaults', $row);
 
   // Add any affected nodes to the cache to be updated by the submit handler.
-  if (sizeof($affected_nodes) > 0) {
+  if (!empty($affected_nodes)) {
     _taxonomy_access_cache_affected_nodes($affected_nodes);
   }
 }
