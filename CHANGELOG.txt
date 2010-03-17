@@ -1,6 +1,6 @@
 // $Id$
 
-Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
+Taxonomy Access 6.x-1.1, 2010-03-17
 ---------------------------------------
  o #742336 by xjm: Comment cleanup & trailing whitespace removal.
  o #742072 by xjm: Changed submit handler to skip node updates if only create 
