@@ -1,5 +1,10 @@
 // $Id$
 
+Taxonomy Access 6.x-1.2, 2010-03-18
+---------------------------------------
+ o #746548 by xjm: Fixed critical bug in hook_db_rewrite_sql() that prevented 
+    create/list permissions from functioning properly.
+
 Taxonomy Access 6.x-1.1, 2010-03-17
 ---------------------------------------
  o #742336 by xjm: Comment cleanup & trailing whitespace removal.

@@ -529,8 +529,8 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
       $return['where'] =
         db_escape_table($table) . "." . db_escape_table($field)
         . " IS NULL";
-    return $return;
     }
+    return $return;
   }
   else {
     return array();
