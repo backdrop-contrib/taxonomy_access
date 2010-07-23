@@ -1,5 +1,9 @@
 // $Id$
 
+Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
+---------------------------------------
+o #785060 by alexb: Fixed bug with argument identification in admin/ paths.
+
 Taxonomy Access 6.x-1.2, 2010-03-18
 ---------------------------------------
  o #746548 by xjm: Fixed critical bug in hook_db_rewrite_sql() that prevented 
