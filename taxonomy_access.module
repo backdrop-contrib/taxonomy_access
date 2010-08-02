@@ -249,7 +249,7 @@ function taxonomy_access_menu() {
  *     Look at feasability to eliminate _restore_terms and _preserve_terms
  *     by simply setting the '#access' attribute for those terms.
  */
-function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
+function taxonomy_access_form_alter(&$form, $form_state, $form_id) {
   if ($form['#id'] == 'node-form' && is_numeric($form['nid']['#value'])) {
     $form['tac_protected_terms'] = array(
       '#type' => 'value',
