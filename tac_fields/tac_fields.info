@@ -1,0 +1,8 @@
+; $Id$
+name = TAC Fields
+description = Taxonomy-based access control for individual CCK fields.
+dependencies[] = taxonomy
+dependencies[] = taxonomy_access
+dependencies[] = content
+core = 6.x
+

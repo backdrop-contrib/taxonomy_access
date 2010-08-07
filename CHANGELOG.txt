@@ -2,6 +2,8 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+o #339366 by xjm: Initial commit of tac_fields, an experimental submodule to 
+   apply taxonomy access to specific fields.
 o #728406 by xjm: hook_form_alter() expects a plain object for $form_state, 
    not a reference.
 o #785060 by alexb: Fixed bug with argument identification in admin/ paths.
