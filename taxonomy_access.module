@@ -456,6 +456,12 @@ function taxonomy_access_taxonomy($op, $type, $array = NULL) {
  */
 function taxonomy_access_db_rewrite_sql($query, $table, $field) {
   if (!user_access('administer taxonomy') && ($field =='vid' || $field =='tid')) {
+    
+    // Table {node_revisions} also has a vid (revision, not vocabulary)
+    if ($table == 'node_revisions') {
+      return array();
+    }
+    
     global $user;
 
     if (arg(0) == "admin") {
