@@ -152,9 +152,9 @@ function taxonomy_access_node_access_records($node) {
      * @todo
      *    How does deny/ignore work with this?
      */
-    $result = db_query('SELECT tadg.rid, 
-                       BIT_OR(COALESCE( ta.grant_view, tad.grant_view, tadg.grant_view )) AS grant_view, 
-                       BIT_OR(COALESCE( ta.grant_update, tad.grant_update, tadg.grant_update )) AS grant_update, 
+    $result = db_query('SELECT tadg.rid,
+                       BIT_OR(COALESCE( ta.grant_view, tad.grant_view, tadg.grant_view )) AS grant_view,
+                       BIT_OR(COALESCE( ta.grant_update, tad.grant_update, tadg.grant_update )) AS grant_update,
                        BIT_OR(COALESCE( ta.grant_delete, tad.grant_delete, tadg.grant_delete )) AS grant_delete
                        FROM {term_node} tn
                        INNER JOIN {term_data} t ON t.tid = tn.tid
@@ -166,8 +166,8 @@ function taxonomy_access_node_access_records($node) {
   }
   else {
     // Use the default for nodes with no category
-    $result = db_query('SELECT n.nid, tadg.rid AS rid, tadg.grant_view AS grant_view, tadg.grant_update AS grant_update, tadg.grant_delete AS grant_delete 
-                       FROM {node} n INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0 
+    $result = db_query('SELECT n.nid, tadg.rid AS rid, tadg.grant_view AS grant_view, tadg.grant_update AS grant_update, tadg.grant_delete AS grant_delete
+                       FROM {node} n INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0
                        WHERE n.nid = %d', $node->nid);
   }
 
@@ -213,6 +213,16 @@ function taxonomy_access_theme() {
 }
 
 /**
+ * Implements hook_views_api().
+ */
+function taxonomy_access_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'taxonomy_access') . '/includes',
+  );
+}
+
+/**
  * Implements hook_menu().
  */
 function taxonomy_access_menu() {
@@ -239,6 +249,8 @@ function taxonomy_access_menu() {
 
   return $items;
 }
+
+
 
 /**
  * Implements hook_form_alter().
@@ -456,12 +468,12 @@ function taxonomy_access_taxonomy($op, $type, $array = NULL) {
  */
 function taxonomy_access_db_rewrite_sql($query, $table, $field) {
   if (!user_access('administer taxonomy') && ($field =='vid' || $field =='tid')) {
-    
+
     // Table {node_revisions} also has a vid (revision, not vocabulary)
     if ($table == 'node_revisions') {
       return array();
     }
-    
+
     global $user;
 
     if (arg(0) == "admin") {
@@ -492,9 +504,9 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
          LEFT JOIN {term_access_defaults} td ON td.vid=t.vid AND td.rid=tdg.rid
          LEFT JOIN {term_access} ta ON ta.tid=t.tid AND ta.rid=tdg.rid
          WHERE tdg.rid IN (' . db_placeholders($rids, 'int') .')
-         GROUP BY t.tid, t.vid 
+         GROUP BY t.tid, t.vid
          HAVING BIT_OR(COALESCE(
-                                ta.' . db_escape_table("grant_$op") . ', 
+                                ta.' . db_escape_table("grant_$op") . ',
                                 td.' . db_escape_table("grant_$op") . ',
                                 tdg.' . db_escape_table("grant_$op") . '
                                )) > 0', $rids);
@@ -606,8 +618,8 @@ function taxonomy_access_restore_terms($nid, $vid, $protected_terms) {
     if (count($terms)) {
       $args = array($nid, $vid);
       $args = array_merge($args, $terms);
-      db_query('DELETE FROM {term_node} WHERE nid = %d AND vid = %d 
-                  AND tid IN ('. db_placeholders($terms, 'int') .')', 
+      db_query('DELETE FROM {term_node} WHERE nid = %d AND vid = %d
+                  AND tid IN ('. db_placeholders($terms, 'int') .')',
         $args);
       foreach ($terms as $tid) {
         // Create row for Schema API.
@@ -775,7 +787,7 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
   if (!is_null($rid)) {
     // Get terms in the vocabulary that are controlled for this role.
     $r = db_query(
-      "SELECT a.tid FROM {term_access} a 
+      "SELECT a.tid FROM {term_access} a
        INNER JOIN {term_data} d ON d.tid = a.tid
        WHERE a.rid = %d AND d.vid = %d", $rid, $vid);
 
@@ -812,10 +824,10 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
 function _taxonomy_access_get_nodes_for_role($rid) {
   $nids = array();
   $result = db_query(
-    'SELECT n.nid 
-     FROM {term_node} n 
+    'SELECT n.nid
+     FROM {term_node} n
      LEFT JOIN {term_data} d ON n.tid = d.tid
-     LEFT JOIN {term_access} a ON n.tid = a.tid 
+     LEFT JOIN {term_access} a ON n.tid = a.tid
      LEFT JOIN {term_access_defaults} ad on ad.vid = d.vid
      WHERE a.rid = %d OR ad.rid = %d', $rid, $rid);
 
