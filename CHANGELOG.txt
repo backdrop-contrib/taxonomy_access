@@ -2,6 +2,7 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+o #902458 by xjm: Remove old, unneeded code from hook_nodeap() presave op.
 o #786360 by mr.andrey, lhristov: Provide views filters for TAC grants.
 o #818212 by ayalon: Do not alter queries for the {node_revisions} table.
 o #339366 by xjm: Initial commit of tac_fields, an experimental submodule to 

@@ -351,22 +351,6 @@ function taxonomy_access_vocabulary_delete_submit(&$form, &$form_state) {
 function taxonomy_access_nodeapi(&$node, $op, $arg = 0) {
   switch ($op) {
     case 'presave':
-      // When TAC grants 'update' access to edit node,
-      // change $node->uid back to original creator (changed by node_submit).
-      /**
-       * @todo
-       *     Do we still need this? (with node_revisions table etc.)
-       */
-      if (($node->nid) && !user_access('administer nodes') && (node_access('update', $node))) {
-        // Populate the "authored by" field.
-        $old_node = node_load($node->nid);
-        if ($account = user_load(array('name' => $old_node->name))) {
-          $node->uid = $account->uid;
-        }
-        else {
-          $node->uid = 0;
-        }
-      }
       break;
 
     case 'update':
