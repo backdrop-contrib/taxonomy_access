@@ -2,6 +2,8 @@
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+o #902858 by xjm: Prevent corrupted node access records when $node->taxonomy 
+   is not consistent with the actual {term_node} data.
 o #902458 by xjm: Remove old, unneeded code from hook_nodeap() presave op.
 o #786360 by mr.andrey, lhristov: Provide views filters for TAC grants.
 o #818212 by ayalon: Do not alter queries for the {node_revisions} table.

@@ -142,33 +142,32 @@ function taxonomy_access_node_grants($user, $op) {
  * Implements hook_node_access_records().
  *
  * @todo
- *    Get query to behave properly when no term or vocab record is present.
+ *    Get 1st query to behave properly when no term or vocab record is present.
  */
 function taxonomy_access_node_access_records($node) {
   $grants = array();
 
-  if (is_array($node->taxonomy) AND count($node->taxonomy)) {
-    /**
-     * @todo
-     *    How does deny/ignore work with this?
-     */
-    $result = db_query('SELECT tadg.rid,
-                       BIT_OR(COALESCE( ta.grant_view, tad.grant_view, tadg.grant_view )) AS grant_view,
-                       BIT_OR(COALESCE( ta.grant_update, tad.grant_update, tadg.grant_update )) AS grant_update,
-                       BIT_OR(COALESCE( ta.grant_delete, tad.grant_delete, tadg.grant_delete )) AS grant_delete
-                       FROM {term_node} tn
-                       INNER JOIN {term_data} t ON t.tid = tn.tid
-                       INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0
-                       LEFT JOIN {term_access_defaults} tad ON tad.vid = t.vid AND tad.rid = tadg.rid
-                       LEFT JOIN {term_access} ta ON ta.tid = t.tid AND ta.rid = tadg.rid
-                       WHERE tn.vid = %d
-                       GROUP BY tadg.rid', $node->vid);
-  }
-  else {
+  $result = db_query(
+    'SELECT tadg.rid,
+     BIT_OR(COALESCE( ta.grant_view, tad.grant_view, tadg.grant_view )) AS grant_view,
+     BIT_OR(COALESCE( ta.grant_update, tad.grant_update, tadg.grant_update )) AS grant_update,
+     BIT_OR(COALESCE( ta.grant_delete, tad.grant_delete, tadg.grant_delete )) AS grant_delete
+     FROM {term_node} tn
+     INNER JOIN {term_data} t ON t.tid = tn.tid
+     INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0
+     LEFT JOIN {term_access_defaults} tad ON tad.vid = t.vid AND tad.rid = tadg.rid
+     LEFT JOIN {term_access} ta ON ta.tid = t.tid AND ta.rid = tadg.rid
+     WHERE tn.vid = %d
+     GROUP BY tadg.rid', $node->vid);
+
+  // First query returns no rows if there is no {term_node} data for the node.
+  // In that scenario, use the global default.
+  if (!db_affected_rows($result)) {
     // Use the default for nodes with no category
-    $result = db_query('SELECT n.nid, tadg.rid AS rid, tadg.grant_view AS grant_view, tadg.grant_update AS grant_update, tadg.grant_delete AS grant_delete
-                       FROM {node} n INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0
-                       WHERE n.nid = %d', $node->nid);
+    $result = db_query(
+      'SELECT n.nid, tadg.rid AS rid, tadg.grant_view AS grant_view, tadg.grant_update AS grant_update, tadg.grant_delete AS grant_delete
+       FROM {node} n INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0
+       WHERE n.nid = %d', $node->nid);
   }
 
   // Ignore => 0, Allow => 1, Deny => 2 ('10' in binary).
