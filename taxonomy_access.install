@@ -36,7 +36,7 @@ function taxonomy_access_update_5() {
         $row[$key] = (int) $value;
       }
       $row_ints = implode(", ", $row);
-      update_sql('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES (0, $row_ints)');
+      update_sql("INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES (0, $row_ints)");
     }
   }
   update_sql('DELETE FROM {term_access} WHERE tid=0');
