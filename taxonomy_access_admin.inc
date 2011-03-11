@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  * Administrative interface for taxonomy access control.
@@ -161,14 +160,14 @@ function taxonomy_access_admin_build_row($grants = NULL) {
       '#type' => 'radios',
       // 1: Allow, 0: Ignore, 2: Deny
       '#options' => array('1' => '', '0' => '', '2' => ''),
-      '#default_value' => is_string($grants['grant_'. $grant]) ? $grants['grant_'. $grant] : '0',
+      '#default_value' => is_string($grants['grant_' . $grant]) ? $grants['grant_' . $grant] : '0',
       '#required' => TRUE,
     );
   }
   foreach (array('create', 'list') as $grant) {
     $form[$grant] = array(
       '#type' => 'checkbox',
-      '#default_value' => is_string($grants['grant_'. $grant]) ? $grants['grant_'. $grant] : '0',
+      '#default_value' => is_string($grants['grant_' . $grant]) ? $grants['grant_' . $grant] : '0',
     );
   }
   return $form;
@@ -299,9 +298,9 @@ function theme_taxonomy_access_admin_form($form) {
     array( 'data' => t('List')),
   );
   $sub_header = array(
-    '&nbsp;<strong>'. t('<acronym title="Allow">A</acronym>') .'</strong>',
-    '&nbsp;<strong>'. t('<acronym title="Ignore">I</acronym>') .'</strong>',
-    '&nbsp;<strong>'. t('<acronym title="Deny">D</acronym>') .'</strong>',
+    '&nbsp;<strong>' . t('<acronym title="Allow">A</acronym>') . '</strong>',
+    '&nbsp;<strong>' . t('<acronym title="Ignore">I</acronym>') . '</strong>',
+    '&nbsp;<strong>' . t('<acronym title="Deny">D</acronym>') . '</strong>',
     '&nbsp;',
   );
   $sub_header = array_merge(array('&nbsp;'), $sub_header, $sub_header, $sub_header);
@@ -310,14 +309,14 @@ function theme_taxonomy_access_admin_form($form) {
 
   $radios = array('1' => t('Allow'), '0' => t('Ignore'), '2' => t('Deny'));
 
-  drupal_set_title(t('Grants for %role', array('%role' => $roles[$form['rid']['#value']])));
+  drupal_set_title(t('Grants for %role', array('%role' => $roles[$form['rid']['#value']])), PASS_THROUGH);
 
   $rows = array();
 
   foreach (array_keys($form['vocabs']) as $vid) {
     if (is_numeric($vid) AND isset($form['grants'][$vid])) {
       $row = $sub_header;
-      $row[0] = array('data' => '<h3>'. check_plain($form['vocabs'][$vid]['#title']) .'</h3>', 'colspan' => 3);
+      $row[0] = array('data' => '<h3>' . check_plain($form['vocabs'][$vid]['#title']) . '</h3>', 'colspan' => 3);
       $rows[] = $row;
       foreach (array_keys($form['grants'][$vid]) as $tid) {
         if (is_numeric($tid)) {
@@ -343,7 +342,7 @@ function theme_taxonomy_access_admin_form($form) {
   }
   if (isset($form['new'])) {
     $row = $sub_header;
-    $row[0] = array('data' => '<h3>'. t('New') .'</h3>', 'colspan' => 3);
+    $row[0] = array('data' => '<h3>' . t('New') . '</h3>', 'colspan' => 3);
     $rows[] = $row;
 
     $row = array(
@@ -566,7 +565,7 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NUL
         $run_tids = array(); // stop the execution
       }
       else {
-        $result = db_query('SELECT th.tid FROM {term_hierarchy} th WHERE th.parent = %d', $run_tid);
+        $result = db_query('SELECT th.tid FROM {taxonomy_term_hierarchy} th WHERE th.parent = %d', $run_tid);
         // If this tid has children, update grants and queue the children
         while ($row = db_fetch_array($result)) {
           taxonomy_access_grant_update($row['tid'], $rid, $grants);
@@ -718,7 +717,7 @@ function _taxonomy_access_grant_help_table() {
     . "<p>"
     . t('The role must <strong>not</strong> have <em class="perm">edit any [type] content</em> or <em class="perm">delete any [type] content</em> permission on the <a href="@path">permissions administration form</a> if you wish to control them here.',
       array('@path' => url('admin/user/permissions', array('fragment' => 'module-node'))))
-    ."</p>",
+    . "</p>",
   );
 
   $rows[] = array(
@@ -729,7 +728,7 @@ function _taxonomy_access_grant_help_table() {
     . "<p>"
     . t('This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
       array('@path' => url('admin/user/permissions', array('fragment' => 'module-node'))))
-    ."</p>",
+    . "</p>",
   );
 
   $rows[] = array(

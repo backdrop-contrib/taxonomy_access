@@ -1,4 +1,8 @@
 name = Taxonomy Access Control
 description = Access control for user roles based on taxonomy categories.
 dependencies[] = taxonomy
-core = 6.x
+core = 7.x
+files[] = taxonomy_access.module
+files[] = taxonomy_access.install
+files[] = taxonomy_access_admin.inc
+

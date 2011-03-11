@@ -1,3 +1,7 @@
+Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
+---------------------------------------
+o Convert to D7 API.
+o Whitespace cleanup.
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
