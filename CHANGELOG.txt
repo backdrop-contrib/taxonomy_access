@@ -1,6 +1,5 @@
 Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
-o Refactor hook_node_access_records() and convert to D7 DB API.
 o Convert to D7 API.
 o Whitespace cleanup.
 
