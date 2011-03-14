@@ -8,5 +8,3 @@ files[] = taxonomy_access.module
 files[] = taxonomy_access.install
 files[] = taxonomy_access_admin.inc
 
-; Classes
-files[] = includes/taxonomy_access_grant_map.inc
