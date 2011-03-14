@@ -130,6 +130,9 @@ function taxonomy_access_enable() {
 /**
  * Implements hook_node_grants().
  * Gives access to taxonomies based on the taxonomy_access table.
+ *
+ * @todo
+ *   Probably should use core API, constants, etc. here.
  */
 function taxonomy_access_node_grants($user, $op) {
   return array('term_access' => array_keys(is_array($user->roles) ? $user->roles : array(1 => 'anonymous user')));
@@ -137,53 +140,135 @@ function taxonomy_access_node_grants($user, $op) {
 
 /**
  * Implements hook_node_access_records().
- *
- * @todo
- *    Get 1st query to behave properly when no term or vocab record is present.
  */
 function taxonomy_access_node_access_records($node) {
+  return taxonomy_access_term_grants_for_node($node->nid);
+}
+
+/**
+ * Returns node access grants for the given node revision id.
+ *
+ * @todo
+ *   - Get 1st query to behave when no term or vocab record is present.
+ *   - Does $node->vid below get automatically escaped?
+ *   - Does the method-chaining work?
+ *   - Research performance of using FiAPI vs. joining on tn and td.
+ *   - This should work on D7's supported versions of MySQL and PostgreSQL;
+ *     patches may be needed for other databases.
+ */
+function taxonomy_access_term_grants_for_node($node_nid) {
+  $query =
+    db_select('taxonomy_index', 'ti')
+    ->condition('ti.nid', $node_nid)
+    ->groupBy('tadg.rid')
+    ;
+
+  $query->join(
+    'taxonomy_term_data', 'td',
+    'td.tid = ti.tid'
+  );
+
+  $query->join(
+    'term_access_defaults', 'tadg',
+    'tadg.vid = 0'
+  );
+  $query->leftJoin(
+    'term_access_defaults', 'tad',
+    'tad.vid = td.vid AND tad.rid = tadg.rid'
+  );
+  $query->leftJoin(
+    'term_access', 'ta',
+    'ta.tid = td.tid AND ta.rid = tadg.rid'
+  );
+  $query->fields('tadg', array('rid'));
+  $query->addExpression(
+    'BIT_OR(COALESCE(ta.grant_view, tad.grant_view, tadg.grant_view))',
+    'grant_view'
+  );
+  $query->addExpression(
+    'BIT_OR(COALESCE(ta.grant_update, tad.grant_update, tadg.grant_update))',
+    'grant_update'
+  );
+  $query->addExpression(
+    'BIT_OR(COALESCE(ta.grant_delete, tad.grant_delete, tadg.grant_delete))',
+    'grant_delete'
+  );
+
+  $records = $query->execute()->fetchAll();
+
   $grants = array();
 
-  $result = db_query(
-    'SELECT tadg.rid,
-     BIT_OR(COALESCE( ta.grant_view, tad.grant_view, tadg.grant_view )) AS grant_view,
-     BIT_OR(COALESCE( ta.grant_update, tad.grant_update, tadg.grant_update )) AS grant_update,
-     BIT_OR(COALESCE( ta.grant_delete, tad.grant_delete, tadg.grant_delete )) AS grant_delete
-     FROM {taxonomy_term_node} tn
-     INNER JOIN {taxonomy_term_data} t ON t.tid = tn.tid
-     INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0
-     LEFT JOIN {term_access_defaults} tad ON tad.vid = t.vid AND tad.rid = tadg.rid
-     LEFT JOIN {term_access} ta ON ta.tid = t.tid AND ta.rid = tadg.rid
-     WHERE tn.vid = %d
-     GROUP BY tadg.rid', $node->vid);
-
-  // First query returns no rows if there is no {taxonomy_term_node} data for the node.
-  // In that scenario, use the global default.
-  if (!db_affected_rows($result)) {
-    // Use the default for nodes with no category
-    $result = db_query(
-      'SELECT n.nid, tadg.rid AS rid, tadg.grant_view AS grant_view, tadg.grant_update AS grant_update, tadg.grant_delete AS grant_delete
-       FROM {node} n INNER JOIN {term_access_defaults} tadg ON tadg.vid = 0
-       WHERE n.nid = %d', $node->nid);
+  foreach ($records as $record) {
+      $grants[] = _taxonomy_access_format_grant_record($record);
   }
+
+  unset($records);
+  unset($record);
+  unset($query);
+
+  // The above query returns no rows if the node has no tags.
+  // In that scenario, use the global default.
+  if (sizeof($grants) == 0) {
+    $grants[] = taxonomy_access_global_defaults();
+  }
+
+  return $grants;
+}
+
+/**
+ * Returns an array of global default grants for all roles.
+ *
+ * @return
+ *   Global default grants, formatted for hook_node_access_records.
+ */
+function taxonomy_access_global_defaults() {
+  static $global_grants;
+  if (empty($global_grants)) {
+    $global_grants = array();
+    $records =
+      db_query(
+        'SELECT rid, grant_view, grant_update, grant_delete
+         FROM {term_access_defaults}
+         WHERE vid = 0'
+      )
+      ->fetchAll();
+    foreach ($records as $record) {
+      $global_grants[] = _taxonomy_access_format_grant_record($record);
+    }
+    unset($records);
+    unset($record);
+  }
+  return $global_grants;
+}
+
+/**
+ * Formats a row for hook_node_access_records.
+ *
+ * @param
+ *   The term record object from a TAC query to format.
+ *
+ * @return
+ *   An array formatted for hook_node_access_records().
+ *
+ * @todo
+ *   Make priority configurable?
+ */
+function _taxonomy_access_format_grant_record($record) {
 
   // Ignore => 0, Allow => 1, Deny => 2 ('10' in binary).
   // Only a value of 1 is considered an 'Allow';
   // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
   // If a 'Deny' is present, the value will then be 3 ('11' in binary).
-  while ($row = db_fetch_array($result)) {
-    $grants[] = array(
-      'realm' => 'term_access',
-       'gid' => $row['rid'],
-       'grant_view' => ($row['grant_view'] == 1) ? 1 : 0,
-       'grant_update' => ($row['grant_update'] == 1) ? 1 : 0,
-       'grant_delete' => ($row['grant_delete'] == 1) ? 1 : 0,
-      'priority' => 0,
-    );
-  }
-
-  return $grants;
+  return array(
+    'realm' => 'term_access',
+    'gid' => $record->rid,
+    'grant_view' => ($record->grant_view == 1) ? 1 : 0,
+    'grant_update' => ($record->grant_update == 1) ? 1 : 0,
+    'grant_delete' => ($record->grant_delete == 1) ? 1 : 0,
+    'priority' => 0,
+  );
 }
+
 
 /**
  * Implements hook_init().
@@ -261,7 +346,7 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
  * Implements hook_form_FORM_ID_alter() for taxonomy-form-term.
  * Overriding the term deletion form's submit handler allows us to determine
  * which {node_access} entries must be updated before the {taxonomy_term_data} and
- * {taxonomy_term_node} records are deleted from the database.
+ * {taxonomy_index} records are deleted from the database.
  */
 function taxonomy_access_form_taxonomy_form_term_alter(&$form, &$form_state) {
   $form['#submit'] = array('taxonomy_access_term_submit');
@@ -271,7 +356,7 @@ function taxonomy_access_form_taxonomy_form_term_alter(&$form, &$form_state) {
  * Implements hook_form_FORM_ID_alter() for taxonomy-vocabulary-confirm-delete.
  * Overriding the vocabulary deletion form's submit handler allows us to
  * determine which {node_access} entries must be updated before the
- * {taxonomy_term_data} and {taxonomy_term_node} records are deleted from the database.
+ * {taxonomy_term_data} and {taxonomy_index} records are deleted from the database.
  */
 function taxonomy_access_form_taxonomy_vocabulary_confirm_delete_alter(&$form, &$form_state) {
   $form['#submit'] = array('taxonomy_access_vocabulary_delete_submit');
@@ -562,7 +647,7 @@ function taxonomy_access_preserve_terms($node) {
   // access settings. Don't use db_rewrite_sql() api call here (or
   // any other API call, the taxonomy API functions all use
   // db_rewrite_sql() so we must query the database tables directly)
-  $result = db_query('SELECT tid FROM {taxonomy_term_node} WHERE vid = %d', $node->vid);
+  $result = db_query('SELECT tid FROM {taxonomy_index} WHERE vid = %d', $node->vid);
   $tids[$nid] = array();
   while ($row = db_fetch_array($result)) {
     // only include those terms the current user does not have access to
@@ -587,7 +672,7 @@ function taxonomy_access_restore_terms($nid, $vid, $protected_terms) {
     if (count($terms)) {
       $args = array($nid, $vid);
       $args = array_merge($args, $terms);
-      db_query('DELETE FROM {taxonomy_term_node} WHERE nid = %d AND vid = %d
+      db_query('DELETE FROM {taxonomy_index} WHERE nid = %d AND vid = %d
                   AND tid IN (' . db_placeholders($terms, 'int') . ')',
         $args);
       foreach ($terms as $tid) {
@@ -709,7 +794,7 @@ function _taxonomy_access_get_descendants($tid) {
 function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
   $nids = array();
 
-  $result = db_query("SELECT nid FROM {taxonomy_term_node} WHERE tid = %d", $tid);
+  $result = db_query("SELECT nid FROM {taxonomy_index} WHERE tid = %d", $tid);
   while ($node = db_fetch_object($result)) {
     $nids[] = $node->nid;
   }
@@ -719,7 +804,7 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
     $child_tids = _taxonomy_access_get_descendants($tid);
     if (sizeof($child_tids) > 0) {
       $child_r = db_query(
-        'SELECT nid FROM {taxonomy_term_node} WHERE tid IN '
+        'SELECT nid FROM {taxonomy_index} WHERE tid IN '
         . '(' . db_placeholders($child_tids, 'int') . ')',
         $child_tids
       );
@@ -748,7 +833,7 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
   $nids = array();
 
   $query =
-    "SELECT n.nid FROM {taxonomy_term_node} n
+    "SELECT n.nid FROM {taxonomy_index} n
       LEFT JOIN {taxonomy_term_data} d ON n.tid = d.tid
       WHERE d.vid = %d ";
   $args = array($vid);
@@ -794,7 +879,7 @@ function _taxonomy_access_get_nodes_for_role($rid) {
   $nids = array();
   $result = db_query(
     'SELECT n.nid
-     FROM {taxonomy_term_node} n
+     FROM {taxonomy_index} n
      LEFT JOIN {taxonomy_term_data} d ON n.tid = d.tid
      LEFT JOIN {term_access} a ON n.tid = a.tid
      LEFT JOIN {term_access_defaults} ad on ad.vid = d.vid
@@ -906,4 +991,64 @@ function _taxonomy_access_del_term($tid = NULL) {
   else {
     return $deleted_tid;
   }
+}
+
+
+/**
+ * Assemble a table explaining each grant type for use in help documentation.
+ *
+ * @return
+ *   Themed table.
+ *
+ * @todo
+ *   We moved this here for drush.  Find a smarter way to include it on demand?
+ */
+function _taxonomy_access_grant_help_table() {
+  $header = array();
+
+  $rows = array();
+  $rows[] = array(
+    array('header' => TRUE, 'data' => t("View")),
+    "<p>"
+    . t('Grants this role the ability to view nodes with the term.  (Users must also have this permission to see <em class="perm">nodes</em> with the term listed in Views.)')
+    . "</p>"
+    . "<p>"
+    . t('The role must <strong>have</strong> <em class="perm">access content</em> permission on the <a href="@path">permissions administration form</a>.',
+      array('@path' => url('admin/user/permissions', array('fragment' => 'module-node')))),
+  );
+
+  $rows[] = array(
+    array('header' => TRUE, 'data' => t("Update") . ", " . t("Delete")),
+    "<p>"
+    . t("Grants this role the ability to edit or delete nodes with the term, respectively.")
+    . "</p>"
+    . "<p>"
+    . t('The role must <strong>not</strong> have <em class="perm">edit any [type] content</em> or <em class="perm">delete any [type] content</em> permission on the <a href="@path">permissions administration form</a> if you wish to control them here.',
+      array('@path' => url('admin/user/permissions', array('fragment' => 'module-node'))))
+    . "</p>",
+  );
+
+  $rows[] = array(
+    array('header' => TRUE, 'data' => t("Create")),
+    "<p>"
+    . t("Grants this role the ability to add the term to a node when creating or updating it.")
+    . "</p>"
+    . "<p>"
+    . t('This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
+      array('@path' => url('admin/user/permissions', array('fragment' => 'module-node'))))
+    . "</p>",
+  );
+
+  $rows[] = array(
+    array('header' => TRUE, 'data' => t("List")),
+    "<p>"
+    . t("Whether this role can see the term listed on node pages and in lists, and whether the user can view the %taxonomy-term-page page for the term.",
+      array(
+        '%taxonomy-term-page' => "taxonomy/term/x"
+      ))
+    . "</p>"
+    . "<p>" . t("This does <strong>not</strong> control whether the role can see the <em>nodes</em> listed in Views, only the <em>term</em>.") . "</p>",
+  );
+
+  return theme('table', $header, $rows, array('class' => 'grant_help'));
 }
