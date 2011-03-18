@@ -149,9 +149,6 @@ function taxonomy_access_node_access_records($node) {
  * Returns node access grants for the given node revision id.
  *
  * @todo
- *   - Get 1st query to behave when no term or vocab record is present.
- *   - Does $node->vid below get automatically escaped?
- *   - Does the method-chaining work?
  *   - Research performance of using FiAPI vs. joining on tn and td.
  *   - This should work on D7's supported versions of MySQL and PostgreSQL;
  *     patches may be needed for other databases.
@@ -219,7 +216,7 @@ function taxonomy_access_term_grants_for_node($node_nid) {
  * Returns an array of global default grants for all roles.
  *
  * @return
- *   Global default grants, formatted for hook_node_access_records.
+ *   Global default grants, formatted for hook_node_access_records().
  */
 function taxonomy_access_global_defaults() {
   static $global_grants;
@@ -429,9 +426,8 @@ function taxonomy_access_node_update($node) {
 /**
  * Implements hook_node_delete().
  */
-function taxonomy_access_node($node) {
+function taxonomy_access_node_delete($node) {
   // Remove our entries for this node from table {node_access}.
-  //INFO: node_access_write_grants($node, $grants, $realm = NULL, $delete = TRUE)
   node_access_write_grants($node, array(), 'term_access');
 }
 
@@ -732,7 +728,7 @@ function taxonomy_access_get_grants($rid) {
  * @return
  *   A two dimensional hash of the form $grants[vid][grant] where
  *   vid is the vocab id and
- *   grant is the permission (i.e. 'view','delete',ect.)
+ *   grant is the permission (i.e. 'view','delete', etc.)
  *   this entry in the hash is true if permission is granted, false otherwise
  */
 function taxonomy_access_get_default_grants($rid) {
@@ -760,8 +756,10 @@ function taxonomy_access_get_default_grants($rid) {
 
 /**
  * Get term IDs for all descendants of the given term.
+ *
  * @param $tid
- *    The term ID for which to fetch children
+ *    The term ID for which to fetch children.
+ *
  * @return
  *    An array of the IDs of the term's descendants.
  */
