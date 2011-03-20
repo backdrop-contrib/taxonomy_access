@@ -1,7 +1,7 @@
 Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
-o #140762 by xjm: Refactor role deletion and implement hook_user_role_delete().
 o Convert to D7 API.
+o #140762 by xjm: Refactor role deletion and implement hook_user_role_delete().
 o Whitespace cleanup.
 
 Taxonomy Access 6.x-1.x-dev, xxxx-xx-xx
