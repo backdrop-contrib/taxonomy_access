@@ -80,51 +80,88 @@ the authenticated user</a> properly.',
 }
 
 /**
+ * Cache a list of all roles.
+ *
+ * @return
+ *    An array of roles from user_roles().
+ */
+function _taxonomy_access_user_roles() {
+  static $roles;
+  if (!is_array($roles)) {
+    $roles = user_roles();
+  }
+  return $roles;
+}
+
+/**
  * Implements hook_enable().
  *
  * Housekeeping: while we were away, did you delete any terms/vocabs/roles?
- * 1: delete ta rows for missing terms
- * 2: delete tad rows for missing vocabs
- * 3: delete ta, tad rows for missing roles
- * 4: rebuild node_access
+ * 1: Delete ta, tad rows for missing roles.
+ * 2: Delete ta rows for missing terms.
+ * 3: Delete tad rows for missing vocabs.
+ *
+ * @todo
+ *   Add back #2-3.
  */
 function taxonomy_access_enable() {
-  global $db_type;
-  switch ($db_type) {
-    case 'mysql':
-    case 'mysqli':
-      /**
-       * @todo
-       *     Test our PostgreSQL code with MySQL and replace this DB-specific
-       *     code with it, if it works.
-       */
-      db_query('DELETE ta FROM {term_access} ta LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND ISNULL(td.tid)');
-      db_query('DELETE tad FROM {term_access_defaults} tad LEFT JOIN {taxonomy_vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND ISNULL(v.vid)');
-      db_query('DELETE ta FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE ISNULL(r.rid)');
-      db_query('DELETE tad FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE ISNULL(r.rid)');
-      break;
-    case 'pgsql':
-      $queries = array(
-        'tax' => "SELECT ta.tid,ta.rid FROM {term_access} ta LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND td.tid IS NULL",
-        'tadx' => "SELECT tad.vid,tad.rid FROM {term_access_defaults} tad LEFT JOIN {taxonomy_vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND v.vid IS NULL",
-        'tar' => "SELECT ta.tid,ta.rid FROM {term_access} ta LEFT JOIN {role} r ON ta.rid = r.rid WHERE r.rid IS NULL",
-        'tadr' => "SELECT tad.vid,tad.rid FROM {term_access_defaults} tad LEFT JOIN {role} r ON tad.rid = r.rid WHERE r.rid IS NULL"
-      );
-      foreach ($queries as $type => $sql) {
-        $result = db_query($sql);
-        while ($args = db_fetch_array($result)) {
-          if ($args) {
-            if ($type == 'tax' || $type == 'tar') {
-              db_query("DELETE FROM {term_access} WHERE tid = %d AND rid = %d", $args);
-            }
-            else {
-              db_query("DELETE FROM {term_access_defaults} WHERE vid = %d AND rid = %d", $args);
-            }
-          }
-        }
-      }
-      break;
-  }
+  // Delete any records for roles not in {roles}.
+  $roles = _taxonomy_access_user_roles();
+  taxonomy_access_delete_roles(array_keys($roles), FALSE);
+  unset($roles);
+
+  // Delete any term configurations not in {taxonomy_term_data}.
+  // SELECT ta.tid,ta.rid FROM {term_access} ta LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND td.tid IS NULL
+
+  // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
+  // SELECT tad.vid,tad.rid FROM {term_access_defaults} tad LEFT JOIN {taxonomy_vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND v.vid IS NULL
+
+}
+
+/**
+ * Delete module configurations for the given role IDs.
+ *
+ * @param (array) $role_ids
+ *   An array of role IDs.
+ * @param $in = TRUE
+ *   Whether to delete the selected roles, or all but the selected roles.
+ *
+ * @todo
+ *   Disallow deletion of anon/auth, and/or reset to install configs?
+ * @todo
+ *   Should we return something?
+ */
+function taxonomy_access_delete_roles(array $role_ids, $in = TRUE) {
+
+  $condition = $in ? 'IN' : 'NOT IN';
+
+  db_delete('term_access')
+    ->condition('rid', $role_ids, $condition)
+    ->execute();
+  
+  db_delete('term_access_defaults')
+    ->condition('rid', $role_ids, $condition)
+    ->execute();
+}
+
+/**
+ * Single-value wrapper for taxonomy_access_delete_roles().
+ *
+ * @param $role_id
+ *   A single role ID.
+ *
+ * @return
+ *   Return value from taxonomy_access_delete_roles().
+ */
+function taxonomy_access_delete_role($role_id) {
+  return taxonomy_access_delete_roles(array($role_id));
+}
+
+/**
+ * Implements hook_user_role_delete().
+ */
+function taxonomy_access_user_role_delete($role) {
+  taxonomy_access_delete_role($role->rid);
 }
 
 /**

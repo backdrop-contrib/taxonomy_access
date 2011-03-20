@@ -5,20 +5,6 @@
  */
 
 /**
- * Cache a list of all roles.
- *
- * @return
- *    An array of roles from user_roles().
- */
-function _taxonomy_access_user_roles() {
-  static $roles;
-  if (!is_array($roles)) {
-    $roles = user_roles();
-  }
-  return $roles;
-}
-
-/**
  * Menu callback (for admin/user/taxonomy_access).
  * Renders the TAC permissions administration form.
  *
