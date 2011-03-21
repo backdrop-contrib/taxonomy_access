@@ -11,6 +11,11 @@
 define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
 
 /**
+ * Base path for module administration pages.
+ */
+define('TAXONOMY_ACCESS_CONFIG', 'admin/taxonomy_access');
+
+/**
  * Cache a list of all roles.
  *
  * @return
@@ -265,19 +270,19 @@ function taxonomy_access_theme() {
 function taxonomy_access_menu() {
   $items = array();
 
-  $items['admin/taxonomy_access'] = array(
+  $items[TAXONOMY_ACCESS_CONFIG] = array(
       'title' => 'Taxonomy access permissions',
       'description' => 'Taxonomy-based access control for content',
       'page callback' => 'taxonomy_access_admin',
       'access arguments' => array('administer permissions'),
     );
-  $items['admin/taxonomy_access/delete'] = array(
+  $items[TAXONOMY_ACCESS_CONFIG . '/delete'] = array(
       'type' => MENU_CALLBACK,
       'page callback' => 'drupal_get_form',
       'page arguments' => array('taxonomy_access_admin_delete_role'),
       'access arguments' => array('administer permissions'),
     );
-  $items['admin/taxonomy_access/edit'] = array(
+  $items[TAXONOMY_ACCESS_CONFIG . '/edit'] = array(
       'type' => MENU_CALLBACK,
       'page callback' => 'drupal_get_form',
       'page arguments' => array('taxonomy_access_admin_form'),
@@ -1005,7 +1010,7 @@ function taxonomy_access_help($path, $arg) {
         . "<li>"
         . t('Custom roles <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure
 the authenticated user</a> properly.',
-          array("@url" => url("admin/taxonomy_access/edit/2")))
+          array("@url" => url(TAXONOMY_ACCESS_CONFIG . "/edit/2")))
         . "</li>\n"
         . '<li>'
         . "<p>" . t('The <em>Deny</em> directives are processed after the <em>Allow</em> directives. (<strong><em>Deny</em> overrides <em>Allow</em></strong>.)</em>  So, if a multicategory node is in Categories "A" and "B" and a user has <em>Allow</em> permissions for <em>View</em> in Category "A" and <em>Deny</em> permissions for <em>View</em> in Category "B", then the user will NOT be permitted to <em>View</em> the node.') . '</p>'

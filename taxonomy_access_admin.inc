@@ -5,7 +5,7 @@
  */
 
 /**
- * Menu callback (for admin/taxonomy_access).
+ * Menu callback (for form at TAXONOMY_ACCESS_CONFIG path).
  * Renders the TAC permissions administration form.
  *
  * @param $op
@@ -62,12 +62,12 @@ function theme_taxonomy_access_admin() {
     if (!empty($active[$rid])) {
       //only allow delete for "extra" roles
       if ($rid > 2) {
-        $ops[] = l(t("disable"), "admin/taxonomy_access/delete/$rid");
+        $ops[] = l(t("disable"), TAXONOMY_ACCESS_CONFIG . "/delete/$rid");
       }
-      $ops[] = l(t("edit"), "admin/taxonomy_access/edit/$rid");
+      $ops[] = l(t("edit"), TAXONOMY_ACCESS_CONFIG . "/edit/$rid");
     }
     else {
-      $ops = array(l(t("enable"), "admin/taxonomy_access/edit/$rid"));
+      $ops = array(l(t("enable"), TAXONOMY_ACCESS_CONFIG . "/edit/$rid"));
     }
     $rows[] = array($name, array('data' => implode(' | ', $ops), 'align' => 'right'));
   }
@@ -112,14 +112,14 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
 
         drupal_set_message(t('All term access rules deleted for role %rid.',
             array('%rid' => $rid)));
-        drupal_goto('admin/taxonomy_access');
+        drupal_goto(TAXONOMY_ACCESS_CONFIG);
       }
 
       else {
         return confirm_form($form,
           t('Are you sure you want to delete all grant rules for role %rid?',
             array('%rid' => $rid)),
-          'admin/taxonomy_access',
+          TAXONOMY_ACCESS_CONFIG,
           t('This action cannot be undone.'),
           t('Delete all'),
           t('Cancel'));
@@ -360,7 +360,7 @@ function theme_taxonomy_access_admin_form($variables) {
 }
 
 /**
- * Submit handler for the administration form at admin/taxonomy_access.
+ * Submit handler for the administration form at TAXONOMY_ACCESS_CONFIG.
  */
 function taxonomy_access_admin_form_submit($form, &$form_state) {
   $values = $form_state['values'];
@@ -463,7 +463,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
         _taxonomy_access_node_access_update($affected_nodes);
       }
 
-      $form_state['redirect'] = 'admin/taxonomy_access';
+      $form_state['redirect'] = TAXONOMY_ACCESS_CONFIG;
       break;
   }
 }
@@ -659,7 +659,7 @@ function _taxonomy_access_admin_instructions_html() {
     $instructions .= ''
       . "<p>"
       . t('<strong>Remember:</strong> This role <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure the authenticated user</a> properly.',
-        array("@url" => url("admin/taxonomy_access/edit/2")))
+        array("@url" => url(TAXONOMY_ACCESS_CONFIG . "/edit/2")))
       . "</p>\n\n"
       ;
   }
