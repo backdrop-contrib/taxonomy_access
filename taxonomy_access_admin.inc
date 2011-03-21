@@ -5,7 +5,7 @@
  */
 
 /**
- * Menu callback (for admin/user/taxonomy_access).
+ * Menu callback (for admin/taxonomy_access).
  * Renders the TAC permissions administration form.
  *
  * @param $op
@@ -52,27 +52,27 @@ function theme_taxonomy_access_admin() {
   $header = array(t('Role'), array('data' => '&nbsp;'));
   $rows = array();
 
-  $result = db_query('SELECT rid FROM {term_access_defaults} WHERE vid=0 ');
+  $active_role_ids = db_query('SELECT rid FROM {term_access_defaults} WHERE vid = 0')->fetchCol();
   $active = array();
-  while ($role = db_fetch_array($result)) {
-    $active[$role['rid']] = TRUE;
+  foreach ($active_role_ids as $rid) {
+    $active[$rid] = TRUE;
   }
   foreach ($roles as $rid => $name) {
     $ops = array();
     if (!empty($active[$rid])) {
       //only allow delete for "extra" roles
       if ($rid > 2) {
-        $ops[] = l(t("disable"), "admin/user/taxonomy_access/delete/$rid");
+        $ops[] = l(t("disable"), "admin/taxonomy_access/delete/$rid");
       }
-      $ops[] = l(t("edit"), "admin/user/taxonomy_access/edit/$rid");
+      $ops[] = l(t("edit"), "admin/taxonomy_access/edit/$rid");
     }
     else {
-      $ops = array(l(t("enable"), "admin/user/taxonomy_access/edit/$rid"));
+      $ops = array(l(t("enable"), "admin/taxonomy_access/edit/$rid"));
     }
     $rows[] = array($name, array('data' => implode(' | ', $ops), 'align' => 'right'));
   }
 
-  return theme('table', $header, $rows);
+  return theme('table', array('header' => $header, 'rows' => $rows));
 }
 
 /**
@@ -80,21 +80,22 @@ function theme_taxonomy_access_admin() {
  * @param $rid
  *     The role id to disable.
  */
-function taxonomy_access_admin_delete_role($form_state, $rid) {
+function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
   if (is_numeric($rid) AND $rid > 2) {
-    $r = db_query(
+    $role_global_default = db_query(
       'SELECT grant_view, grant_update, grant_delete
        FROM {term_access_defaults} 
-       WHERE vid=0 AND rid=%d', $rid);
-    $role_global_default = db_fetch_array($r);
+       WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
+      ->fetchAssoc();
     if ($role_global_default) {
       if ($_POST['confirm']) {
 
         // Compare this role's global default node access to auth user role.
-        $auth_global_default = db_fetch_array(db_query(
+        $auth_global_default = db_query(
           'SELECT grant_view, grant_update, grant_delete
            FROM {term_access_defaults} 
-           WHERE vid=0 AND rid=2'));
+           WHERE vid = 0 AND rid = :rid', array(':rid' => DRUPAL_AUTHENTICATED_RID))
+          ->fetchAssoc();
 
         if ($role_global_default == $auth_global_default) {
           $affected_nodes = _taxonomy_access_get_nodes_for_role($rid);
@@ -104,22 +105,21 @@ function taxonomy_access_admin_delete_role($form_state, $rid) {
           // all uncontrolled nodes, so flag node access for rebuild.
           node_access_needs_rebuild(TRUE);
         }
-        db_query('DELETE FROM {term_access} WHERE rid=%d', $rid);
-        db_query('DELETE FROM {term_access_defaults} WHERE rid=%d', $rid);
+        taxonomy_access_delete_role($rid);
         if (!empty($affected_nodes)) {
           _taxonomy_access_node_access_update($affected_nodes);
         }
 
         drupal_set_message(t('All term access rules deleted for role %rid.',
             array('%rid' => $rid)));
-        drupal_goto('admin/user/taxonomy_access');
+        drupal_goto('admin/taxonomy_access');
       }
 
       else {
         return confirm_form($form,
           t('Are you sure you want to delete all grant rules for role %rid?',
             array('%rid' => $rid)),
-          'admin/user/taxonomy_access',
+          'admin/taxonomy_access',
           t('This action cannot be undone.'),
           t('Delete all'),
           t('Cancel'));
@@ -165,12 +165,9 @@ function taxonomy_access_admin_build_row($grants = NULL) {
  * @param $rid
  *     The role id.
  */
-function taxonomy_access_admin_form($form_state, $rid = NULL) {
+function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
   // Fetch all default grants.
-  $result = db_query('SELECT * FROM {term_access_defaults} WHERE rid = %d', $rid);
-  while ($row = db_fetch_array($result)) {
-    $default_grants[$row['vid']] = $row;
-  }
+  $default_grants = db_query('SELECT * FROM {term_access_defaults} WHERE rid = :rid', array(':rid' => $rid))->fetchAllAssoc('vid', PDO::FETCH_ASSOC);
 
   // If we are adding a role, no global default is set yet, so insert it now.
   if (empty($default_grants[0]) && isset($rid)) {
@@ -184,13 +181,10 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
   }
 
   // Fetch all grants.
-  $result = db_query('SELECT * FROM {term_access} WHERE rid = %d', $rid);
-  while ($row = db_fetch_array($result)) {
-    $grants[$row['tid']] = $row;
-  }
+  $grants = db_query('SELECT * FROM {term_access} WHERE rid = :rid', array(':rid' => $rid))->fetchAllAssoc('tid', PDO::FETCH_ASSOC);
 
   $form['instructions'] = array(
-    '#value' => _taxonomy_access_admin_instructions_html(),
+    '#markup' => _taxonomy_access_admin_instructions_html(),
     '#weight' => '20',
   );
   $form['rid'] = array('#type' => 'value', '#value' => $rid);
@@ -254,12 +248,14 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
     );
   }
 
-  $form['delete'] = array(
+  $form['actions'] = array('#type' => 'actions');
+
+  $form['actions']['delete'] = array(
     '#type' => 'submit',
     '#value' => t('Delete selected'),
   );
 
-  $form['submit'] = array(
+  $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save all'),
   );
@@ -273,7 +269,9 @@ function taxonomy_access_admin_form($form_state, $rid = NULL) {
  * @return
  *     String containing rendered HTML form in table.
  */
-function theme_taxonomy_access_admin_form($form) {
+function theme_taxonomy_access_admin_form($variables) {
+  $form = $variables['form'];
+
   $roles = _taxonomy_access_user_roles();
   $header = array(
     array( 'data' => t('Category'), 'colspan' => 3),
@@ -355,14 +353,14 @@ function theme_taxonomy_access_admin_form($form) {
 
 
   $output = '';
-  $output .= theme('table', $header, $rows);
-  $output .= drupal_render($form);
+  $output .= theme('table', array('header' => $header, 'rows' => $rows));
+  $output .= drupal_render_children($form);
 
   return $output;
 }
 
 /**
- * Submit handler for the administration form at admin/user/taxonomy_access.
+ * Submit handler for the administration form at admin/taxonomy_access.
  */
 function taxonomy_access_admin_form_submit($form, &$form_state) {
   $values = $form_state['values'];
@@ -374,10 +372,10 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
         foreach ($values['selected_terms'] as $tid => $enabled) {
           if ($enabled) {
             $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
-            db_query(
-              'DELETE FROM {term_access} WHERE rid = %d AND tid = %d',
-              $values['rid'], $tid
-            );
+            db_delete('term_access')
+              ->condition('rid', $values['rid'])
+              ->condition('tid', $tid)
+              ->execute();
             _taxonomy_access_cache_affected_nodes($affected_nodes);
           }
         }
@@ -387,11 +385,10 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
           if ($enabled) {
             $affected_nodes =
               _taxonomy_access_get_nodes_for_vocabulary($vid, $values['rid']);
-            db_query(
-              "DELETE FROM {term_access_defaults} WHERE rid = %d AND vid = %d",
-              $values['rid'],
-              $vid
-            );
+            db_delete('term_access_defaults')
+              ->condition('rid', $values['rid'])
+              ->condition('vid', $vid)
+              ->execute();
             _taxonomy_access_cache_affected_nodes($affected_nodes);
           }
         }
@@ -466,7 +463,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
         _taxonomy_access_node_access_update($affected_nodes);
       }
 
-      drupal_goto('admin/user/taxonomy_access');
+      $form_state['redirect'] = 'admin/taxonomy_access';
       break;
   }
 }
@@ -512,7 +509,10 @@ function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL, $skip_n
   }
 
   // Delete old entries.
-  db_query("DELETE FROM {term_access} WHERE tid=%d AND rid=%d", $tid, $rid);
+  db_delete('term_access')
+    ->condition('tid', $tid)
+    ->condition('rid', $rid)
+    ->execute();
 
   // Insert new entries.
   drupal_write_record('term_access', $row);
@@ -551,11 +551,11 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NUL
         $run_tids = array(); // stop the execution
       }
       else {
-        $result = db_query('SELECT th.tid FROM {taxonomy_term_hierarchy} th WHERE th.parent = %d', $run_tid);
+        $child_tids = db_query('SELECT th.tid FROM {taxonomy_term_hierarchy} th WHERE th.parent = :run_tid', array(':run_tid' => $run_tid))->fetchCol();
         // If this tid has children, update grants and queue the children
-        while ($row = db_fetch_array($result)) {
-          taxonomy_access_grant_update($row['tid'], $rid, $grants);
-          $run_tids[] = $row['tid'];
+        foreach ($child_tids as $child_tid) {
+          taxonomy_access_grant_update($child_tid, $rid, $grants);
+          $run_tids[] = $child_tid;
         }
 
         // Remove this tid from the queue and mark as processed,
@@ -613,7 +613,10 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL, $ski
   }
 
   // Delete old entries.
-  db_query("DELETE FROM {term_access_defaults} WHERE vid = %d AND rid = %d", $vid, $rid);
+  db_delete('term_access_defaults')
+    ->condition('vid', $vid)
+    ->condition('rid', $rid)
+    ->execute();
 
   // Insert new entries.
   drupal_write_record('term_access_defaults', $row);
@@ -656,7 +659,7 @@ function _taxonomy_access_admin_instructions_html() {
     $instructions .= ''
       . "<p>"
       . t('<strong>Remember:</strong> This role <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure the authenticated user</a> properly.',
-        array("@url" => url("admin/user/taxonomy_access/edit/2")))
+        array("@url" => url("admin/taxonomy_access/edit/2")))
       . "</p>\n\n"
       ;
   }

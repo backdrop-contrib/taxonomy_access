@@ -253,7 +253,8 @@ function taxonomy_access_init() {
 function taxonomy_access_theme() {
   return array(
     'taxonomy_access_admin_form' => array(
-      'arguments' => array('form' => NULL),
+      'render element' => 'form',
+      'file' => 'taxonomy_access_admin.inc',
     ),
   );
 }
@@ -264,19 +265,19 @@ function taxonomy_access_theme() {
 function taxonomy_access_menu() {
   $items = array();
 
-  $items['admin/user/taxonomy_access'] = array(
+  $items['admin/taxonomy_access'] = array(
       'title' => 'Taxonomy access permissions',
       'description' => 'Taxonomy-based access control for content',
       'page callback' => 'taxonomy_access_admin',
       'access arguments' => array('administer permissions'),
     );
-  $items['admin/user/taxonomy_access/delete'] = array(
+  $items['admin/taxonomy_access/delete'] = array(
       'type' => MENU_CALLBACK,
       'page callback' => 'drupal_get_form',
       'page arguments' => array('taxonomy_access_admin_delete_role'),
       'access arguments' => array('administer permissions'),
     );
-  $items['admin/user/taxonomy_access/edit'] = array(
+  $items['admin/taxonomy_access/edit'] = array(
       'type' => MENU_CALLBACK,
       'page callback' => 'drupal_get_form',
       'page arguments' => array('taxonomy_access_admin_form'),
@@ -289,7 +290,7 @@ function taxonomy_access_menu() {
 
 
 /**
- * Implements hook_form_alter().
+ * Implements hook_form_BASE_FORM_ID_alter().
  *
  * @todo
  *     Move control of "create" op here
@@ -297,11 +298,11 @@ function taxonomy_access_menu() {
  *     Look at feasability to eliminate _restore_terms and _preserve_terms
  *     by simply setting the '#access' attribute for those terms.
  */
-function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
-  if ($form['#id'] == 'node-form' && is_numeric($form['nid']['#value'])) {
+function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
+  if (!empty($form_state['node']->nid)) {
     $form['tac_protected_terms'] = array(
       '#type' => 'value',
-      '#value' => taxonomy_access_preserve_terms($form['#node'])
+      '#value' => taxonomy_access_preserve_terms($form_state['node']),
     );
   }
 }
@@ -323,8 +324,13 @@ function taxonomy_access_form_taxonomy_form_term_alter(&$form, &$form_state) {
  * determine which {node_access} entries must be updated before the
  * {taxonomy_term_data} and {taxonomy_index} records are deleted from the database.
  */
-function taxonomy_access_form_taxonomy_vocabulary_confirm_delete_alter(&$form, &$form_state) {
-  $form['#submit'] = array('taxonomy_access_vocabulary_delete_submit');
+function taxonomy_access_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
+  // The form returned by taxonomy_form_vocabulary() acts as a delete
+  // confirmation form only under some conditions, so we check $form['#id'] to
+  // see which version of the form is actually being used.
+  if ($form['#id'] == 'taxonomy_vocabulary_confirm_delete') {
+    $form['#submit'] = array('taxonomy_access_vocabulary_delete_submit');
+  }
 }
 
 
@@ -337,7 +343,7 @@ function taxonomy_access_form_taxonomy_vocabulary_confirm_delete_alter(&$form, &
  */
 function taxonomy_access_term_submit(&$form, &$form_state) {
   // If we are deleting a term, override the default behavior.
-  if ($form_state['clicked_button']['#value'] == t('Delete')) {
+  if ($form_state['triggering_element']['#value'] == t('Delete')) {
 
     // If the user has already confirmed deletion, proceed.
     if ($form_state['values']['delete'] === TRUE) {
@@ -758,26 +764,29 @@ function _taxonomy_access_get_descendants($tid) {
  *    An array of node ids associated with the given term.
  */
 function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
-  $nids = array();
-
-  $result = db_query("SELECT nid FROM {taxonomy_index} WHERE tid = %d", $tid);
-  while ($node = db_fetch_object($result)) {
-    $nids[] = $node->nid;
-  }
+  $nids = 
+    db_query(
+    "SELECT nid FROM {taxonomy_index} WHERE tid = :tid", 
+    array('tid' => $tid)
+    )
+    ->fetchCol();
+  
 
   // If requested, get nodes tagged with all children as well.
   if ($get_children) {
     $child_tids = _taxonomy_access_get_descendants($tid);
     if (sizeof($child_tids) > 0) {
-      $child_r = db_query(
-        'SELECT nid FROM {taxonomy_index} WHERE tid IN '
-        . '(' . db_placeholders($child_tids, 'int') . ')',
-        $child_tids
-      );
-      while ($node = db_fetch_object($child_r)) {
-        $nids[] = $node->nid;
-      }
+      $child_nids = 
+        db_query(
+          'SELECT nid FROM {taxonomy_index} WHERE tid IN :tids',
+          array('tids' => $child_tids)
+        )
+        ->fetchCol();
+
+      $nids = array_merge($nids, $child_nids);
+      unset($child_nids);
     }
+    unset($child_tids);
   }
   return $nids;
 }
@@ -796,38 +805,35 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
  *    An array of node ids associated with the given vocabulary.
  */
 function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
-  $nids = array();
-
-  $query =
-    "SELECT n.nid FROM {taxonomy_index} n
-      LEFT JOIN {taxonomy_term_data} d ON n.tid = d.tid
-      WHERE d.vid = %d ";
-  $args = array($vid);
-
   if (!is_null($rid)) {
     // Get terms in the vocabulary that are controlled for this role.
-    $r = db_query(
-      "SELECT a.tid FROM {term_access} a
-       INNER JOIN {taxonomy_term_data} d ON d.tid = a.tid
-       WHERE a.rid = %d AND d.vid = %d", $rid, $vid);
-
-    $tids = array();
-    while ($row = db_fetch_object($r)) {
-      $tids[] = $row->tid;
-    }
-
-    if (!empty($tids)) {
-      // Exclude nodes with those terms from the results.
-      $query .=
-        " AND n.tid NOT IN (" . db_placeholders($tids, 'int') . ")";
-      $args = array_merge($args, $tids);
-    }
+    $query = 
+      db_select('term_access', 'ta')
+      ->condition('ta.rid', $rid)
+      ->condition('td.vid', $vid)
+      ->fields('ta', array('tid'))
+      ;
+    $query->join('taxonomy_term_data', 'td', 'td.tid = ta.tid');
+    
+    $tids = $query->execute()->fetchCol();
   }
-  $result = db_query($query, $args);
 
-  while ($node = db_fetch_object($result)) {
-    $nids[] = $node->nid;
+  $query =
+    db_select('taxonomy_index', 'ti')
+    ->condition('td.vid', $vid)
+    ->fields('ti', array('nid'))
+    ;
+  $query->join('taxonomy_term_data', 'td');
+
+  if (!empty($tids)) {
+    // Exclude nodes with controlled terms from the results.
+    $query->condition('ti.tid', $tids, 'IN');
   }
+
+  $nids = $query->execute()->fetchCol();
+  unset($tids);
+  unset($query);
+
   return $nids;
 }
 
@@ -842,18 +848,17 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
  *    controlled for the role.
  */
 function _taxonomy_access_get_nodes_for_role($rid) {
-  $nids = array();
-  $result = db_query(
-    'SELECT n.nid
-     FROM {taxonomy_index} n
-     LEFT JOIN {taxonomy_term_data} d ON n.tid = d.tid
-     LEFT JOIN {term_access} a ON n.tid = a.tid
-     LEFT JOIN {term_access_defaults} ad on ad.vid = d.vid
-     WHERE a.rid = %d OR ad.rid = %d', $rid, $rid);
+  $query = db_select('taxonomy_index', 'n')
+    ->fields('n', array('nid'));
+  $query->leftJoin('taxonomy_term_data', 'd', 'n.tid = d.tid');
+  $query->leftJoin('term_access', 'a', 'n.tid = a.tid');
+  $query->leftJoin('term_access_defaults', 'ad', 'ad.vid = d.vid');
+  $query->condition(db_or()
+    ->condition('a.rid', $rid)
+    ->condition('ad.rid', $rid)
+  );
 
-  while ($node = db_fetch_object($result)) {
-    $nids[] = $node->nid;
-  }
+  $nids = $query->execute()->fetchCol();
   return $nids;
 }
 
@@ -1000,7 +1005,7 @@ function taxonomy_access_help($path, $arg) {
         . "<li>"
         . t('Custom roles <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure
 the authenticated user</a> properly.',
-          array("@url" => url("admin/user/taxonomy_access/edit/2")))
+          array("@url" => url("admin/taxonomy_access/edit/2")))
         . "</li>\n"
         . '<li>'
         . "<p>" . t('The <em>Deny</em> directives are processed after the <em>Allow</em> directives. (<strong><em>Deny</em> overrides <em>Allow</em></strong>.)</em>  So, if a multicategory node is in Categories "A" and "B" and a user has <em>Allow</em> permissions for <em>View</em> in Category "A" and <em>Deny</em> permissions for <em>View</em> in Category "B", then the user will NOT be permitted to <em>View</em> the node.') . '</p>'
@@ -1048,7 +1053,7 @@ function _taxonomy_access_grant_help_table() {
     . "</p>"
     . "<p>"
     . t('The role must <strong>have</strong> <em class="perm">access content</em> permission on the <a href="@path">permissions administration form</a>.',
-      array('@path' => url('admin/user/permissions', array('fragment' => 'module-node')))),
+      array('@path' => url('admin/permissions', array('fragment' => 'module-node')))),
   );
 
   $rows[] = array(
@@ -1058,7 +1063,7 @@ function _taxonomy_access_grant_help_table() {
     . "</p>"
     . "<p>"
     . t('The role must <strong>not</strong> have <em class="perm">edit any [type] content</em> or <em class="perm">delete any [type] content</em> permission on the <a href="@path">permissions administration form</a> if you wish to control them here.',
-      array('@path' => url('admin/user/permissions', array('fragment' => 'module-node'))))
+      array('@path' => url('admin/permissions', array('fragment' => 'module-node'))))
     . "</p>",
   );
 
@@ -1069,7 +1074,7 @@ function _taxonomy_access_grant_help_table() {
     . "</p>"
     . "<p>"
     . t('This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
-      array('@path' => url('admin/user/permissions', array('fragment' => 'module-node'))))
+      array('@path' => url('admin/permissions', array('fragment' => 'module-node'))))
     . "</p>",
   );
 
@@ -1084,5 +1089,5 @@ function _taxonomy_access_grant_help_table() {
     . "<p>" . t("This does <strong>not</strong> control whether the role can see the <em>nodes</em> listed in Views, only the <em>term</em>.") . "</p>",
   );
 
-  return theme('table', $header, $rows, array('class' => 'grant_help'));
+  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('grant_help'))));
 }
