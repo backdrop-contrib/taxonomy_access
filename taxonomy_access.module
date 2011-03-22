@@ -214,7 +214,7 @@ function taxonomy_access_global_defaults() {
 /**
  * Formats a row for hook_node_access_records.
  *
- * @param
+ * @param (stdClass) $record
  *   The term record object from a TAC query to format.
  *
  * @return
@@ -223,7 +223,7 @@ function taxonomy_access_global_defaults() {
  * @todo
  *   Make priority configurable?
  */
-function _taxonomy_access_format_grant_record($record) {
+function _taxonomy_access_format_grant_record(stdClass $record) {
 
   // Ignore => 0, Allow => 1, Deny => 2 ('10' in binary).
   // Only a value of 1 is considered an 'Allow';
@@ -870,10 +870,10 @@ function _taxonomy_access_get_nodes_for_role($rid) {
 /**
  * Updates node access grants for a set of nodes.
  *
- * @param $nids
+ * @param (array) $nids
  *    An array of node ids for which to acquire access permissions.
  */
-function _taxonomy_access_node_access_update($nids) {
+function _taxonomy_access_node_access_update(array $nids) {
 
   // Proceed only if node_access_needs_rebuild() is not already flagged.
   if (!node_access_needs_rebuild()) {
@@ -903,13 +903,13 @@ function _taxonomy_access_node_access_update($nids) {
 /**
  * Cache and retrieve nodes affected by a taxonomy change.
  *
- * @param $affected_nodes
+ * @param (array) $affected_nodes
  *    If we are caching, the list of nids to cache.
  *
  * @return
  *    The cached list of nodes.
  */
-function _taxonomy_access_cache_affected_nodes($affected_nodes = NULL) {
+function _taxonomy_access_cache_affected_nodes(array $affected_nodes = NULL) {
   static $nodes = array();
 
   // If we were passed a list of nodes, cache.

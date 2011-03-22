@@ -135,10 +135,10 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
 /**
  * Assembles a row of grant options for a term or default on the admin form.
  *
- * @param $grants
+ * @param (array) $grants
  *     An array of grants to use as form defaults, if any.
  */
-function taxonomy_access_admin_build_row($grants = NULL) {
+function taxonomy_access_admin_build_row(array $grants = NULL) {
   $form['#title'] = '';
   $form['#tree'] = TRUE;
   foreach (array('view', 'update', 'delete') as $grant) {
@@ -478,13 +478,13 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
  *   The term to add the permission for.
  * @param $rid
  *   The role id to add the permission for.
- * @param $grants
+ * @param (array) $grants
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
  * @param $skip_nodes
  *   A flag indicating whether to skip node updates when processing.
  */
-function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL, $skip_nodes = FALSE) {
+function taxonomy_access_grant_update($tid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
   if (!isset($tid) OR !is_numeric($rid)) {
     return FALSE;
   }
@@ -530,11 +530,11 @@ function taxonomy_access_grant_update($tid, $rid = NULL, $grants = NULL, $skip_n
  *   The term to add the permission for.
  * @param $rid
  *   The role id to add the permission for.
- * @param $grants
+ * @param array $grants
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
  */
-function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NULL) {
+function taxonomy_access_recursive_grant_update($tid, $rid = NULL, array $grants = NULL) {
   // First, process the original.
   taxonomy_access_grant_update($tid, $rid, $grants);
 
@@ -576,13 +576,13 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, $grants = NUL
  *   The vocab to add the permission for.
  * @param $rid
  *   The role id to add the permission to.
- * @param $grants
+ * @param (array) $grants
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
  * @param $skip_nodes
  *   A flag indicating whether to skip node updates when processing.
  */
-function taxonomy_access_defaults_update($vid, $rid = NULL, $grants = NULL, $skip_nodes = FALSE) {
+function taxonomy_access_defaults_update($vid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
   if (!is_numeric($vid) || (isset($rid) && !is_numeric($rid))) {
     return FALSE;
   }
