@@ -177,7 +177,7 @@ function taxonomy_access_term_grants_for_node($node_nid) {
   // The above query returns no rows if the node has no tags.
   // In that scenario, use the global default.
   if (sizeof($grants) == 0) {
-    $grants[] = taxonomy_access_global_defaults();
+    $grants = taxonomy_access_global_defaults();
   }
 
   return $grants;
