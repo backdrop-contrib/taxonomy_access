@@ -103,12 +103,10 @@ function taxonomy_access_user_role_delete($role) {
 /**
  * Implements hook_node_grants().
  * Gives access to taxonomies based on the taxonomy_access table.
- *
- * @todo
- *   Probably should use core API, constants, etc. here.
  */
 function taxonomy_access_node_grants($user, $op) {
-  return array('term_access' => array_keys(is_array($user->roles) ? $user->roles : array(1 => 'anonymous user')));
+  $roles = is_array($user->roles) ? array_keys($user->roles) : -1;
+  return array('term_access' => $roles);
 }
 
 /**
@@ -524,7 +522,7 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
         $rids = array_keys($user->roles);
       }
       else {
-        $rids[] = 1;
+        $rids[] = DRUPAL_ANONYMOUS_RID;
       }
 
       $sql = db_query(
@@ -1010,7 +1008,10 @@ function taxonomy_access_help($path, $arg) {
         . "<li>"
         . t('Custom roles <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure
 the authenticated user</a> properly.',
-          array("@url" => url(TAXONOMY_ACCESS_CONFIG . "/edit/2")))
+          array("@url" => url(
+              TAXONOMY_ACCESS_CONFIG 
+              . "/edit/" 
+              . DRUPAL_AUTHENTICATED_RID)))
         . "</li>\n"
         . '<li>'
         . "<p>" . t('The <em>Deny</em> directives are processed after the <em>Allow</em> directives. (<strong><em>Deny</em> overrides <em>Allow</em></strong>.)</em>  So, if a multicategory node is in Categories "A" and "B" and a user has <em>Allow</em> permissions for <em>View</em> in Category "A" and <em>Deny</em> permissions for <em>View</em> in Category "B", then the user will NOT be permitted to <em>View</em> the node.') . '</p>'

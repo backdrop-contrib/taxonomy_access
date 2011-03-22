@@ -61,7 +61,7 @@ function theme_taxonomy_access_admin() {
     $ops = array();
     if (!empty($active[$rid])) {
       //only allow delete for "extra" roles
-      if ($rid > 2) {
+      if ($rid != DRUPAL_ANONYMOUS_RID && $rid != DRUPAL_AUTHENTICATED_RID) {
         $ops[] = l(t("disable"), TAXONOMY_ACCESS_CONFIG . "/delete/$rid");
       }
       $ops[] = l(t("edit"), TAXONOMY_ACCESS_CONFIG . "/edit/$rid");
@@ -81,7 +81,9 @@ function theme_taxonomy_access_admin() {
  *     The role id to disable.
  */
 function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
-  if (is_numeric($rid) AND $rid > 2) {
+  if (is_numeric($rid) 
+      && $rid != DRUPAL_ANONYMOUS_RID 
+      && $rid != DRUPAL_AUTHENTICATED_RID) {
     $role_global_default = db_query(
       'SELECT grant_view, grant_update, grant_delete
        FROM {term_access_defaults} 
@@ -655,11 +657,15 @@ function _taxonomy_access_admin_instructions_html() {
     . "</li>"
     . "</ul>\n\n"
     ;
-  if (arg(4) > 2) { // Role other than Anonymous or Authenticated
+  if (arg(4) != DRUPAL_ANONYMOUS_RID && arg(4) != DRUPAL_AUTHENTICATED_RID) { 
+    // Role other than Anonymous or Authenticated
     $instructions .= ''
       . "<p>"
       . t('<strong>Remember:</strong> This role <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure the authenticated user</a> properly.',
-        array("@url" => url(TAXONOMY_ACCESS_CONFIG . "/edit/2")))
+        array("@url" => url(
+            TAXONOMY_ACCESS_CONFIG 
+            . "/edit/" 
+            .  DRUPAL_AUTHENTICATED_RID)))
       . "</p>\n\n"
       ;
   }
