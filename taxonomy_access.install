@@ -29,15 +29,6 @@ function taxonomy_access_install() {
 
 
 /**
- * Implements hook_uninstall().
- */
-function taxonomy_access_uninstall() {
-  drupal_uninstall_schema('taxonomy_access');
-  drupal_set_message(t('Taxonomy Access has been successfully uninstalled.'));
-}
-
-
-/**
  * Implements hook_schema().
  */
 function taxonomy_access_schema() {
