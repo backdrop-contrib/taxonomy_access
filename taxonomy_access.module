@@ -826,11 +826,11 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
     ->condition('td.vid', $vid)
     ->fields('ti', array('nid'))
     ;
-  $query->join('taxonomy_term_data', 'td');
+  $query->join('taxonomy_term_data', 'td', 'td.tid = ti.tid');
 
   if (!empty($tids)) {
     // Exclude nodes with controlled terms from the results.
-    $query->condition('ti.tid', $tids, 'IN');
+    $query->condition('ti.tid', $tids, 'NOT IN');
   }
 
   $nids = $query->execute()->fetchCol();
