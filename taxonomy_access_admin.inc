@@ -52,7 +52,7 @@ function theme_taxonomy_access_admin() {
   $header = array(t('Role'), array('data' => '&nbsp;'));
   $rows = array();
 
-  $active_role_ids = db_query('SELECT rid FROM {term_access_defaults} WHERE vid = 0')->fetchCol();
+  $active_role_ids = db_query('SELECT rid FROM {taxonomy_access_default} WHERE vid = 0')->fetchCol();
   $active = array();
   foreach ($active_role_ids as $rid) {
     $active[$rid] = TRUE;
@@ -86,7 +86,7 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
       && $rid != DRUPAL_AUTHENTICATED_RID) {
     $role_global_default = db_query(
       'SELECT grant_view, grant_update, grant_delete
-       FROM {term_access_defaults} 
+       FROM {taxonomy_access_default} 
        WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
       ->fetchAssoc();
     if ($role_global_default) {
@@ -95,7 +95,7 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
         // Compare this role's global default node access to auth user role.
         $auth_global_default = db_query(
           'SELECT grant_view, grant_update, grant_delete
-           FROM {term_access_defaults} 
+           FROM {taxonomy_access_default} 
            WHERE vid = 0 AND rid = :rid', array(':rid' => DRUPAL_AUTHENTICATED_RID))
           ->fetchAssoc();
 
@@ -169,7 +169,7 @@ function taxonomy_access_admin_build_row(array $grants = NULL) {
  */
 function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
   // Fetch all default grants.
-  $default_grants = db_query('SELECT * FROM {term_access_defaults} WHERE rid = :rid', array(':rid' => $rid))->fetchAllAssoc('vid', PDO::FETCH_ASSOC);
+  $default_grants = db_query('SELECT * FROM {taxonomy_access_default} WHERE rid = :rid', array(':rid' => $rid))->fetchAllAssoc('vid', PDO::FETCH_ASSOC);
 
   // If we are adding a role, no global default is set yet, so insert it now.
   if (empty($default_grants[0]) && isset($rid)) {
@@ -179,11 +179,11 @@ function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
     $row->rid = $rid;
 
     // Insert the row with defaults for all grants.
-    drupal_write_record('term_access_defaults', $row);
+    drupal_write_record('taxonomy_access_default', $row);
   }
 
   // Fetch all grants.
-  $grants = db_query('SELECT * FROM {term_access} WHERE rid = :rid', array(':rid' => $rid))->fetchAllAssoc('tid', PDO::FETCH_ASSOC);
+  $grants = db_query('SELECT * FROM {taxonomy_access_term} WHERE rid = :rid', array(':rid' => $rid))->fetchAllAssoc('tid', PDO::FETCH_ASSOC);
 
   $form['instructions'] = array(
     '#markup' => _taxonomy_access_admin_instructions_html(),
@@ -374,7 +374,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
         foreach ($values['selected_terms'] as $tid => $enabled) {
           if ($enabled) {
             $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
-            db_delete('term_access')
+            db_delete('taxonomy_access_term')
               ->condition('rid', $values['rid'])
               ->condition('tid', $tid)
               ->execute();
@@ -387,7 +387,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
           if ($enabled) {
             $affected_nodes =
               _taxonomy_access_get_nodes_for_vocabulary($vid, $values['rid']);
-            db_delete('term_access_defaults')
+            db_delete('taxonomy_access_default')
               ->condition('rid', $values['rid'])
               ->condition('vid', $vid)
               ->execute();
@@ -511,13 +511,13 @@ function taxonomy_access_grant_update($tid, $rid = NULL, array $grants = NULL, $
   }
 
   // Delete old entries.
-  db_delete('term_access')
+  db_delete('taxonomy_access_term')
     ->condition('tid', $tid)
     ->condition('rid', $rid)
     ->execute();
 
   // Insert new entries.
-  drupal_write_record('term_access', $row);
+  drupal_write_record('taxonomy_access_term', $row);
 
   // Add any affected nodes to the cache to be updated by the submit handler.
   if (!empty($affected_nodes)) {
@@ -615,13 +615,13 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, array $grants = NULL
   }
 
   // Delete old entries.
-  db_delete('term_access_defaults')
+  db_delete('taxonomy_access_default')
     ->condition('vid', $vid)
     ->condition('rid', $rid)
     ->execute();
 
   // Insert new entries.
-  drupal_write_record('term_access_defaults', $row);
+  drupal_write_record('taxonomy_access_default', $row);
 
   // Add any affected nodes to the cache to be updated by the submit handler.
   if (!empty($affected_nodes)) {

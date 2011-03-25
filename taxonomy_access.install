@@ -15,13 +15,13 @@ function taxonomy_access_last_removed() {
 
 /**
  * Implements hook_install().
- * Adds tables to database: 'term_access', 'term_access_defaults'
+ * Adds tables to database: 'taxonomy_access_term', 'taxonomy_access_default'
  */
 function taxonomy_access_install() {
 
  // Default global perms for roles 1 (anonymous) and 2 (authenticated).
-  db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 0, 1)');
-  db_query('INSERT INTO {term_access_defaults} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 0, 1)');
+  db_query('INSERT INTO {taxonomy_access_default} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 0, 1)');
+  db_query('INSERT INTO {taxonomy_access_default} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 0, 1)');
 
   // Weight taxonomy_access below most modules, but above the very last ones.
   db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");
@@ -34,11 +34,11 @@ function taxonomy_access_install() {
 function taxonomy_access_schema() {
   $schema = array();
 
-  $schema['term_access'] = array(
+  $schema['taxonomy_access_term'] = array(
     'description' => 'Identifies which roles may view, update, delete, create, and list nodes with a given term.',
     'fields' => array(
       'tid' => array(
-        'description' => 'The term_data.tid this record affects.  Overrides vocabulary default in term_access_defaults.',
+        'description' => 'The term_data.tid this record affects.  Overrides vocabulary default in taxonomy_access_default.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -95,8 +95,8 @@ function taxonomy_access_schema() {
     'primary key' => array('tid', 'rid'),
   );
 
-  $schema['term_access_defaults'] = array(
-    'description' => 'Sets vocabulary defaults which roles may view, update, delete, create, and list nodes with a given term. Overridden by {term_access}/',
+  $schema['taxonomy_access_default'] = array(
+    'description' => 'Sets vocabulary defaults which roles may view, update, delete, create, and list nodes with a given term. Overridden by {taxonomy_access_term}/',
     'fields' => array(
       'vid' => array(
         'description' => 'The vocabulary.vid for which this row sets defaults.',
@@ -157,4 +157,13 @@ function taxonomy_access_schema() {
   );
 
   return $schema;
+}
+
+
+/**
+ * Rename database tables to follow Drupal 7 standards.
+ */
+function taxonomy_access_update_7000() {
+  db_rename_table('term_access', 'taxonomy_access_term');
+  db_rename_table('term_access_defaults', 'taxonomy_access_default');
 }

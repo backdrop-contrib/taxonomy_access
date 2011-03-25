@@ -48,4 +48,4 @@ INSTALLATION:
    roles also have the authenticated user role.
 
 NOTE: DATABASE TABLES are automatically added to database. Module creates two 
-   database tables: 'term_access' and 'term_access_defaults'.
+   database tables: 'taxonomy_access_term' and 'taxonomy_access_default'.

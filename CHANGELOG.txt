@@ -1,5 +1,6 @@
 Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+o #1097770 by David_Rothstein: Update table names for D7.
 o #1102238 by David_Rothstein: Remove redundant hook_uninstall().
 o #1097782 by David_Rothstein, xjm: Update module admin forms for D7.
 o Convert to D7 API.

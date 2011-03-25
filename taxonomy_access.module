@@ -47,10 +47,10 @@ function taxonomy_access_enable() {
   unset($roles);
 
   // Delete any term configurations not in {taxonomy_term_data}.
-  // SELECT ta.tid,ta.rid FROM {term_access} ta LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND td.tid IS NULL
+  // SELECT ta.tid,ta.rid FROM {taxonomy_access_term} ta LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND td.tid IS NULL
 
   // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
-  // SELECT tad.vid,tad.rid FROM {term_access_defaults} tad LEFT JOIN {taxonomy_vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND v.vid IS NULL
+  // SELECT tad.vid,tad.rid FROM {taxonomy_access_default} tad LEFT JOIN {taxonomy_vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND v.vid IS NULL
 
 }
 
@@ -71,11 +71,11 @@ function taxonomy_access_delete_roles(array $role_ids, $in = TRUE) {
 
   $condition = $in ? 'IN' : 'NOT IN';
 
-  db_delete('term_access')
+  db_delete('taxonomy_access_term')
     ->condition('rid', $role_ids, $condition)
     ->execute();
   
-  db_delete('term_access_defaults')
+  db_delete('taxonomy_access_default')
     ->condition('rid', $role_ids, $condition)
     ->execute();
 }
@@ -137,15 +137,15 @@ function taxonomy_access_term_grants_for_node($node_nid) {
   );
 
   $query->join(
-    'term_access_defaults', 'tadg',
+    'taxonomy_access_default', 'tadg',
     'tadg.vid = 0'
   );
   $query->leftJoin(
-    'term_access_defaults', 'tad',
+    'taxonomy_access_default', 'tad',
     'tad.vid = td.vid AND tad.rid = tadg.rid'
   );
   $query->leftJoin(
-    'term_access', 'ta',
+    'taxonomy_access_term', 'ta',
     'ta.tid = td.tid AND ta.rid = tadg.rid'
   );
   $query->fields('tadg', array('rid'));
@@ -196,7 +196,7 @@ function taxonomy_access_global_defaults() {
     $records =
       db_query(
         'SELECT rid, grant_view, grant_update, grant_delete
-         FROM {term_access_defaults}
+         FROM {taxonomy_access_default}
          WHERE vid = 0'
       )
       ->fetchAll();
@@ -440,11 +440,11 @@ function taxonomy_access_taxonomy($op, $type, $array = NULL) {
 
       // Clean our data for the term or vocab.
       if ($type == 'term') {
-        db_query("DELETE FROM {term_access} WHERE tid = '%d'",
+        db_query("DELETE FROM {taxonomy_access_term} WHERE tid = '%d'",
           $array['tid']);
       }
       if ($type == 'vocabulary') {
-        db_query("DELETE FROM {term_access_defaults} WHERE vid = '%d'",
+        db_query("DELETE FROM {taxonomy_access_default} WHERE vid = '%d'",
           $array['vid']);
       }
 
@@ -527,9 +527,9 @@ function taxonomy_access_db_rewrite_sql($query, $table, $field) {
 
       $sql = db_query(
         'SELECT t.tid AS tid, t.vid AS vid FROM {taxonomy_term_data} t
-         INNER JOIN {term_access_defaults} tdg ON tdg.vid=0
-         LEFT JOIN {term_access_defaults} td ON td.vid=t.vid AND td.rid=tdg.rid
-         LEFT JOIN {term_access} ta ON ta.tid=t.tid AND ta.rid=tdg.rid
+         INNER JOIN {taxonomy_access_default} tdg ON tdg.vid=0
+         LEFT JOIN {taxonomy_access_default} td ON td.vid=t.vid AND td.rid=tdg.rid
+         LEFT JOIN {taxonomy_access_term} ta ON ta.tid=t.tid AND ta.rid=tdg.rid
          WHERE tdg.rid IN (' . db_placeholders($rids, 'int') . ')
          GROUP BY t.tid, t.vid
          HAVING BIT_OR(COALESCE(
@@ -679,7 +679,7 @@ function taxonomy_access_get_grants($rid) {
   if (isset($rid) && !is_numeric($rid)) {
     $rid = db_result(db_query("SELECT rid FROM {role} WHERE name='%s'", $rid));
   }
-  $result = db_query("SELECT * FROM {term_access} WHERE rid=%d", $rid);
+  $result = db_query("SELECT * FROM {taxonomy_access_term} WHERE rid=%d", $rid);
   $grants = array();
   while ($grant = db_fetch_array($result)) {
     $tid = $grant['tid'];
@@ -712,7 +712,7 @@ function taxonomy_access_get_default_grants($rid) {
   if (!is_numeric($rid)) {
     return FALSE;
   }
-  $result = db_query("SELECT * FROM {term_access_defaults} WHERE rid=%d", $rid);
+  $result = db_query("SELECT * FROM {taxonomy_access_default} WHERE rid=%d", $rid);
   $grants = array();
   while ($grant = db_fetch_array($result)) {
     $vid = $grant['vid'];
@@ -811,7 +811,7 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
   if (!is_null($rid)) {
     // Get terms in the vocabulary that are controlled for this role.
     $query = 
-      db_select('term_access', 'ta')
+      db_select('taxonomy_access_term', 'ta')
       ->condition('ta.rid', $rid)
       ->condition('td.vid', $vid)
       ->fields('ta', array('tid'))
@@ -854,8 +854,8 @@ function _taxonomy_access_get_nodes_for_role($rid) {
   $query = db_select('taxonomy_index', 'n')
     ->fields('n', array('nid'));
   $query->leftJoin('taxonomy_term_data', 'd', 'n.tid = d.tid');
-  $query->leftJoin('term_access', 'a', 'n.tid = a.tid');
-  $query->leftJoin('term_access_defaults', 'ad', 'ad.vid = d.vid');
+  $query->leftJoin('taxonomy_access_term', 'a', 'n.tid = a.tid');
+  $query->leftJoin('taxonomy_access_default', 'ad', 'ad.vid = d.vid');
   $query->condition(db_or()
     ->condition('a.rid', $rid)
     ->condition('ad.rid', $rid)

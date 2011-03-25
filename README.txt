@@ -23,8 +23,8 @@ Also see the help pages at drupal.org: http://drupal.org/node/31601
 -----------------------
 DATABASE TABLES
 -----------------------
-Module creates two tables in database: 'term_access' and
-'term_access_defaults'
+Module creates two tables in database: 'taxonomy_access_term' and
+'taxonomy_access_default'
 
 
 -----------------------
@@ -64,7 +64,7 @@ If users can view or edit pages that they do not have permission for:
    module DENIES it.
 
 6. Do a General Database Housekeeping
-  (Tables: 'node_access','term_access' and 'term_access_defaults'):
+  (Tables: 'node_access','taxonomy_access_term' and 'taxonomy_access_default'):
 
   First DISABLE, then RE-ENABLE the Taxonomy Access module on page:
   "Administer >> Site building >> Modules".
@@ -97,7 +97,7 @@ UNINSTALL
    (Drupal path: admin/build/modules/uninstall).
 
    This will remove all your settings of Taxonomy Access: variables and tables
-   ('term_access' and 'term_access_defaults').
+   ('taxonomy_access_term' and 'taxonomy_access_default').
 
 2. After uninstall, if the site is experiencing problems with permissions to
    content, you can rebuild the permission cache.
