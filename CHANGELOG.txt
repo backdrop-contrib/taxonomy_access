@@ -1,5 +1,7 @@
 Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+o Move module administration to admin/config/system/taxonomy_access and provide
+   "configure" item in .info file.
 o #1103572 by David_Rothstein: Remove unnecessary files[] declarations from
    the .info file.
 o #1097770 by David_Rothstein: Update table names for D7.

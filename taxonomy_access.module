@@ -13,7 +13,7 @@ define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
 /**
  * Base path for module administration pages.
  */
-define('TAXONOMY_ACCESS_CONFIG', 'admin/taxonomy_access');
+define('TAXONOMY_ACCESS_CONFIG', 'admin/config/system/taxonomy_access');
 
 /**
  * Cache a list of all roles.
@@ -291,6 +291,14 @@ function taxonomy_access_menu() {
 }
 
 
+/**
+ * Implements hook_admin_paths().
+ */
+function taxonomy_access_admin_paths() {
+  $paths = array(
+    'admin/config/system/taxonomy_access' => TRUE,
+  );
+}
 
 /**
  * Implements hook_form_BASE_FORM_ID_alter().
