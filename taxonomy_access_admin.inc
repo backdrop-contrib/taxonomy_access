@@ -44,6 +44,8 @@ function taxonomy_access_admin($op = NULL, $rid = NULL, $arg = NULL) {
  *
  * @return
  *     Themed table with one row for each role.
+ * @todo
+ *     Can we move the configuration items into hook_menu?
  */
 function theme_taxonomy_access_admin() {
   $roles = _taxonomy_access_user_roles();
@@ -81,12 +83,12 @@ function theme_taxonomy_access_admin() {
  *     The role id to disable.
  */
 function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
-  if (is_numeric($rid) 
-      && $rid != DRUPAL_ANONYMOUS_RID 
+  if (is_numeric($rid)
+      && $rid != DRUPAL_ANONYMOUS_RID
       && $rid != DRUPAL_AUTHENTICATED_RID) {
     $role_global_default = db_query(
       'SELECT grant_view, grant_update, grant_delete
-       FROM {taxonomy_access_default} 
+       FROM {taxonomy_access_default}
        WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
       ->fetchAssoc();
     if ($role_global_default) {
@@ -95,7 +97,7 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
         // Compare this role's global default node access to auth user role.
         $auth_global_default = db_query(
           'SELECT grant_view, grant_update, grant_delete
-           FROM {taxonomy_access_default} 
+           FROM {taxonomy_access_default}
            WHERE vid = 0 AND rid = :rid', array(':rid' => DRUPAL_AUTHENTICATED_RID))
           ->fetchAssoc();
 
@@ -657,14 +659,14 @@ function _taxonomy_access_admin_instructions_html() {
     . "</li>"
     . "</ul>\n\n"
     ;
-  if (arg(4) != DRUPAL_ANONYMOUS_RID && arg(4) != DRUPAL_AUTHENTICATED_RID) { 
+  if (arg(4) != DRUPAL_ANONYMOUS_RID && arg(4) != DRUPAL_AUTHENTICATED_RID) {
     // Role other than Anonymous or Authenticated
     $instructions .= ''
       . "<p>"
       . t('<strong>Remember:</strong> This role <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure the authenticated user</a> properly.',
         array("@url" => url(
-            TAXONOMY_ACCESS_CONFIG 
-            . "/edit/" 
+            TAXONOMY_ACCESS_CONFIG
+            . "/edit/"
             .  DRUPAL_AUTHENTICATED_RID)))
       . "</p>\n\n"
       ;

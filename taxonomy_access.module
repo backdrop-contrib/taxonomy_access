@@ -74,7 +74,7 @@ function taxonomy_access_delete_roles(array $role_ids, $in = TRUE) {
   db_delete('taxonomy_access_term')
     ->condition('rid', $role_ids, $condition)
     ->execute();
-  
+
   db_delete('taxonomy_access_default')
     ->condition('rid', $role_ids, $condition)
     ->execute();
@@ -322,8 +322,8 @@ function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
 /**
  * Implements hook_form_FORM_ID_alter() for taxonomy-form-term.
  * Overriding the term deletion form's submit handler allows us to determine
- * which {node_access} entries must be updated before the {taxonomy_term_data} and
- * {taxonomy_index} records are deleted from the database.
+ * which {node_access} entries must be updated before the {taxonomy_term_data}
+ * and {taxonomy_index} records are deleted from the database.
  */
 function taxonomy_access_form_taxonomy_form_term_alter(&$form, &$form_state) {
   $form['#submit'] = array('taxonomy_access_term_submit');
@@ -333,7 +333,8 @@ function taxonomy_access_form_taxonomy_form_term_alter(&$form, &$form_state) {
  * Implements hook_form_FORM_ID_alter() for taxonomy-vocabulary-confirm-delete.
  * Overriding the vocabulary deletion form's submit handler allows us to
  * determine which {node_access} entries must be updated before the
- * {taxonomy_term_data} and {taxonomy_index} records are deleted from the database.
+ * {taxonomy_term_data} and {taxonomy_index} records are deleted from the
+ * database.
  */
 function taxonomy_access_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
   // The form returned by taxonomy_form_vocabulary() acts as a delete
@@ -704,6 +705,7 @@ function taxonomy_access_get_grants($rid) {
   }
   return $grants;
 }
+
 /**
  * Gets default permissions for a given role.
  *
@@ -775,19 +777,19 @@ function _taxonomy_access_get_descendants($tid) {
  *    An array of node ids associated with the given term.
  */
 function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
-  $nids = 
+  $nids =
     db_query(
-    "SELECT nid FROM {taxonomy_index} WHERE tid = :tid", 
+    "SELECT nid FROM {taxonomy_index} WHERE tid = :tid",
     array('tid' => $tid)
     )
     ->fetchCol();
-  
+
 
   // If requested, get nodes tagged with all children as well.
   if ($get_children) {
     $child_tids = _taxonomy_access_get_descendants($tid);
     if (sizeof($child_tids) > 0) {
-      $child_nids = 
+      $child_nids =
         db_query(
           'SELECT nid FROM {taxonomy_index} WHERE tid IN :tids',
           array('tids' => $child_tids)
@@ -818,14 +820,14 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
 function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
   if (!is_null($rid)) {
     // Get terms in the vocabulary that are controlled for this role.
-    $query = 
+    $query =
       db_select('taxonomy_access_term', 'ta')
       ->condition('ta.rid', $rid)
       ->condition('td.vid', $vid)
       ->fields('ta', array('tid'))
       ;
     $query->join('taxonomy_term_data', 'td', 'td.tid = ta.tid');
-    
+
     $tids = $query->execute()->fetchCol();
   }
 
@@ -871,7 +873,7 @@ function _taxonomy_access_get_nodes_for_role($rid) {
 
   $nids = $query->execute()->fetchCol();
   return $nids;
-}
+s}
 
 /**
  * Updates node access grants for a set of nodes.
@@ -1017,8 +1019,8 @@ function taxonomy_access_help($path, $arg) {
         . t('Custom roles <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure
 the authenticated user</a> properly.',
           array("@url" => url(
-              TAXONOMY_ACCESS_CONFIG 
-              . "/edit/" 
+              TAXONOMY_ACCESS_CONFIG
+              . "/edit/"
               . DRUPAL_AUTHENTICATED_RID)))
         . "</li>\n"
         . '<li>'
