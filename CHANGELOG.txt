@@ -1,5 +1,8 @@
 Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+o Rename _taxonomy_access_del_term() and _taxonomy_access_del_term() to 
+   _taxonomy_access_deleted_tid() and _taxonomy_access_deleted_vid() to avoid
+   confusion with record deletion API.
 o Move module administration to admin/config/system/taxonomy_access and provide
    "configure" item in .info file.
 o #1103572 by David_Rothstein: Remove unnecessary files[] declarations from

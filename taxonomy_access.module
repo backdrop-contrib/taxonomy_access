@@ -361,7 +361,7 @@ function taxonomy_access_term_submit(&$form, &$form_state) {
     if ($form_state['values']['delete'] === TRUE) {
 
       $tid = $form_state['values']['tid'];
-      _taxonomy_access_del_term($tid);
+      _taxonomy_access_deleted_tid($tid);
 
       // Determine which nodes belong to this term and its children and cache.
       $affected_nodes = _taxonomy_access_get_nodes_for_term($tid, TRUE);
@@ -389,7 +389,7 @@ function taxonomy_access_term_submit(&$form, &$form_state) {
  */
 function taxonomy_access_vocabulary_delete_submit(&$form, &$form_state) {
   $vid = $form_state['values']['vid'];
-  _taxonomy_access_del_vocabulary($vid);
+  _taxonomy_access_deleted_vid($vid);
 
   // Determine which nodes belong to this vocabulary and cache.
   $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid);
@@ -435,10 +435,10 @@ function taxonomy_access_taxonomy($op, $type, $array = NULL) {
 
       // Check for flags & node list from our admin form submit overrides.
       if (!isset($del_vocab)) {
-        $del_vocab = _taxonomy_access_del_vocabulary();
+        $del_vocab = _taxonomy_access_deleted_vid();
       }
       if (!isset($del_term)) {
-        $del_term = _taxonomy_access_del_term();
+        $del_term = _taxonomy_access_deleted_tid();
       }
       if (!isset($affected_nodes)) {
         $affected_nodes = _taxonomy_access_cache_affected_nodes();
@@ -940,7 +940,7 @@ function _taxonomy_access_cache_affected_nodes(array $affected_nodes = NULL) {
  * @return
  *    The cached vid, or false if none is cached.
  */
-function _taxonomy_access_del_vocabulary($vid = NULL) {
+function _taxonomy_access_deleted_vid($vid = NULL) {
   static $deleted_vid = FALSE;
 
   // If the vid was passed, cache.
@@ -963,7 +963,7 @@ function _taxonomy_access_del_vocabulary($vid = NULL) {
  * @return
  *    The cached tid, or false if none is cached.
  */
-function _taxonomy_access_del_term($tid = NULL) {
+function _taxonomy_access_deleted_tid($tid = NULL) {
   static $deleted_tid = FALSE;
 
   // If the tid was passed, cache.
