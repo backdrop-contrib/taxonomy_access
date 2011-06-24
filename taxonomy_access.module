@@ -969,7 +969,7 @@ function _taxonomy_access_get_nodes_for_role($rid) {
 
   $nids = $query->execute()->fetchCol();
   return $nids;
-s}
+}
 
 /**
  * Updates node access grants for a set of nodes.
