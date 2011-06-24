@@ -1,5 +1,6 @@
 Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+o Provide API for term and default deletion.
 o Rename _taxonomy_access_del_term() and _taxonomy_access_del_term() to 
    _taxonomy_access_deleted_tid() and _taxonomy_access_deleted_vid() to avoid
    confusion with record deletion API.

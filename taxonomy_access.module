@@ -55,6 +55,102 @@ function taxonomy_access_enable() {
 }
 
 /**
+ * Delete module configurations for the given term IDs.
+ *
+ * @param (array) $term_ids
+ *   An array of term IDs.
+ * @param $role_ids = ''
+ *   An individual role ID, or an array of role IDs.
+ *
+ * @todo
+ *   Should we return something?
+ */
+function taxonomy_access_delete_terms(array $term_ids, $role_ids = '') {
+
+  // Accept either a single role id or an array thereof.
+  if (!is_array($role_ids)) {
+    $role_ids = array($role_ids);
+  }
+    
+  $query =
+    db_delete('taxonomy_access_term')
+    ->condition('tid', $term_ids);
+
+  if (!empty($role_ids)) {
+    $query->condition('rid', $role_ids);
+  }
+
+  $query->execute();
+
+  unset($term_ids);
+  unset($query);
+}
+
+/**
+ * Single-value wrapper for taxonomy_access_delete_terms().
+ *
+ * @param $term_id
+ *   A single term ID.
+ * @param $role_ids = ''
+ *   An individual role ID, or an array of role IDs.
+ *
+ * @return
+ *   Return value from taxonomy_access_delete_terms().
+ */
+function taxonomy_access_delete_term($term_id, $role_ids = '') {
+  return taxonomy_access_delete_terms(array($term_id, $role_ids));
+}
+
+/**
+ * Delete module configurations for the given vocabulary IDs.
+ *
+ * @param (array) $vocab_ids
+ *   An array of vocabulary IDs.
+ * @param $role_ids
+ *   An individual role ID, or an array of role IDs.
+ *
+ * @todo
+ *   Disallow deletion of anon/auth globals, and/or reset to install configs?
+ * @todo
+ *   Should we return something?
+ */
+function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = '') {
+
+  // Accept either a single role id or an array thereof.
+  if (!is_array($role_ids)) {
+    $role_ids = array($role_ids);
+  }
+    
+  $query =
+    db_delete('taxonomy_access_default')
+    ->condition('vid', $vocab_ids);
+
+  if (!empty($role_ids)) {
+    $query->condition('rid', $role_ids);
+  }
+
+  $query->execute();
+
+  unset($vocab_ids);
+  unset($query);
+}
+
+/**
+ * Single-value wrapper for taxonomy_access_delete_defaults().
+ *
+ * @param $vocab_id
+ *   A single vocabulary ID.
+ * @param $role_ids = ''
+ *   An individual role ID, or an array of role IDs.
+ *
+ * @return
+ *   Return value from taxonomy_access_delete_defaults().
+ */
+function taxonomy_access_delete_default($vocab_id, $role_ids = '') {
+  return taxonomy_access_delete_defaults(array($vocab_id, $role_ids));
+}
+
+/**
  * Delete module configurations for the given role IDs.
  *
  * @param (array) $role_ids
@@ -63,7 +159,7 @@ function taxonomy_access_enable() {
  *   Whether to delete the selected roles, or all but the selected roles.
  *
  * @todo
- *   Disallow deletion of anon/auth, and/or reset to install configs?
+ *   Disallow deletion of anon/auth globals, and/or reset to install configs?
  * @todo
  *   Should we return something?
  */
