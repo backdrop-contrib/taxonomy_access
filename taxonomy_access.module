@@ -36,22 +36,41 @@ function _taxonomy_access_user_roles() {
  * 1: Delete ta, tad rows for missing roles.
  * 2: Delete ta rows for missing terms.
  * 3: Delete tad rows for missing vocabs.
- *
- * @todo
- *   Add back #2-3.
  */
 function taxonomy_access_enable() {
+
   // Delete any records for roles not in {roles}.
   $roles = _taxonomy_access_user_roles();
   taxonomy_access_delete_roles(array_keys($roles), FALSE);
   unset($roles);
 
   // Delete any term configurations not in {taxonomy_term_data}.
-  // SELECT ta.tid,ta.rid FROM {taxonomy_access_term} ta LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid WHERE ta.tid <> 0 AND td.tid IS NULL
+  $term_ids = 
+    db_query(
+      "SELECT ta.tid 
+      FROM {taxonomy_access_term} ta
+      LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid
+      WHERE ta.tid <> 0 AND td.tid IS NULL"
+    )
+    ->fetchCol()
+    ;
+
+  taxonomy_access_delete_terms($term_ids);
+  unset($term_ids);
 
   // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
-  // SELECT tad.vid,tad.rid FROM {taxonomy_access_default} tad LEFT JOIN {taxonomy_vocabulary} v ON tad.vid = v.vid WHERE tad.vid <> 0 AND v.vid IS NULL
+  $vocab_ids = 
+    db_query(
+      "SELECT tad.vid 
+      FROM {taxonomy_access_default} tad
+      LEFT JOIN {taxonomy_vocabulary} tv ON tad.vid = tv.vid
+      WHERE tad.vid <> 0 AND tv.vid IS NULL"
+    )
+    ->fetchCol()
+    ;
 
+  taxonomy_access_delete_defaults($vocab_ids);
+  unset($vocab_ids);
 }
 
 /**
@@ -66,9 +85,12 @@ function taxonomy_access_enable() {
  *   Should we return something?
  */
 function taxonomy_access_delete_terms(array $term_ids, $role_ids = '') {
+  if (empty($term_ids)) {
+    return;
+  }
 
   // Accept either a single role id or an array thereof.
-  if (!is_array($role_ids)) {
+  if (is_numeric($role_ids)) {
     $role_ids = array($role_ids);
   }
     
@@ -115,9 +137,12 @@ function taxonomy_access_delete_term($term_id, $role_ids = '') {
  *   Should we return something?
  */
 function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = '') {
+  if (empty($vocab_ids)) {
+    return;
+  }
 
   // Accept either a single role id or an array thereof.
-  if (!is_array($role_ids)) {
+  if (is_numeric($role_ids)) {
     $role_ids = array($role_ids);
   }
     
