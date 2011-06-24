@@ -84,7 +84,7 @@ function taxonomy_access_enable() {
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_terms(array $term_ids, $role_ids = '') {
+function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
   if (empty($term_ids)) {
     return;
   }
@@ -119,7 +119,7 @@ function taxonomy_access_delete_terms(array $term_ids, $role_ids = '') {
  * @return
  *   Return value from taxonomy_access_delete_terms().
  */
-function taxonomy_access_delete_term($term_id, $role_ids = '') {
+function taxonomy_access_delete_term($term_id, $role_ids = NULL) {
   return taxonomy_access_delete_terms(array($term_id, $role_ids));
 }
 
@@ -136,7 +136,7 @@ function taxonomy_access_delete_term($term_id, $role_ids = '') {
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = '') {
+function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
   if (empty($vocab_ids)) {
     return;
   }
@@ -171,7 +171,7 @@ function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = '') {
  * @return
  *   Return value from taxonomy_access_delete_defaults().
  */
-function taxonomy_access_delete_default($vocab_id, $role_ids = '') {
+function taxonomy_access_delete_default($vocab_id, $role_ids = NULL) {
   return taxonomy_access_delete_defaults(array($vocab_id, $role_ids));
 }
 
@@ -810,42 +810,50 @@ function _taxonomy_access_get_descendants($tid) {
     foreach ($tree as $term) {
       $descendants[$tid][] = $term->tid;
     }
+
+    unset($term);
+    unset($tree);
   }
+
   return $descendants[$tid];
 }
 
 /**
  * Gets node ids associated with a given term.
  *
- * @param $tid
- *    The term id for which to retrieve associated nodes.
+ * @param $term_ids
+ *    An array of term ids for which to retrieve associated nodes.
  * @param $get_children
  *    Whether to recursively get nodes tagged with the term's children as well.
  *
  * @return
- *    An array of node ids associated with the given term.
+ *    An array of node ids associated with the given terms.
  */
-function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
+function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = FALSE) {
   $nids =
     db_query(
-    "SELECT nid FROM {taxonomy_index} WHERE tid = :tid",
-    array('tid' => $tid)
+      "SELECT nid FROM {taxonomy_index} WHERE tid IN (:term_ids)",
+      array(':term_ids' => $term_ids)
     )
     ->fetchCol();
 
 
   // If requested, get nodes tagged with all children as well.
   if ($get_children) {
-    $child_tids = _taxonomy_access_get_descendants($tid);
+    $child_tids = array();
+    foreach ($term_ids as $term_id) {
+      $child_tids = 
+        array_merge($child_tids, _taxonomy_access_get_descendants($term_id));
+    }
     if (sizeof($child_tids) > 0) {
       $child_nids =
         db_query(
-          'SELECT nid FROM {taxonomy_index} WHERE tid IN :tids',
-          array('tids' => $child_tids)
+          'SELECT nid FROM {taxonomy_index} WHERE tid IN (:term_ids)',
+          array(':term_ids' => $child_tids)
         )
         ->fetchCol();
 
-      $nids = array_merge($nids, $child_nids);
+      $nids = array_unique(array_merge($nids, $child_nids));
       unset($child_nids);
     }
     unset($child_tids);
@@ -854,10 +862,26 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
 }
 
 /**
+ * Single-value wrapper for taxonomy_access_get_nodes_for_terms().
+ *
+ * @param $term_id
+ *   A single term ID for which to retrieve associated nodes.
+ * @param $get_children
+ *    Whether to recursively get nodes tagged with the term's children as well.
+ *
+ * @return
+ *   Return value from _taxonomy_access_get_nodes_for_terms().
+ */
+function _taxonomy_access_get_nodes_for_term($term_id, $get_children = FALSE) {
+  return _taxonomy_access_get_nodes_for_terms(array($term_id), $get_children);
+}
+
+
+/**
  * Gets node ids associated with a given vocabulary.
  *
- * @param $vid
- *    The vocabulary id for which to retrieve associated node ids.
+ * @param $vocab_ids
+ *    The vocabulary ids for which to retrieve associated node ids.
  * @param $rid
  *    The role id for which to retrieve node ids, if any.
  *    This argument has the effect of filtering out nodes in terms that
@@ -866,23 +890,24 @@ function _taxonomy_access_get_nodes_for_term($tid, $get_children = FALSE) {
  * @return
  *    An array of node ids associated with the given vocabulary.
  */
-function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
+function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) {
   if (!is_null($rid)) {
     // Get terms in the vocabulary that are controlled for this role.
-    $query =
-      db_select('taxonomy_access_term', 'ta')
-      ->condition('ta.rid', $rid)
-      ->condition('td.vid', $vid)
-      ->fields('ta', array('tid'))
-      ;
-    $query->join('taxonomy_term_data', 'td', 'td.tid = ta.tid');
-
-    $tids = $query->execute()->fetchCol();
+    $tids = 
+      db_query(
+        "SELECT ta.tid 
+         FROM {taxonomy_access_term} ta
+         INNER JOIN {taxonomy_term_data} td ON td.tid = ta.tid
+         WHERE ta.rid = :rid
+         AND td.vid IN (:vocab_ids)",
+        array(':rid' => $rid, ':vocab_ids' => $vocab_ids)
+      )
+      ->fetchCol();
   }
 
   $query =
     db_select('taxonomy_index', 'ti')
-    ->condition('td.vid', $vid)
+    ->condition('td.vid', $vocab_ids)
     ->fields('ti', array('nid'))
     ;
   $query->join('taxonomy_term_data', 'td', 'td.tid = ti.tid');
@@ -897,6 +922,23 @@ function _taxonomy_access_get_nodes_for_vocabulary($vid, $rid = NULL) {
   unset($query);
 
   return $nids;
+}
+
+/**
+ * Single-value wrapper for taxonomy_access_get_nodes_for_defaults().
+ *
+ * @param $vocab_id
+ *   A single vocabulary ID for which to retrieve associated nodes.
+ * @param $rid
+ *    The role id for which to retrieve node ids, if any.
+ *    This argument has the effect of filtering out nodes in terms that
+ *    are already controlled invidually for the role.
+ *
+ * @return
+ *   Return value from _taxonomy_access_get_nodes_for_defaults().
+ */
+function _taxonomy_access_get_nodes_for_default($vocab_id, $rid = NULL) {
+  return _taxonomy_access_get_nodes_for_defaults(array($vocab_id), $rid);
 }
 
 /**

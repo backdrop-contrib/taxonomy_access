@@ -365,6 +365,9 @@ function theme_taxonomy_access_admin_form($variables) {
 
 /**
  * Submit handler for the administration form at TAXONOMY_ACCESS_CONFIG.
+ *
+ * @todo
+ *     Refactor 'Save all' case to reduce queries?
  */
 function taxonomy_access_admin_form_submit($form, &$form_state) {
   $values = $form_state['values'];
@@ -372,29 +375,38 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
   switch ($values['op']) {
 
     case t('Delete selected'):
-      if (is_array($values['selected_terms'])) {
+      if (isset($values['selected_terms']) && is_array($values['selected_terms'])) {
+        $disable_tids = array();
         foreach ($values['selected_terms'] as $tid => $enabled) {
           if ($enabled) {
-            $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
-            db_delete('taxonomy_access_term')
-              ->condition('rid', $values['rid'])
-              ->condition('tid', $tid)
-              ->execute();
-            _taxonomy_access_cache_affected_nodes($affected_nodes);
+            $disable_tids[] = $tid;
           }
         }
+
+        if (!empty($disable_tids)) {
+          $affected_nodes = _taxonomy_access_get_nodes_for_terms($disable_tids);
+          taxonomy_access_delete_terms($disable_tids, $values['rid']);
+          _taxonomy_access_cache_affected_nodes($affected_nodes);
+          unset($affected_nodes);
+          unset($disable_tids);
+        }
       }
-      if (is_array($values['selected_defaults'])) {
+
+      if (isset($values['selected_defaults']) && is_array($values['selected_defaults'])) {
+        $disable_vids = array();
         foreach ($values['selected_defaults'] as $vid => $enabled) {
           if ($enabled) {
-            $affected_nodes =
-              _taxonomy_access_get_nodes_for_vocabulary($vid, $values['rid']);
-            db_delete('taxonomy_access_default')
-              ->condition('rid', $values['rid'])
-              ->condition('vid', $vid)
-              ->execute();
-            _taxonomy_access_cache_affected_nodes($affected_nodes);
+            $disable_vids[] = $vid;
           }
+        }
+
+        if (!empty($disable_vids)) {
+          $affected_nodes =
+            _taxonomy_access_get_nodes_for_defaults($disable_vids, $values['rid']);
+          taxonomy_access_delete_defaults($disable_vids, $values['rid']);
+          _taxonomy_access_cache_affected_nodes($affected_nodes);
+          unset($affected_nodes);
+          unset($disable_tids);
         }
       }
 
@@ -487,6 +499,11 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
  *   A value of 1 will grant the permission for this user and term.
  * @param $skip_nodes
  *   A flag indicating whether to skip node updates when processing.
+ *
+ * @todo
+ *     Refactor to allow multiple values?
+ * @todo
+ *     Should this be considered a "private" function (prefixed with _)?
  */
 function taxonomy_access_grant_update($tid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
   if (!isset($tid) OR !is_numeric($rid)) {
@@ -537,6 +554,11 @@ function taxonomy_access_grant_update($tid, $rid = NULL, array $grants = NULL, $
  * @param array $grants
  *   A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
+ *
+ * @todo
+ *     Refactor to allow multiple values?
+ * @todo
+ *     Should this be considered a "private" function (prefixed with _)?
  */
 function taxonomy_access_recursive_grant_update($tid, $rid = NULL, array $grants = NULL) {
   // First, process the original.
@@ -585,6 +607,11 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, array $grants
  *   A value of 1 will grant the permission for this user and term.
  * @param $skip_nodes
  *   A flag indicating whether to skip node updates when processing.
+ *
+ * @todo
+ *     Refactor to allow multiple values?
+ * @todo
+ *     Should this be considered a "private" function (prefixed with _)?
  */
 function taxonomy_access_defaults_update($vid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
   if (!is_numeric($vid) || (isset($rid) && !is_numeric($rid))) {
@@ -612,7 +639,7 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, array $grants = NULL
     }
     // Otherwise, fetch a list of nodes tagged with the vocabulary.
     else {
-      $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid, $rid);
+      $affected_nodes = _taxonomy_access_get_nodes_for_default($vid, $rid);
     }
   }
 
