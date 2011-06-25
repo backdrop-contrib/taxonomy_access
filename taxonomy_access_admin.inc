@@ -384,9 +384,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
         }
 
         if (!empty($disable_tids)) {
-          $affected_nodes = _taxonomy_access_get_nodes_for_terms($disable_tids);
           taxonomy_access_delete_terms($disable_tids, $values['rid']);
-          _taxonomy_access_cache_affected_nodes($affected_nodes);
           unset($affected_nodes);
           unset($disable_tids);
         }
@@ -402,18 +400,10 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
 
         if (!empty($disable_vids)) {
           $affected_nodes =
-            _taxonomy_access_get_nodes_for_defaults($disable_vids, $values['rid']);
           taxonomy_access_delete_defaults($disable_vids, $values['rid']);
-          _taxonomy_access_cache_affected_nodes($affected_nodes);
           unset($affected_nodes);
           unset($disable_tids);
         }
-      }
-
-      // Update any affected nodes.
-      $affected_nodes = _taxonomy_access_cache_affected_nodes();
-      if (!empty($affected_nodes)) {
-        _taxonomy_access_node_access_update($affected_nodes);
       }
 
       break;
@@ -431,12 +421,6 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
       }
       elseif ($type == 'default') {
         taxonomy_access_defaults_update($id, $values['rid'], $new['grants']);
-      }
-
-      // Update any affected nodes.
-      $affected_nodes = _taxonomy_access_cache_affected_nodes();
-      if (!empty($affected_nodes)) {
-        _taxonomy_access_node_access_update($affected_nodes);
       }
 
       break;
@@ -473,12 +457,6 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
         }
       }
 
-      // Update any affected nodes.
-      $affected_nodes = _taxonomy_access_cache_affected_nodes();
-      if (!empty($affected_nodes)) {
-        _taxonomy_access_node_access_update($affected_nodes);
-      }
-
       $form_state['redirect'] = TAXONOMY_ACCESS_CONFIG;
       break;
   }
@@ -486,9 +464,6 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
 
 /**
  * Updates permissions for a role for a term.
- * Note: This function adds nodes to the affected nodes cache.
- * Callers should run  _taxonomy_access_node_access_update() on
- * _taxonomy_access_cache_affected_nodes() after all changes are processed.
  *
  * @param $tid
  *   The term to add the permission for.
@@ -525,23 +500,10 @@ function taxonomy_access_grant_update($tid, $rid = NULL, array $grants = NULL, $
     }
   }
 
-  if (!$skip_nodes) {
-    $affected_nodes = _taxonomy_access_get_nodes_for_term($tid);
-  }
-
-  // Delete old entries.
-  db_delete('taxonomy_access_term')
-    ->condition('tid', $tid)
-    ->condition('rid', $rid)
-    ->execute();
+  taxonomy_access_delete_term($tid, $rid);
 
   // Insert new entries.
   drupal_write_record('taxonomy_access_term', $row);
-
-  // Add any affected nodes to the cache to be updated by the submit handler.
-  if (!empty($affected_nodes)) {
-    _taxonomy_access_cache_affected_nodes($affected_nodes);
-  }
 }
 
 /**
@@ -594,9 +556,6 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, array $grants
 
 /**
  * Updates default permissions for a role for a vocabulary.
- * Note: This function adds nodes to the affected nodes cache.
- * Callers should run  _taxonomy_access_node_access_update() on
- * _taxonomy_access_cache_affected_nodes() after all changes are processed.
  *
  * @param $vid
  *   The vocab to add the permission for.
@@ -637,25 +596,13 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, array $grants = NULL
       drupal_set_message(t("You have modified a global default, so you should see a message indicating that content access permissions need to be rebuilt.  However, you can wait to do this until you have finished any other changes you wish to make to the Taxonomy Access Permissions."), 'warning');
       node_access_needs_rebuild(TRUE);
     }
-    // Otherwise, fetch a list of nodes tagged with the vocabulary.
-    else {
-      $affected_nodes = _taxonomy_access_get_nodes_for_default($vid, $rid);
-    }
   }
 
   // Delete old entries.
-  db_delete('taxonomy_access_default')
-    ->condition('vid', $vid)
-    ->condition('rid', $rid)
-    ->execute();
+  taxonomy_access_delete_default($vid, $rid);
 
   // Insert new entries.
   drupal_write_record('taxonomy_access_default', $row);
-
-  // Add any affected nodes to the cache to be updated by the submit handler.
-  if (!empty($affected_nodes)) {
-    _taxonomy_access_cache_affected_nodes($affected_nodes);
-  }
 }
 
 /**

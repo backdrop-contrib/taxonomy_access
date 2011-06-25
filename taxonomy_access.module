@@ -93,7 +93,13 @@ function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
   if (is_numeric($role_ids)) {
     $role_ids = array($role_ids);
   }
-    
+  
+  // Cache the list of nodes that will be affected by this change.
+  $affected_nodes = _taxonomy_access_get_nodes_for_terms($term_ids);
+  _taxonomy_access_cache_affected_nodes($affected_nodes);
+  unset($affected_nodes);
+
+  // Delete our database records for these terms.
   $query =
     db_delete('taxonomy_access_term')
     ->condition('tid', $term_ids);
@@ -143,9 +149,22 @@ function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
 
   // Accept either a single role id or an array thereof.
   if (is_numeric($role_ids)) {
+    // Check affected nodes first.
+    // We can filter out certain nodes if there is just one role.
+    $affected_nodes = 
+      _taxonomy_access_get_nodes_for_defaults($vocab_ids, $role_ids);
+
     $role_ids = array($role_ids);
   }
+  else {
+    // If there are multiple roles, just get all nodes in the vocabularies.
+    $affected_nodes = _taxonomy_access_get_nodes_for_defaults($vocab_ids);
+  }
     
+  // Cache the list of nodes that will be affected by this change.
+  _taxonomy_access_cache_affected_nodes($affected_nodes);
+  unset($affected_nodes);
+
   $query =
     db_delete('taxonomy_access_default')
     ->condition('vid', $vocab_ids);
@@ -369,7 +388,22 @@ function taxonomy_access_init() {
     include_once($path . '/taxonomy_access_admin.inc');
     drupal_add_css($path . '/admin.css');
   }
+
+  // Register our shutdown function.
+  drupal_register_shutdown_function('taxonomy_access_shutdown');
 }
+
+/**
+ * Perform any needed node access updates.
+ */
+function taxonomy_access_shutdown() {
+  // Update any affected nodes.
+  $affected_nodes = _taxonomy_access_cache_affected_nodes();
+  if (!empty($affected_nodes)) {
+    _taxonomy_access_node_access_update($affected_nodes);
+  }
+}
+
 
 /**
  * Implements hook_theme().
@@ -545,6 +579,7 @@ function taxonomy_access_node_delete($node) {
 function taxonomy_access_taxonomy($op, $type, $array = NULL) {
   switch ($op) {
     case 'delete':
+      debug($array);
       // See taxonomy_access_form_taxonomy_form_term_alter()
       // and taxonomy_access_form_taxonomy_vocabulary_confirm_delete_alter().
 
@@ -570,12 +605,10 @@ function taxonomy_access_taxonomy($op, $type, $array = NULL) {
 
       // Clean our data for the term or vocab.
       if ($type == 'term') {
-        db_query("DELETE FROM {taxonomy_access_term} WHERE tid = '%d'",
-          $array['tid']);
+        taxonomy_access_delete_term($array['tid']);
       }
       if ($type == 'vocabulary') {
-        db_query("DELETE FROM {taxonomy_access_default} WHERE vid = '%d'",
-          $array['vid']);
+        taxonomy_access_delete_default($array['vid']);
       }
 
       // Determine if and how to update node access.
@@ -892,7 +925,7 @@ function _taxonomy_access_get_nodes_for_term($term_id, $get_children = FALSE) {
  */
 function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) {
   if (!is_null($rid)) {
-    // Get terms in the vocabulary that are controlled for this role.
+    // Get terms in the vocabularies that are controlled for this role.
     $tids = 
       db_query(
         "SELECT ta.tid 
@@ -1011,14 +1044,22 @@ function _taxonomy_access_node_access_update(array $nids) {
 function _taxonomy_access_cache_affected_nodes(array $affected_nodes = NULL) {
   static $nodes = array();
 
+  // If node_access_needs_rebuild is set, reset the list and return.
+  if (node_access_needs_rebuild()) {
+    $nodes = array();
+    return;
+  }
+
   // If we were passed a list of nodes, cache.
   if (isset($affected_nodes)) {
     $nodes = array_merge($nodes, $affected_nodes);
   }
 
-  // Otherwise, return the cached data.
+  // Otherwise, return the cached data and reset the list.
   else {
-    return $nodes;
+    $tmp = $nodes;
+    $nodes = array();
+    return $tmp;
   }
 }
 
