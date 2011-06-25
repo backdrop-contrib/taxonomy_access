@@ -473,88 +473,6 @@ function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
-
-/**
- * Implements hook_form_FORM_ID_alter() for taxonomy-form-term.
- * Overriding the term deletion form's submit handler allows us to determine
- * which {node_access} entries must be updated before the {taxonomy_term_data}
- * and {taxonomy_index} records are deleted from the database.
- */
-function taxonomy_access_form_taxonomy_form_term_alter(&$form, &$form_state) {
-  $form['#submit'] = array('taxonomy_access_term_submit');
-}
-
-/**
- * Implements hook_form_FORM_ID_alter() for taxonomy-vocabulary-confirm-delete.
- * Overriding the vocabulary deletion form's submit handler allows us to
- * determine which {node_access} entries must be updated before the
- * {taxonomy_term_data} and {taxonomy_index} records are deleted from the
- * database.
- */
-function taxonomy_access_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
-  // The form returned by taxonomy_form_vocabulary() acts as a delete
-  // confirmation form only under some conditions, so we check $form['#id'] to
-  // see which version of the form is actually being used.
-  if ($form['#id'] == 'taxonomy_vocabulary_confirm_delete') {
-    $form['#submit'] = array('taxonomy_access_vocabulary_delete_submit');
-  }
-}
-
-
-/**
- * Submit handler for term deletions.
- * Overrides term deletion handling to determine what node access to update.
- *
- * @return
- *     Confirmation form, or nothing, as appropriate.
- */
-function taxonomy_access_term_submit(&$form, &$form_state) {
-  // If we are deleting a term, override the default behavior.
-  if ($form_state['triggering_element']['#value'] == t('Delete')) {
-
-    // If the user has already confirmed deletion, proceed.
-    if ($form_state['values']['delete'] === TRUE) {
-
-      $tid = $form_state['values']['tid'];
-      _taxonomy_access_deleted_tid($tid);
-
-      // Determine which nodes belong to this term and its children and cache.
-      $affected_nodes = _taxonomy_access_get_nodes_for_term($tid, TRUE);
-      _taxonomy_access_cache_affected_nodes($affected_nodes);
-
-      // Proceed with term deletion.
-      return taxonomy_term_confirm_delete_submit($form, $form_state);
-    }
-
-    // Otherwise, rebuild the form to confirm deletion as in default handler.
-    $form_state['rebuild'] = TRUE;
-    $form_state['confirm_delete'] = TRUE;
-    return;
-  }
-
-  // If we are not deleting, follow the default behavior.
-  else {
-    taxonomy_form_term_submit($form, $form_state);
-  }
-}
-
-/**
- * Submit handler for vocabulary deletions.
- * Overrides vocab deletion handling to determine what node access to update.
- */
-function taxonomy_access_vocabulary_delete_submit(&$form, &$form_state) {
-  $vid = $form_state['values']['vid'];
-  _taxonomy_access_deleted_vid($vid);
-
-  // Determine which nodes belong to this vocabulary and cache.
-  $affected_nodes = _taxonomy_access_get_nodes_for_vocabulary($vid);
-  _taxonomy_access_cache_affected_nodes($affected_nodes);
-
-  // Proceed with vocabulary deletion.
-  return taxonomy_vocabulary_confirm_delete_submit($form, $form_state);
-}
-
-
 /**
  * Implements hook_node_update().
  */
@@ -572,86 +490,36 @@ function taxonomy_access_node_delete($node) {
   node_access_write_grants($node, array(), 'term_access');
 }
 
-
 /**
- * Implements hook_taxonomy().
+ * Implements hook_field_attach_delete().
  */
-function taxonomy_access_taxonomy($op, $type, $array = NULL) {
-  switch ($op) {
-    case 'delete':
-      debug($array);
-      // See taxonomy_access_form_taxonomy_form_term_alter()
-      // and taxonomy_access_form_taxonomy_vocabulary_confirm_delete_alter().
-
-      // Use static variables so they are available when children use the hook.
-      static $del_vocab;
-      static $del_term;
-      static $affected_nodes;
-      static $descendants;
-
-      // Check for flags & node list from our admin form submit overrides.
-      if (!isset($del_vocab)) {
-        $del_vocab = _taxonomy_access_deleted_vid();
-      }
-      if (!isset($del_term)) {
-        $del_term = _taxonomy_access_deleted_tid();
-      }
-      if (!isset($affected_nodes)) {
-        $affected_nodes = _taxonomy_access_cache_affected_nodes();
-      }
-      if (!isset($descendants) && $del_term) {
-        $descendants = _taxonomy_access_get_descendants($del_term);
-      }
-
-      // Clean our data for the term or vocab.
-      if ($type == 'term') {
-        taxonomy_access_delete_term($array['tid']);
-      }
-      if ($type == 'vocabulary') {
-        taxonomy_access_delete_default($array['vid']);
-      }
-
-      // Determine if and how to update node access.
-
-      // If the user deleted a vocabulary on the admin form, use cached data.
-      if ($del_vocab) {
-
-        // Only trigger node access update on the vocab deletion itself,
-        // after all the terms have been deleted.
-        if ($type == 'vocabulary') {
-          _taxonomy_access_node_access_update($affected_nodes);
-        }
-      }
-
-      // If the user deleted a term on the admin form, use cached data.
-      elseif ($del_term) {
-
-        // Main term is first one to invoke the hook.
-        // To ensure that update runs only once after all descendants have
-        // been processed, unset each when it invokes the hook.
-
-        $key = array_search($array['tid'], $descendants);
-        if (!($key === FALSE)) { // Might be zero.
-          unset($descendants[$key]);
-        }
-
-        // If there are no descendants left, process updates.
-        if (sizeof($descendants) == 0) {
-          _taxonomy_access_node_access_update($affected_nodes);
-        }
-      }
-
-      // Otherwise, we don't know which nodes are affected,
-      // so indicate that node access needs to be rebuilt.
-      else {
-        node_access_needs_rebuild(TRUE);
-      }
-
-      break;
+function taxonomy_access_field_attach_delete($entity_type, $entity) {
+  if ($entity_type != 'taxonomy_term') {
+    return;
   }
 
-  return;
+  // Cache a list of impacted nodes prior to term deletion.
+  $affected_nodes = _taxonomy_access_get_nodes_for_term($entity->tid);
+  _taxonomy_access_cache_affected_nodes($affected_nodes);
 }
+
+
+
+/**
+ * Implements hook_taxonomy_vocabulary_delete().
+ */
+function taxonomy_access_taxonomy_vocabulary_delete($vocab) {
+  taxonomy_access_delete_default($vocab->vid);
+}
+
+
+/**
+ * Implements hook_taxonomy_term_delete().
+ */
+function taxonomy_access_taxonomy_term_delete($term) {
+  taxonomy_access_delete_term($term->tid);
+}
+
 
 /**
  * Implements hook_db_rewrite_sql().
@@ -1060,52 +928,6 @@ function _taxonomy_access_cache_affected_nodes(array $affected_nodes = NULL) {
     $tmp = $nodes;
     $nodes = array();
     return $tmp;
-  }
-}
-
-/**
- * Flag indicating whether we are processing a vocab deletion via admin form.
- *
- * @param $vid
- *    The vid being deleted.
- *
- * @return
- *    The cached vid, or false if none is cached.
- */
-function _taxonomy_access_deleted_vid($vid = NULL) {
-  static $deleted_vid = FALSE;
-
-  // If the vid was passed, cache.
-  if (isset($vid)) {
-    $deleted_vid = $vid;
-  }
-
-  // Otherwise, return the cached value.
-  else {
-    return $deleted_vid;
-  }
-}
-
-/**
- * Flag indicating whether we are processing a term deletion via admin form.
- *
- * @param $tid
- *    The tid being deleted.
- *
- * @return
- *    The cached tid, or false if none is cached.
- */
-function _taxonomy_access_deleted_tid($tid = NULL) {
-  static $deleted_tid = FALSE;
-
-  // If the tid was passed, cache.
-  if (isset($tid)) {
-    $deleted_tid = $tid;
-  }
-
-  // Otherwise, return the cached value.
-  else {
-    return $deleted_tid;
   }
 }
 
