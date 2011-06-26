@@ -13,7 +13,7 @@ define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
 /**
  * Base path for module administration pages.
  */
-define('TAXONOMY_ACCESS_CONFIG', 'admin/config/system/taxonomy_access');
+define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
 
 /**
  * Cache a list of all roles.
@@ -425,7 +425,7 @@ function taxonomy_access_menu() {
   $items = array();
 
   $items[TAXONOMY_ACCESS_CONFIG] = array(
-      'title' => 'Taxonomy access permissions',
+      'title' => 'Taxonomy access control',
       'description' => 'Taxonomy-based access control for content',
       'page callback' => 'taxonomy_access_admin',
       'access arguments' => array('administer permissions'),
