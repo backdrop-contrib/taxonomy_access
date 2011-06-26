@@ -111,7 +111,7 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
         }
         taxonomy_access_delete_role($rid);
         if (!empty($affected_nodes)) {
-          _taxonomy_access_node_access_update($affected_nodes);
+          taxonomy_access_affected_nodes($affected_nodes);
         }
 
         drupal_set_message(t('All term access rules deleted for role %rid.',

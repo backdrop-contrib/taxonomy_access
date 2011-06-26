@@ -96,7 +96,7 @@ function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
   
   // Cache the list of nodes that will be affected by this change.
   $affected_nodes = _taxonomy_access_get_nodes_for_terms($term_ids);
-  _taxonomy_access_cache_affected_nodes($affected_nodes);
+  taxonomy_access_affected_nodes($affected_nodes);
   unset($affected_nodes);
 
   // Delete our database records for these terms.
@@ -162,7 +162,7 @@ function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
   }
     
   // Cache the list of nodes that will be affected by this change.
-  _taxonomy_access_cache_affected_nodes($affected_nodes);
+  taxonomy_access_affected_nodes($affected_nodes);
   unset($affected_nodes);
 
   $query =
@@ -398,8 +398,9 @@ function taxonomy_access_init() {
  */
 function taxonomy_access_shutdown() {
   // Update any affected nodes.
-  $affected_nodes = _taxonomy_access_cache_affected_nodes();
+  $affected_nodes = taxonomy_access_affected_nodes();
   if (!empty($affected_nodes)) {
+    taxonomy_access_affected_nodes(NULL, TRUE);
     _taxonomy_access_node_access_update($affected_nodes);
   }
 }
@@ -500,7 +501,7 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
 
   // Cache a list of impacted nodes prior to term deletion.
   $affected_nodes = _taxonomy_access_get_nodes_for_term($entity->tid);
-  _taxonomy_access_cache_affected_nodes($affected_nodes);
+  taxonomy_access_affected_nodes($affected_nodes);
 }
 
 
@@ -905,15 +906,17 @@ function _taxonomy_access_node_access_update(array $nids) {
  *
  * @param (array) $affected_nodes
  *    If we are caching, the list of nids to cache.
+ * @param $reset = FALSE
+ *    Flag to manually reset the list.
  *
  * @return
  *    The cached list of nodes.
  */
-function _taxonomy_access_cache_affected_nodes(array $affected_nodes = NULL) {
+function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = FALSE) {
   static $nodes = array();
 
-  // If node_access_needs_rebuild is set, reset the list and return.
-  if (node_access_needs_rebuild()) {
+  // If node_access_needs_rebuild or $reset are set, reset list and return.
+  if (node_access_needs_rebuild() || $reset) {
     $nodes = array();
     return;
   }
@@ -923,11 +926,9 @@ function _taxonomy_access_cache_affected_nodes(array $affected_nodes = NULL) {
     $nodes = array_merge($nodes, $affected_nodes);
   }
 
-  // Otherwise, return the cached data and reset the list.
+  // Otherwise, return the cached data.
   else {
-    $tmp = $nodes;
-    $nodes = array();
-    return $tmp;
+    return $nodes;
   }
 }
 
