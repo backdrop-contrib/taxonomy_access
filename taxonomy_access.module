@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Allows administrators to specify how each category (in the taxonomy) can be used by various roles.
+ * Allows administrators to specify how each taxonomy category can be used by each role.
  */
 
 /**
@@ -14,6 +14,31 @@ define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
  * Base path for module administration pages.
  */
 define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
+
+/**
+ * Cache a list of all roles.
+ *
+ * @return
+ *   An array of roles from user_roles().
+ *
+ * @todo
+ *   Remove this function once http://drupal.org/node/6463 is backported.
+ */
+function _taxonomy_access_user_roles() {
+  static $roles;
+  if (!is_array($roles)) {
+    $roles = user_roles();
+  }
+  return $roles;
+}
+
+
+
+
+/*****************************************************************************/
+/*************************** HOOK IMPLEMENTATIONS ****************************/
+/*****************************************************************************/
+
 
 /**
  * Implements hook_enable().
@@ -31,9 +56,9 @@ function taxonomy_access_enable() {
   unset($roles);
 
   // Delete any term configurations not in {taxonomy_term_data}.
-  $term_ids = 
+  $term_ids =
     db_query(
-      "SELECT ta.tid 
+      "SELECT ta.tid
       FROM {taxonomy_access_term} ta
       LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid
       WHERE ta.tid <> 0 AND td.tid IS NULL"
@@ -45,9 +70,9 @@ function taxonomy_access_enable() {
   unset($term_ids);
 
   // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
-  $vocab_ids = 
+  $vocab_ids =
     db_query(
-      "SELECT tad.vid 
+      "SELECT tad.vid
       FROM {taxonomy_access_default} tad
       LEFT JOIN {taxonomy_vocabulary} tv ON tad.vid = tv.vid
       WHERE tad.vid <> 0 AND tv.vid IS NULL"
@@ -64,7 +89,7 @@ function taxonomy_access_enable() {
  */
 function taxonomy_access_init() {
   if (arg(0) == 'admin') {
-    // Only include administrative callbacks and css if we are viewing an admin page.
+    // Only include administrative callbacks and css on admin pages.
     $path = drupal_get_path('module', 'taxonomy_access');
     include_once($path . '/taxonomy_access_admin.inc');
     drupal_add_css($path . '/admin.css');
@@ -93,23 +118,23 @@ function taxonomy_access_menu() {
   $items = array();
 
   $items[TAXONOMY_ACCESS_CONFIG] = array(
-      'title' => 'Taxonomy access control',
-      'description' => 'Taxonomy-based access control for content',
-      'page callback' => 'taxonomy_access_admin',
-      'access arguments' => array('administer permissions'),
-    );
+    'title' => 'Taxonomy access control',
+    'description' => 'Taxonomy-based access control for content',
+    'page callback' => 'taxonomy_access_admin',
+    'access arguments' => array('administer permissions'),
+  );
   $items[TAXONOMY_ACCESS_CONFIG . '/delete'] = array(
-      'type' => MENU_CALLBACK,
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('taxonomy_access_admin_delete_role'),
-      'access arguments' => array('administer permissions'),
-    );
+    'type' => MENU_CALLBACK,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_access_admin_delete_role'),
+    'access arguments' => array('administer permissions'),
+  );
   $items[TAXONOMY_ACCESS_CONFIG . '/edit'] = array(
-      'type' => MENU_CALLBACK,
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('taxonomy_access_admin_form'),
-      'access arguments' => array('administer permissions'),
-    );
+    'type' => MENU_CALLBACK,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_access_admin_form'),
+    'access arguments' => array('administer permissions'),
+  );
 
   return $items;
 }
@@ -199,30 +224,23 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
  *     by simply setting the '#access' attribute for those terms.
  */
 /*
-function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
+  function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
   if (!empty($form_state['node']->nid)) {
-    $form['tac_protected_terms'] = array(
-      '#type' => 'value',
-      '#value' => taxonomy_access_preserve_terms($form_state['node']),
-    );
+  $form['tac_protected_terms'] = array(
+  '#type' => 'value',
+  '#value' => taxonomy_access_preserve_terms($form_state['node']),
+  );
   }
-}
+  }
 */
 
 
-/**
- * Cache a list of all roles.
- *
- * @return
- *    An array of roles from user_roles().
- */
-function _taxonomy_access_user_roles() {
-  static $roles;
-  if (!is_array($roles)) {
-    $roles = user_roles();
-  }
-  return $roles;
-}
+
+
+/*****************************************************************************/
+/*********************** NODE ACCESS UPDATE MECHANISM ************************/
+/*****************************************************************************/
+
 
 /**
  * Registered shutdown function: perform any needed node access updates.
@@ -322,7 +340,7 @@ function _taxonomy_access_get_nodes_for_role($rid) {
   $query->condition(db_or()
     ->condition('a.rid', $rid)
     ->condition('ad.rid', $rid)
-  );
+                   );
 
   $nids = $query->execute()->fetchCol();
   return $nids;
@@ -344,9 +362,9 @@ function _taxonomy_access_get_nodes_for_role($rid) {
 function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) {
   if (!is_null($rid)) {
     // Get terms in the vocabularies that are controlled for this role.
-    $tids = 
+    $tids =
       db_query(
-        "SELECT ta.tid 
+        "SELECT ta.tid
          FROM {taxonomy_access_term} ta
          INNER JOIN {taxonomy_term_data} td ON td.tid = ta.tid
          WHERE ta.rid = :rid
@@ -416,7 +434,7 @@ function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = F
   if ($get_children) {
     $child_tids = array();
     foreach ($term_ids as $term_id) {
-      $child_tids = 
+      $child_tids =
         array_merge($child_tids, _taxonomy_access_get_descendants($term_id));
     }
     if (sizeof($child_tids) > 0) {
@@ -477,6 +495,14 @@ function _taxonomy_access_get_descendants($tid) {
 
   return $descendants[$tid];
 }
+
+
+
+
+/*****************************************************************************/
+/******************************* DELETION API ********************************/
+/*****************************************************************************/
+
 
 /**
  * Delete module configurations for the given role IDs.
@@ -540,7 +566,7 @@ function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
   if (is_numeric($role_ids)) {
     // Check affected nodes first.
     // We can filter out certain nodes if there is just one role.
-    $affected_nodes = 
+    $affected_nodes =
       _taxonomy_access_get_nodes_for_defaults($vocab_ids, $role_ids);
 
     $role_ids = array($role_ids);
@@ -549,7 +575,7 @@ function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
     // If there are multiple roles, just get all nodes in the vocabularies.
     $affected_nodes = _taxonomy_access_get_nodes_for_defaults($vocab_ids);
   }
-    
+
   // Cache the list of nodes that will be affected by this change.
   taxonomy_access_affected_nodes($affected_nodes);
   unset($affected_nodes);
@@ -603,7 +629,7 @@ function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
   if (is_numeric($role_ids)) {
     $role_ids = array($role_ids);
   }
-  
+
   // Cache the list of nodes that will be affected by this change.
   $affected_nodes = _taxonomy_access_get_nodes_for_terms($term_ids);
   taxonomy_access_affected_nodes($affected_nodes);
@@ -639,11 +665,19 @@ function taxonomy_access_delete_term($term_id, $role_ids = NULL) {
   return taxonomy_access_delete_terms(array($term_id, $role_ids));
 }
 
+
+
+
+/*****************************************************************************/
+/******************************* NODE ACCESS *********************************/
+/*****************************************************************************/
+
+
 /**
  * Returns node access grants for the given node id.
  *
  * This should work on D7's supported versions of MySQL and PostgreSQL;
- * patches may be needed for other databases. We add query tags to allow 
+ * patches may be needed for other databases. We add query tags to allow
  * other systems to manipulate the query as needed.
  */
 function _taxonomy_access_node_access_records($node_nid) {
@@ -787,6 +821,15 @@ function _taxonomy_access_node_grant_query($v = TRUE, $u = TRUE, $d = TRUE) {
   return $query;
 }
 
+
+
+
+
+/*****************************************************************************/
+/******************************* TERM ACCESS *********************************/
+/*****************************************************************************/
+
+
 /**
  * Builds a base query object for term priv (create and list) queries.
  *
@@ -829,6 +872,13 @@ function _taxonomy_access_term_grant_query($c = TRUE, $l = TRUE) {
 
   return $query;
 }
+
+
+
+/*****************************************************************************/
+/******************************** DEPRECATED *********************************/
+/*****************************************************************************/
+
 
 /**
  * Implements hook_db_rewrite_sql().
@@ -1030,7 +1080,7 @@ function taxonomy_access_help($path, $arg) {
         . "</li>"
         . "<li>"
         . t('Both <em>Allow</em> (<acronym title="Allow">A</acronym>) and <em>Deny</em> (<acronym title="Deny">D</acronym>) override <em>Ignore</em> (<acronym title="Ignore">I</acronym>) within a role.')
-    . "</li>"
+        . "</li>"
         . "<li>"
         . t('If a user has <strong>multiple roles</strong>, an <em>Allow</em> (<acronym title="Allow">A</acronym>) from one role <strong>will</strong> override a <em>Deny</em> (<acronym title="Deny">D</acronym>) in another.  (For more information, see section <a href="#good-to-know">Good to know</a> below.)')
         . "</li>"
@@ -1130,3 +1180,4 @@ function _taxonomy_access_grant_help_table() {
 
   return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('grant_help'))));
 }
+
