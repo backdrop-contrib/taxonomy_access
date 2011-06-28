@@ -16,20 +16,6 @@ define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
 define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
 
 /**
- * Cache a list of all roles.
- *
- * @return
- *    An array of roles from user_roles().
- */
-function _taxonomy_access_user_roles() {
-  static $roles;
-  if (!is_array($roles)) {
-    $roles = user_roles();
-  }
-  return $roles;
-}
-
-/**
  * Implements hook_enable().
  *
  * Housekeeping: while we were away, did you delete any terms/vocabs/roles?
@@ -74,60 +60,463 @@ function taxonomy_access_enable() {
 }
 
 /**
- * Delete module configurations for the given term IDs.
- *
- * @param (array) $term_ids
- *   An array of term IDs.
- * @param $role_ids = ''
- *   An individual role ID, or an array of role IDs.
- *
- * @todo
- *   Should we return something?
+ * Implements hook_init().
  */
-function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
-  if (empty($term_ids)) {
-    return;
+function taxonomy_access_init() {
+  if (arg(0) == 'admin') {
+    // Only include administrative callbacks and css if we are viewing an admin page.
+    $path = drupal_get_path('module', 'taxonomy_access');
+    include_once($path . '/taxonomy_access_admin.inc');
+    drupal_add_css($path . '/admin.css');
   }
 
-  // Accept either a single role id or an array thereof.
-  if (is_numeric($role_ids)) {
-    $role_ids = array($role_ids);
-  }
-  
-  // Cache the list of nodes that will be affected by this change.
-  $affected_nodes = _taxonomy_access_get_nodes_for_terms($term_ids);
-  taxonomy_access_affected_nodes($affected_nodes);
-  unset($affected_nodes);
-
-  // Delete our database records for these terms.
-  $query =
-    db_delete('taxonomy_access_term')
-    ->condition('tid', $term_ids);
-
-  if (!empty($role_ids)) {
-    $query->condition('rid', $role_ids);
-  }
-
-  $query->execute();
-
-  unset($term_ids);
-  unset($query);
+  // Register our shutdown function.
+  drupal_register_shutdown_function('taxonomy_access_shutdown');
 }
 
 /**
- * Single-value wrapper for taxonomy_access_delete_terms().
+ * Implements hook_theme().
+ */
+function taxonomy_access_theme() {
+  return array(
+    'taxonomy_access_admin_form' => array(
+      'render element' => 'form',
+      'file' => 'taxonomy_access_admin.inc',
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function taxonomy_access_menu() {
+  $items = array();
+
+  $items[TAXONOMY_ACCESS_CONFIG] = array(
+      'title' => 'Taxonomy access control',
+      'description' => 'Taxonomy-based access control for content',
+      'page callback' => 'taxonomy_access_admin',
+      'access arguments' => array('administer permissions'),
+    );
+  $items[TAXONOMY_ACCESS_CONFIG . '/delete'] = array(
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('taxonomy_access_admin_delete_role'),
+      'access arguments' => array('administer permissions'),
+    );
+  $items[TAXONOMY_ACCESS_CONFIG . '/edit'] = array(
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('taxonomy_access_admin_form'),
+      'access arguments' => array('administer permissions'),
+    );
+
+  return $items;
+}
+
+/**
+ * Implements hook_admin_paths().
+ */
+function taxonomy_access_admin_paths() {
+  $paths = array(
+    'admin/config/system/taxonomy_access' => TRUE,
+  );
+}
+
+/**
+ * Implements hook_user_role_delete().
+ */
+function taxonomy_access_user_role_delete($role) {
+  taxonomy_access_delete_role($role->rid);
+}
+
+/**
+ * Implements hook_taxonomy_vocabulary_delete().
+ */
+function taxonomy_access_taxonomy_vocabulary_delete($vocab) {
+  taxonomy_access_delete_default($vocab->vid);
+}
+
+/**
+ * Implements hook_taxonomy_term_delete().
+ */
+function taxonomy_access_taxonomy_term_delete($term) {
+  taxonomy_access_delete_term($term->tid);
+}
+
+/**
+ * Implements hook_node_grants().
+ * Gives access to taxonomies based on the taxonomy_access table.
+ */
+function taxonomy_access_node_grants($user, $op) {
+  $roles = is_array($user->roles) ? array_keys($user->roles) : -1;
+  return array('term_access' => $roles);
+}
+
+/**
+ * Implements hook_node_access_records().
+ */
+function taxonomy_access_node_access_records($node) {
+  return _taxonomy_access_node_access_records($node->nid);
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function taxonomy_access_node_update($node) {
+  // restore terms that the user shouldn't have access to delete
+  //taxonomy_access_restore_terms($node->nid, $node->vid, $node->tac_protected_terms);
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function taxonomy_access_node_delete($node) {
+  // Remove our entries for this node from table {node_access}.
+  node_access_write_grants($node, array(), 'term_access');
+}
+
+/**
+ * Implements hook_field_attach_delete().
+ */
+function taxonomy_access_field_attach_delete($entity_type, $entity) {
+  if ($entity_type != 'taxonomy_term') {
+    return;
+  }
+
+  // Cache a list of impacted nodes prior to term deletion.
+  $affected_nodes = _taxonomy_access_get_nodes_for_term($entity->tid);
+  taxonomy_access_affected_nodes($affected_nodes);
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
  *
- * @param $term_id
- *   A single term ID.
- * @param $role_ids = ''
- *   An individual role ID, or an array of role IDs.
+ * @todo
+ *     Move control of "create" op here
+ * @todo
+ *     Look at feasability to eliminate _restore_terms and _preserve_terms
+ *     by simply setting the '#access' attribute for those terms.
+ */
+/*
+function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
+  if (!empty($form_state['node']->nid)) {
+    $form['tac_protected_terms'] = array(
+      '#type' => 'value',
+      '#value' => taxonomy_access_preserve_terms($form_state['node']),
+    );
+  }
+}
+*/
+
+
+/**
+ * Cache a list of all roles.
  *
  * @return
- *   Return value from taxonomy_access_delete_terms().
+ *    An array of roles from user_roles().
  */
-function taxonomy_access_delete_term($term_id, $role_ids = NULL) {
-  return taxonomy_access_delete_terms(array($term_id, $role_ids));
+function _taxonomy_access_user_roles() {
+  static $roles;
+  if (!is_array($roles)) {
+    $roles = user_roles();
+  }
+  return $roles;
 }
+
+/**
+ * Registered shutdown function: perform any needed node access updates.
+ *
+ * @see
+ *   taxonomy_access_init()
+ */
+function taxonomy_access_shutdown() {
+  // Update any affected nodes.
+  $affected_nodes = taxonomy_access_affected_nodes();
+  if (!empty($affected_nodes)) {
+    taxonomy_access_affected_nodes(NULL, TRUE);
+    _taxonomy_access_node_access_update($affected_nodes);
+  }
+}
+
+/**
+ * Updates node access grants for a set of nodes.
+ *
+ * @param (array) $nids
+ *    An array of node ids for which to acquire access permissions.
+ */
+function _taxonomy_access_node_access_update(array $nids) {
+
+  // Proceed only if node_access_needs_rebuild() is not already flagged.
+  if (!node_access_needs_rebuild()) {
+
+    // Set node_access_needs_rebuild() until we succeed below.
+    node_access_needs_rebuild(TRUE);
+
+    // Remove any duplicate nids from the array.
+    $nids = array_unique($nids);
+
+    // If the number of nodes is small enough, update node access for each.
+    if (sizeof($nids) < TAXONOMY_ACCESS_MAX_UPDATE) {
+      foreach ($nids as $node) {
+        $loaded_node = node_load($node, NULL, TRUE);
+        if (!empty($loaded_node)) {
+          node_access_acquire_grants($loaded_node);
+        }
+      }
+
+      // If we make it here our update was successful; unflag rebuild.
+      node_access_needs_rebuild(FALSE);
+    }
+  }
+  return TRUE;
+}
+
+/**
+ * Cache and retrieve nodes affected by a taxonomy change.
+ *
+ * @param (array) $affected_nodes
+ *    If we are caching, the list of nids to cache.
+ * @param $reset = FALSE
+ *    Flag to manually reset the list.
+ *
+ * @return
+ *    The cached list of nodes.
+ */
+function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = FALSE) {
+  static $nodes = array();
+
+  // If node_access_needs_rebuild or $reset are set, reset list and return.
+  if (node_access_needs_rebuild() || $reset) {
+    $nodes = array();
+    return;
+  }
+
+  // If we were passed a list of nodes, cache.
+  if (isset($affected_nodes)) {
+    $nodes = array_merge($nodes, $affected_nodes);
+  }
+
+  // Otherwise, return the cached data.
+  else {
+    return $nodes;
+  }
+}
+
+/**
+ * Gets node ids associated with the given role.
+ *
+ * @param $rid
+ *    The role id.
+ *
+ * @return
+ *    An array of node ids associated with terms or vocabularies that are
+ *    controlled for the role.
+ */
+function _taxonomy_access_get_nodes_for_role($rid) {
+  $query = db_select('taxonomy_index', 'n')
+    ->fields('n', array('nid'));
+  $query->leftJoin('taxonomy_term_data', 'd', 'n.tid = d.tid');
+  $query->leftJoin('taxonomy_access_term', 'a', 'n.tid = a.tid');
+  $query->leftJoin('taxonomy_access_default', 'ad', 'ad.vid = d.vid');
+  $query->condition(db_or()
+    ->condition('a.rid', $rid)
+    ->condition('ad.rid', $rid)
+  );
+
+  $nids = $query->execute()->fetchCol();
+  return $nids;
+}
+
+/**
+ * Gets node ids associated with a given vocabulary.
+ *
+ * @param $vocab_ids
+ *    The vocabulary ids for which to retrieve associated node ids.
+ * @param $rid
+ *    The role id for which to retrieve node ids, if any.
+ *    This argument has the effect of filtering out nodes in terms that
+ *    are already controlled invidually for the role.
+ *
+ * @return
+ *    An array of node ids associated with the given vocabulary.
+ */
+function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) {
+  if (!is_null($rid)) {
+    // Get terms in the vocabularies that are controlled for this role.
+    $tids = 
+      db_query(
+        "SELECT ta.tid 
+         FROM {taxonomy_access_term} ta
+         INNER JOIN {taxonomy_term_data} td ON td.tid = ta.tid
+         WHERE ta.rid = :rid
+         AND td.vid IN (:vocab_ids)",
+        array(':rid' => $rid, ':vocab_ids' => $vocab_ids)
+      )
+      ->fetchCol();
+  }
+
+  $query =
+    db_select('taxonomy_index', 'ti')
+    ->condition('td.vid', $vocab_ids)
+    ->fields('ti', array('nid'))
+    ;
+  $query->join('taxonomy_term_data', 'td', 'td.tid = ti.tid');
+
+  if (!empty($tids)) {
+    // Exclude nodes with controlled terms from the results.
+    $query->condition('ti.tid', $tids, 'NOT IN');
+  }
+
+  $nids = $query->execute()->fetchCol();
+  unset($tids);
+  unset($query);
+
+  return $nids;
+}
+
+/**
+ * Single-value wrapper for taxonomy_access_get_nodes_for_defaults().
+ *
+ * @param $vocab_id
+ *   A single vocabulary ID for which to retrieve associated nodes.
+ * @param $rid
+ *    The role id for which to retrieve node ids, if any.
+ *    This argument has the effect of filtering out nodes in terms that
+ *    are already controlled invidually for the role.
+ *
+ * @return
+ *   Return value from _taxonomy_access_get_nodes_for_defaults().
+ */
+function _taxonomy_access_get_nodes_for_default($vocab_id, $rid = NULL) {
+  return _taxonomy_access_get_nodes_for_defaults(array($vocab_id), $rid);
+}
+
+/**
+ * Gets node ids associated with a given term.
+ *
+ * @param $term_ids
+ *    An array of term ids for which to retrieve associated nodes.
+ * @param $get_children
+ *    Whether to recursively get nodes tagged with the term's children as well.
+ *
+ * @return
+ *    An array of node ids associated with the given terms.
+ */
+function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = FALSE) {
+  $nids =
+    db_query(
+      "SELECT nid FROM {taxonomy_index} WHERE tid IN (:term_ids)",
+      array(':term_ids' => $term_ids)
+    )
+    ->fetchCol();
+
+
+  // If requested, get nodes tagged with all children as well.
+  if ($get_children) {
+    $child_tids = array();
+    foreach ($term_ids as $term_id) {
+      $child_tids = 
+        array_merge($child_tids, _taxonomy_access_get_descendants($term_id));
+    }
+    if (sizeof($child_tids) > 0) {
+      $child_nids =
+        db_query(
+          'SELECT nid FROM {taxonomy_index} WHERE tid IN (:term_ids)',
+          array(':term_ids' => $child_tids)
+        )
+        ->fetchCol();
+
+      $nids = array_unique(array_merge($nids, $child_nids));
+      unset($child_nids);
+    }
+    unset($child_tids);
+  }
+  return $nids;
+}
+
+/**
+ * Single-value wrapper for taxonomy_access_get_nodes_for_terms().
+ *
+ * @param $term_id
+ *   A single term ID for which to retrieve associated nodes.
+ * @param $get_children
+ *    Whether to recursively get nodes tagged with the term's children as well.
+ *
+ * @return
+ *   Return value from _taxonomy_access_get_nodes_for_terms().
+ */
+function _taxonomy_access_get_nodes_for_term($term_id, $get_children = FALSE) {
+  return _taxonomy_access_get_nodes_for_terms(array($term_id), $get_children);
+}
+
+/**
+ * Get term IDs for all descendants of the given term.
+ *
+ * @param $tid
+ *    The term ID for which to fetch children.
+ *
+ * @return
+ *    An array of the IDs of the term's descendants.
+ */
+function _taxonomy_access_get_descendants($tid) {
+  static $descendants = array();
+
+  if (!isset($descendants[$tid])) {
+    $descendants[$tid] = array();
+    $term = taxonomy_term_load($tid);
+    $tree = taxonomy_get_tree($term->vid, $tid);
+
+    foreach ($tree as $term) {
+      $descendants[$tid][] = $term->tid;
+    }
+
+    unset($term);
+    unset($tree);
+  }
+
+  return $descendants[$tid];
+}
+
+/**
+ * Delete module configurations for the given role IDs.
+ *
+ * @param (array) $role_ids
+ *   An array of role IDs.
+ * @param $in = TRUE
+ *   Whether to delete the selected roles, or all but the selected roles.
+ *
+ * @todo
+ *   Disallow deletion of anon/auth globals, and/or reset to install configs?
+ * @todo
+ *   Should we return something?
+ */
+function taxonomy_access_delete_roles(array $role_ids, $in = TRUE) {
+
+  $condition = $in ? 'IN' : 'NOT IN';
+
+  db_delete('taxonomy_access_term')
+    ->condition('rid', $role_ids, $condition)
+    ->execute();
+
+  db_delete('taxonomy_access_default')
+    ->condition('rid', $role_ids, $condition)
+    ->execute();
+}
+
+/**
+ * Single-value wrapper for taxonomy_access_delete_roles().
+ *
+ * @param $role_id
+ *   A single role ID.
+ *
+ * @return
+ *   Return value from taxonomy_access_delete_roles().
+ */
+function taxonomy_access_delete_role($role_id) {
+  return taxonomy_access_delete_roles(array($role_id));
+}
+
 
 /**
  * Delete module configurations for the given vocabulary IDs.
@@ -195,65 +584,59 @@ function taxonomy_access_delete_default($vocab_id, $role_ids = NULL) {
 }
 
 /**
- * Delete module configurations for the given role IDs.
+ * Delete module configurations for the given term IDs.
  *
- * @param (array) $role_ids
- *   An array of role IDs.
- * @param $in = TRUE
- *   Whether to delete the selected roles, or all but the selected roles.
+ * @param (array) $term_ids
+ *   An array of term IDs.
+ * @param $role_ids = ''
+ *   An individual role ID, or an array of role IDs.
  *
- * @todo
- *   Disallow deletion of anon/auth globals, and/or reset to install configs?
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_roles(array $role_ids, $in = TRUE) {
+function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
+  if (empty($term_ids)) {
+    return;
+  }
 
-  $condition = $in ? 'IN' : 'NOT IN';
+  // Accept either a single role id or an array thereof.
+  if (is_numeric($role_ids)) {
+    $role_ids = array($role_ids);
+  }
+  
+  // Cache the list of nodes that will be affected by this change.
+  $affected_nodes = _taxonomy_access_get_nodes_for_terms($term_ids);
+  taxonomy_access_affected_nodes($affected_nodes);
+  unset($affected_nodes);
 
-  db_delete('taxonomy_access_term')
-    ->condition('rid', $role_ids, $condition)
-    ->execute();
+  // Delete our database records for these terms.
+  $query =
+    db_delete('taxonomy_access_term')
+    ->condition('tid', $term_ids);
 
-  db_delete('taxonomy_access_default')
-    ->condition('rid', $role_ids, $condition)
-    ->execute();
+  if (!empty($role_ids)) {
+    $query->condition('rid', $role_ids);
+  }
+
+  $query->execute();
+
+  unset($term_ids);
+  unset($query);
 }
 
 /**
- * Single-value wrapper for taxonomy_access_delete_roles().
+ * Single-value wrapper for taxonomy_access_delete_terms().
  *
- * @param $role_id
- *   A single role ID.
+ * @param $term_id
+ *   A single term ID.
+ * @param $role_ids = ''
+ *   An individual role ID, or an array of role IDs.
  *
  * @return
- *   Return value from taxonomy_access_delete_roles().
+ *   Return value from taxonomy_access_delete_terms().
  */
-function taxonomy_access_delete_role($role_id) {
-  return taxonomy_access_delete_roles(array($role_id));
-}
-
-/**
- * Implements hook_user_role_delete().
- */
-function taxonomy_access_user_role_delete($role) {
-  taxonomy_access_delete_role($role->rid);
-}
-
-/**
- * Implements hook_node_grants().
- * Gives access to taxonomies based on the taxonomy_access table.
- */
-function taxonomy_access_node_grants($user, $op) {
-  $roles = is_array($user->roles) ? array_keys($user->roles) : -1;
-  return array('term_access' => $roles);
-}
-
-/**
- * Implements hook_node_access_records().
- */
-function taxonomy_access_node_access_records($node) {
-  return _taxonomy_access_node_access_records($node->nid);
+function taxonomy_access_delete_term($term_id, $role_ids = NULL) {
+  return taxonomy_access_delete_terms(array($term_id, $role_ids));
 }
 
 /**
@@ -297,6 +680,60 @@ function _taxonomy_access_node_access_records($node_nid) {
   }
 
   return $grants;
+}
+
+/**
+ * Returns an array of global default grants for all roles.
+ *
+ * @return
+ *   Global default grants, formatted for hook_node_access_records().
+ */
+function taxonomy_access_global_defaults() {
+  static $global_grants;
+  if (empty($global_grants)) {
+    $global_grants = array();
+    $records =
+      db_query(
+        'SELECT rid, grant_view, grant_update, grant_delete
+         FROM {taxonomy_access_default}
+         WHERE vid = 0'
+      )
+      ->fetchAll();
+    foreach ($records as $record) {
+      $global_grants[] = _taxonomy_access_format_grant_record($record);
+    }
+    unset($records);
+    unset($record);
+  }
+  return $global_grants;
+}
+
+/**
+ * Formats a row for hook_node_access_records.
+ *
+ * @param (stdClass) $record
+ *   The term record object from a TAC query to format.
+ *
+ * @return
+ *   An array formatted for hook_node_access_records().
+ *
+ * @todo
+ *   Make priority configurable?
+ */
+function _taxonomy_access_format_grant_record(stdClass $record) {
+
+  // Ignore => 0, Allow => 1, Deny => 2 ('10' in binary).
+  // Only a value of 1 is considered an 'Allow';
+  // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
+  // If a 'Deny' is present, the value will then be 3 ('11' in binary).
+  return array(
+    'realm' => 'term_access',
+    'gid' => $record->rid,
+    'grant_view' => ($record->grant_view == 1) ? 1 : 0,
+    'grant_update' => ($record->grant_update == 1) ? 1 : 0,
+    'grant_delete' => ($record->grant_delete == 1) ? 1 : 0,
+    'priority' => 0,
+  );
 }
 
 /**
@@ -392,206 +829,6 @@ function _taxonomy_access_term_grant_query($c = TRUE, $l = TRUE) {
 
   return $query;
 }
-
-/**
- * Returns an array of global default grants for all roles.
- *
- * @return
- *   Global default grants, formatted for hook_node_access_records().
- */
-function taxonomy_access_global_defaults() {
-  static $global_grants;
-  if (empty($global_grants)) {
-    $global_grants = array();
-    $records =
-      db_query(
-        'SELECT rid, grant_view, grant_update, grant_delete
-         FROM {taxonomy_access_default}
-         WHERE vid = 0'
-      )
-      ->fetchAll();
-    foreach ($records as $record) {
-      $global_grants[] = _taxonomy_access_format_grant_record($record);
-    }
-    unset($records);
-    unset($record);
-  }
-  return $global_grants;
-}
-
-/**
- * Formats a row for hook_node_access_records.
- *
- * @param (stdClass) $record
- *   The term record object from a TAC query to format.
- *
- * @return
- *   An array formatted for hook_node_access_records().
- *
- * @todo
- *   Make priority configurable?
- */
-function _taxonomy_access_format_grant_record(stdClass $record) {
-
-  // Ignore => 0, Allow => 1, Deny => 2 ('10' in binary).
-  // Only a value of 1 is considered an 'Allow';
-  // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
-  // If a 'Deny' is present, the value will then be 3 ('11' in binary).
-  return array(
-    'realm' => 'term_access',
-    'gid' => $record->rid,
-    'grant_view' => ($record->grant_view == 1) ? 1 : 0,
-    'grant_update' => ($record->grant_update == 1) ? 1 : 0,
-    'grant_delete' => ($record->grant_delete == 1) ? 1 : 0,
-    'priority' => 0,
-  );
-}
-
-
-/**
- * Implements hook_init().
- */
-function taxonomy_access_init() {
-  if (arg(0) == 'admin') {
-    // Only include administrative callbacks and css if we are viewing an admin page.
-    $path = drupal_get_path('module', 'taxonomy_access');
-    include_once($path . '/taxonomy_access_admin.inc');
-    drupal_add_css($path . '/admin.css');
-  }
-
-  // Register our shutdown function.
-  drupal_register_shutdown_function('taxonomy_access_shutdown');
-}
-
-/**
- * Perform any needed node access updates.
- */
-function taxonomy_access_shutdown() {
-  // Update any affected nodes.
-  $affected_nodes = taxonomy_access_affected_nodes();
-  if (!empty($affected_nodes)) {
-    taxonomy_access_affected_nodes(NULL, TRUE);
-    _taxonomy_access_node_access_update($affected_nodes);
-  }
-}
-
-
-/**
- * Implements hook_theme().
- */
-function taxonomy_access_theme() {
-  return array(
-    'taxonomy_access_admin_form' => array(
-      'render element' => 'form',
-      'file' => 'taxonomy_access_admin.inc',
-    ),
-  );
-}
-
-/**
- * Implements hook_menu().
- */
-function taxonomy_access_menu() {
-  $items = array();
-
-  $items[TAXONOMY_ACCESS_CONFIG] = array(
-      'title' => 'Taxonomy access control',
-      'description' => 'Taxonomy-based access control for content',
-      'page callback' => 'taxonomy_access_admin',
-      'access arguments' => array('administer permissions'),
-    );
-  $items[TAXONOMY_ACCESS_CONFIG . '/delete'] = array(
-      'type' => MENU_CALLBACK,
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('taxonomy_access_admin_delete_role'),
-      'access arguments' => array('administer permissions'),
-    );
-  $items[TAXONOMY_ACCESS_CONFIG . '/edit'] = array(
-      'type' => MENU_CALLBACK,
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('taxonomy_access_admin_form'),
-      'access arguments' => array('administer permissions'),
-    );
-
-  return $items;
-}
-
-
-/**
- * Implements hook_admin_paths().
- */
-function taxonomy_access_admin_paths() {
-  $paths = array(
-    'admin/config/system/taxonomy_access' => TRUE,
-  );
-}
-
-/**
- * Implements hook_form_BASE_FORM_ID_alter().
- *
- * @todo
- *     Move control of "create" op here
- * @todo
- *     Look at feasability to eliminate _restore_terms and _preserve_terms
- *     by simply setting the '#access' attribute for those terms.
- */
-/*
-function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
-  if (!empty($form_state['node']->nid)) {
-    $form['tac_protected_terms'] = array(
-      '#type' => 'value',
-      '#value' => taxonomy_access_preserve_terms($form_state['node']),
-    );
-  }
-}
-*/
-/**
- * Implements hook_node_update().
- */
-function taxonomy_access_node_update($node) {
-  // restore terms that the user shouldn't have access to delete
-  //taxonomy_access_restore_terms($node->nid, $node->vid, $node->tac_protected_terms);
-}
-
-
-/**
- * Implements hook_node_delete().
- */
-function taxonomy_access_node_delete($node) {
-  // Remove our entries for this node from table {node_access}.
-  node_access_write_grants($node, array(), 'term_access');
-}
-
-/**
- * Implements hook_field_attach_delete().
- */
-function taxonomy_access_field_attach_delete($entity_type, $entity) {
-  if ($entity_type != 'taxonomy_term') {
-    return;
-  }
-
-  // Cache a list of impacted nodes prior to term deletion.
-  $affected_nodes = _taxonomy_access_get_nodes_for_term($entity->tid);
-  taxonomy_access_affected_nodes($affected_nodes);
-}
-
-
-
-/**
- * Implements hook_taxonomy_vocabulary_delete().
- */
-function taxonomy_access_taxonomy_vocabulary_delete($vocab) {
-  taxonomy_access_delete_default($vocab->vid);
-}
-
-
-/**
- * Implements hook_taxonomy_term_delete().
- */
-function taxonomy_access_taxonomy_term_delete($term) {
-  taxonomy_access_delete_term($term->tid);
-}
-
 
 /**
  * Implements hook_db_rewrite_sql().
@@ -760,246 +997,6 @@ function taxonomy_access_restore_terms($nid, $vid, $protected_terms) {
         drupal_write_record('term_node', $row);
       }
     }
-  }
-}
-
-/**
- * Get term IDs for all descendants of the given term.
- *
- * @param $tid
- *    The term ID for which to fetch children.
- *
- * @return
- *    An array of the IDs of the term's descendants.
- */
-function _taxonomy_access_get_descendants($tid) {
-  static $descendants = array();
-
-  if (!isset($descendants[$tid])) {
-    $descendants[$tid] = array();
-    $term = taxonomy_term_load($tid);
-    $tree = taxonomy_get_tree($term->vid, $tid);
-
-    foreach ($tree as $term) {
-      $descendants[$tid][] = $term->tid;
-    }
-
-    unset($term);
-    unset($tree);
-  }
-
-  return $descendants[$tid];
-}
-
-/**
- * Gets node ids associated with a given term.
- *
- * @param $term_ids
- *    An array of term ids for which to retrieve associated nodes.
- * @param $get_children
- *    Whether to recursively get nodes tagged with the term's children as well.
- *
- * @return
- *    An array of node ids associated with the given terms.
- */
-function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = FALSE) {
-  $nids =
-    db_query(
-      "SELECT nid FROM {taxonomy_index} WHERE tid IN (:term_ids)",
-      array(':term_ids' => $term_ids)
-    )
-    ->fetchCol();
-
-
-  // If requested, get nodes tagged with all children as well.
-  if ($get_children) {
-    $child_tids = array();
-    foreach ($term_ids as $term_id) {
-      $child_tids = 
-        array_merge($child_tids, _taxonomy_access_get_descendants($term_id));
-    }
-    if (sizeof($child_tids) > 0) {
-      $child_nids =
-        db_query(
-          'SELECT nid FROM {taxonomy_index} WHERE tid IN (:term_ids)',
-          array(':term_ids' => $child_tids)
-        )
-        ->fetchCol();
-
-      $nids = array_unique(array_merge($nids, $child_nids));
-      unset($child_nids);
-    }
-    unset($child_tids);
-  }
-  return $nids;
-}
-
-/**
- * Single-value wrapper for taxonomy_access_get_nodes_for_terms().
- *
- * @param $term_id
- *   A single term ID for which to retrieve associated nodes.
- * @param $get_children
- *    Whether to recursively get nodes tagged with the term's children as well.
- *
- * @return
- *   Return value from _taxonomy_access_get_nodes_for_terms().
- */
-function _taxonomy_access_get_nodes_for_term($term_id, $get_children = FALSE) {
-  return _taxonomy_access_get_nodes_for_terms(array($term_id), $get_children);
-}
-
-
-/**
- * Gets node ids associated with a given vocabulary.
- *
- * @param $vocab_ids
- *    The vocabulary ids for which to retrieve associated node ids.
- * @param $rid
- *    The role id for which to retrieve node ids, if any.
- *    This argument has the effect of filtering out nodes in terms that
- *    are already controlled invidually for the role.
- *
- * @return
- *    An array of node ids associated with the given vocabulary.
- */
-function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) {
-  if (!is_null($rid)) {
-    // Get terms in the vocabularies that are controlled for this role.
-    $tids = 
-      db_query(
-        "SELECT ta.tid 
-         FROM {taxonomy_access_term} ta
-         INNER JOIN {taxonomy_term_data} td ON td.tid = ta.tid
-         WHERE ta.rid = :rid
-         AND td.vid IN (:vocab_ids)",
-        array(':rid' => $rid, ':vocab_ids' => $vocab_ids)
-      )
-      ->fetchCol();
-  }
-
-  $query =
-    db_select('taxonomy_index', 'ti')
-    ->condition('td.vid', $vocab_ids)
-    ->fields('ti', array('nid'))
-    ;
-  $query->join('taxonomy_term_data', 'td', 'td.tid = ti.tid');
-
-  if (!empty($tids)) {
-    // Exclude nodes with controlled terms from the results.
-    $query->condition('ti.tid', $tids, 'NOT IN');
-  }
-
-  $nids = $query->execute()->fetchCol();
-  unset($tids);
-  unset($query);
-
-  return $nids;
-}
-
-/**
- * Single-value wrapper for taxonomy_access_get_nodes_for_defaults().
- *
- * @param $vocab_id
- *   A single vocabulary ID for which to retrieve associated nodes.
- * @param $rid
- *    The role id for which to retrieve node ids, if any.
- *    This argument has the effect of filtering out nodes in terms that
- *    are already controlled invidually for the role.
- *
- * @return
- *   Return value from _taxonomy_access_get_nodes_for_defaults().
- */
-function _taxonomy_access_get_nodes_for_default($vocab_id, $rid = NULL) {
-  return _taxonomy_access_get_nodes_for_defaults(array($vocab_id), $rid);
-}
-
-/**
- * Gets node ids associated with the given role.
- *
- * @param $rid
- *    The role id.
- *
- * @return
- *    An array of node ids associated with terms or vocabularies that are
- *    controlled for the role.
- */
-function _taxonomy_access_get_nodes_for_role($rid) {
-  $query = db_select('taxonomy_index', 'n')
-    ->fields('n', array('nid'));
-  $query->leftJoin('taxonomy_term_data', 'd', 'n.tid = d.tid');
-  $query->leftJoin('taxonomy_access_term', 'a', 'n.tid = a.tid');
-  $query->leftJoin('taxonomy_access_default', 'ad', 'ad.vid = d.vid');
-  $query->condition(db_or()
-    ->condition('a.rid', $rid)
-    ->condition('ad.rid', $rid)
-  );
-
-  $nids = $query->execute()->fetchCol();
-  return $nids;
-}
-
-/**
- * Updates node access grants for a set of nodes.
- *
- * @param (array) $nids
- *    An array of node ids for which to acquire access permissions.
- */
-function _taxonomy_access_node_access_update(array $nids) {
-
-  // Proceed only if node_access_needs_rebuild() is not already flagged.
-  if (!node_access_needs_rebuild()) {
-
-    // Set node_access_needs_rebuild() until we succeed below.
-    node_access_needs_rebuild(TRUE);
-
-    // Remove any duplicate nids from the array.
-    $nids = array_unique($nids);
-
-    // If the number of nodes is small enough, update node access for each.
-    if (sizeof($nids) < TAXONOMY_ACCESS_MAX_UPDATE) {
-      foreach ($nids as $node) {
-        $loaded_node = node_load($node, NULL, TRUE);
-        if (!empty($loaded_node)) {
-          node_access_acquire_grants($loaded_node);
-        }
-      }
-
-      // If we make it here our update was successful; unflag rebuild.
-      node_access_needs_rebuild(FALSE);
-    }
-  }
-  return TRUE;
-}
-
-/**
- * Cache and retrieve nodes affected by a taxonomy change.
- *
- * @param (array) $affected_nodes
- *    If we are caching, the list of nids to cache.
- * @param $reset = FALSE
- *    Flag to manually reset the list.
- *
- * @return
- *    The cached list of nodes.
- */
-function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = FALSE) {
-  static $nodes = array();
-
-  // If node_access_needs_rebuild or $reset are set, reset list and return.
-  if (node_access_needs_rebuild() || $reset) {
-    $nodes = array();
-    return;
-  }
-
-  // If we were passed a list of nodes, cache.
-  if (isset($affected_nodes)) {
-    $nodes = array_merge($nodes, $affected_nodes);
-  }
-
-  // Otherwise, return the cached data.
-  else {
-    return $nodes;
   }
 }
 
