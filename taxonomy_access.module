@@ -257,17 +257,46 @@ function taxonomy_access_node_access_records($node) {
 }
 
 /**
- * Returns node access grants for the given node revision id.
+ * Returns node access grants for the given node id.
  *
- * @todo
- *   - Research performance of using FiAPI vs. joining on tn and td.
- *   - This should work on D7's supported versions of MySQL and PostgreSQL;
- *     patches may be needed for other databases.
+ * This should work on D7's supported versions of MySQL and PostgreSQL;
+ * patches may be needed for other databases. We add query tags to allow 
+ * other systems to manipulate the query as needed.
  */
 function taxonomy_access_term_grants_for_node($node_nid) {
+
+  // Build the base node grant query.
+  $query = _taxonomy_access_term_grant_query();
+
+  // Select grants for this node only.
+  $query->condition('ti.nid', $node_nid);
+
+  // Fetch and format all grant records for the node.
+  $grants = array();
+  $records = $query->execute()->fetchAll();
+  foreach ($records as $record) {
+    $grants[] = _taxonomy_access_format_grant_record($record);
+  }
+
+  unset($records);
+  unset($record);
+  unset($query);
+
+  // The node grant query returns no rows if the node has no tags.
+  // In that scenario, use the global default.
+  if (sizeof($grants) == 0) {
+    $grants = taxonomy_access_global_defaults();
+  }
+
+  return $grants;
+}
+
+/**
+ * Builds a base query object for node access queries.
+ */
+function _taxonomy_access_term_grant_query() {
   $query =
     db_select('taxonomy_index', 'ti')
-    ->condition('ti.nid', $node_nid)
     ->groupBy('tadg.rid')
     ;
 
@@ -301,26 +330,10 @@ function taxonomy_access_term_grants_for_node($node_nid) {
     'BIT_OR(COALESCE(ta.grant_delete, tad.grant_delete, tadg.grant_delete))',
     'grant_delete'
   );
+  $query->addTag('taxonomy_access');
+  $query->addTag('taxonomy_access_node_grants');
 
-  $records = $query->execute()->fetchAll();
-
-  $grants = array();
-
-  foreach ($records as $record) {
-      $grants[] = _taxonomy_access_format_grant_record($record);
-  }
-
-  unset($records);
-  unset($record);
-  unset($query);
-
-  // The above query returns no rows if the node has no tags.
-  // In that scenario, use the global default.
-  if (sizeof($grants) == 0) {
-    $grants = taxonomy_access_global_defaults();
-  }
-
-  return $grants;
+  return $query;
 }
 
 /**
@@ -465,6 +478,7 @@ function taxonomy_access_admin_paths() {
  *     Look at feasability to eliminate _restore_terms and _preserve_terms
  *     by simply setting the '#access' attribute for those terms.
  */
+/*
 function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
   if (!empty($form_state['node']->nid)) {
     $form['tac_protected_terms'] = array(
@@ -473,13 +487,13 @@ function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
     );
   }
 }
-
+*/
 /**
  * Implements hook_node_update().
  */
 function taxonomy_access_node_update($node) {
   // restore terms that the user shouldn't have access to delete
-  taxonomy_access_restore_terms($node->nid, $node->vid, $node->tac_protected_terms);
+  //taxonomy_access_restore_terms($node->nid, $node->vid, $node->tac_protected_terms);
 }
 
 
