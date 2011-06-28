@@ -22,7 +22,7 @@ define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
  *   An array of roles from user_roles().
  *
  * @todo
- *   Remove this function once http://drupal.org/node/6463 is backported.
+ *   Replace this function once http://drupal.org/node/6463 is backported.
  */
 function _taxonomy_access_user_roles() {
   static $roles;
