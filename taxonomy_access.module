@@ -253,7 +253,7 @@ function taxonomy_access_node_grants($user, $op) {
  * Implements hook_node_access_records().
  */
 function taxonomy_access_node_access_records($node) {
-  return taxonomy_access_term_grants_for_node($node->nid);
+  return _taxonomy_access_node_access_records($node->nid);
 }
 
 /**
@@ -263,13 +263,21 @@ function taxonomy_access_node_access_records($node) {
  * patches may be needed for other databases. We add query tags to allow 
  * other systems to manipulate the query as needed.
  */
-function taxonomy_access_term_grants_for_node($node_nid) {
+function _taxonomy_access_node_access_records($node_nid) {
 
   // Build the base node grant query.
-  $query = _taxonomy_access_term_grant_query();
+  $query = _taxonomy_access_node_grant_query();
 
-  // Select grants for this node only.
-  $query->condition('ti.nid', $node_nid);
+  // Select grants for this node only and group by role.
+  $query->fields('tadg', array('rid'));
+  $query->join(
+    'taxonomy_index', 'ti',
+    'td.tid = ti.tid'
+  );
+  $query
+    ->condition('ti.nid', $node_nid)
+    ->groupBy('tadg.rid')
+    ;
 
   // Fetch and format all grant records for the node.
   $grants = array();
@@ -293,17 +301,18 @@ function taxonomy_access_term_grants_for_node($node_nid) {
 
 /**
  * Builds a base query object for node access queries.
+ *
+ * Callers should add conditions, groupings, and optionally fields.
+ *
+ * @param $v = TRUE
+ *   Whether to select grant_view.
+ * @param $u = TRUE
+ *   Whether to select grant_update.
+ * @param $d = TRUE
+ *   Whether to select grant_delete.
  */
-function _taxonomy_access_term_grant_query() {
-  $query =
-    db_select('taxonomy_index', 'ti')
-    ->groupBy('tadg.rid')
-    ;
-
-  $query->join(
-    'taxonomy_term_data', 'td',
-    'td.tid = ti.tid'
-  );
+function _taxonomy_access_node_grant_query($v = TRUE, $u = TRUE, $d = TRUE) {
+  $query = db_select('taxonomy_term_data', 'td');
 
   $query->join(
     'taxonomy_access_default', 'tadg',
@@ -317,21 +326,69 @@ function _taxonomy_access_term_grant_query() {
     'taxonomy_access_term', 'ta',
     'ta.tid = td.tid AND ta.rid = tadg.rid'
   );
-  $query->fields('tadg', array('rid'));
-  $query->addExpression(
-    'BIT_OR(COALESCE(ta.grant_view, tad.grant_view, tadg.grant_view))',
-    'grant_view'
-  );
-  $query->addExpression(
-    'BIT_OR(COALESCE(ta.grant_update, tad.grant_update, tadg.grant_update))',
-    'grant_update'
-  );
-  $query->addExpression(
-    'BIT_OR(COALESCE(ta.grant_delete, tad.grant_delete, tadg.grant_delete))',
-    'grant_delete'
-  );
+  if ($v) {
+    $query->addExpression(
+      'BIT_OR(COALESCE(ta.grant_view, tad.grant_view, tadg.grant_view))',
+      'grant_view'
+    );
+  }
+  if ($u) {
+    $query->addExpression(
+      'BIT_OR(COALESCE(ta.grant_update, tad.grant_update, tadg.grant_update))',
+      'grant_update'
+    );
+  }
+  if ($d) {
+    $query->addExpression(
+      'BIT_OR(COALESCE(ta.grant_delete, tad.grant_delete, tadg.grant_delete))',
+      'grant_delete'
+    );
+  }
   $query->addTag('taxonomy_access');
   $query->addTag('taxonomy_access_node_grants');
+
+  return $query;
+}
+
+/**
+ * Builds a base query object for term priv (create and list) queries.
+ *
+ * Callers should add conditions, groupings, and optionally fields.
+ *
+ * @param $c = TRUE
+ *   Whether to select grant_create.
+ * @param $l = TRUE
+ *   Whether to select grant_list.
+ */
+function _taxonomy_access_term_grant_query($c = TRUE, $l = TRUE) {
+  $query = db_select('taxonomy_term_data', 'td');
+
+  $query->join(
+    'taxonomy_access_default', 'tadg',
+    'tadg.vid = 0'
+  );
+  $query->leftJoin(
+    'taxonomy_access_default', 'tad',
+    'tad.vid = td.vid AND tad.rid = tadg.rid'
+  );
+  $query->leftJoin(
+    'taxonomy_access_term', 'ta',
+    'ta.tid = td.tid AND ta.rid = tadg.rid'
+  );
+  if ($c) {
+    $query->addExpression(
+      'BIT_OR(COALESCE(ta.grant_create, tad.grant_create, tadg.grant_create))',
+      'grant_create'
+    );
+  }
+  if ($l) {
+    $query->addExpression(
+      'BIT_OR(COALESCE(ta.grant_list, tad.grant_list, tadg.grant_list))',
+      'grant_list'
+    );
+  }
+  $query->addTag('taxonomy_access');
+  $query->addTag('taxonomy_access_term_grants');
 
   return $query;
 }
