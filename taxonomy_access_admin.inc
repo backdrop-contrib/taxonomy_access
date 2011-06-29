@@ -107,7 +107,7 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
         else {
           // If the global default is different, this role's access changes on
           // all uncontrolled nodes, so flag node access for rebuild.
-          node_access_needs_rebuild(TRUE);
+          _taxonomy_access_flag_rebuild();
         }
         taxonomy_access_delete_role($rid);
         if (!empty($affected_nodes)) {
@@ -593,8 +593,7 @@ function taxonomy_access_defaults_update($vid, $rid = NULL, array $grants = NULL
   if (!$skip_nodes) {
     // If we are updating the global default, flag node access for rebuild.
     if ($vid === 0) {
-      drupal_set_message(t("You have modified a global default, so you should see a message indicating that content access permissions need to be rebuilt.  However, you can wait to do this until you have finished any other changes you wish to make to the Taxonomy Access Permissions."), 'warning');
-      node_access_needs_rebuild(TRUE);
+      _taxonomy_access_flag_rebuild();
     }
   }
 

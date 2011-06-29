@@ -258,10 +258,22 @@ function taxonomy_access_shutdown() {
 }
 
 /**
+ * Flags node access for rebuild with a message for administators.
+ */
+function _taxonomy_access_flag_rebuild() {
+  drupal_set_message("Taxonomy Access Control is updating node access... If you see a message that content access permissions need to be rebuilt, you may wait until after you have completed your configuration changes.", 'status');
+  node_access_needs_rebuild(TRUE);
+}
+
+
+/**
  * Updates node access grants for a set of nodes.
  *
  * @param (array) $nids
  *    An array of node ids for which to acquire access permissions.
+ *
+ * @todo
+ *   Unset rebuild message when we set the flag to false?
  */
 function _taxonomy_access_node_access_update(array $nids) {
 
@@ -269,7 +281,7 @@ function _taxonomy_access_node_access_update(array $nids) {
   if (!node_access_needs_rebuild()) {
 
     // Set node_access_needs_rebuild() until we succeed below.
-    node_access_needs_rebuild(TRUE);
+    _taxonomy_access_flag_rebuild();
 
     // Remove any duplicate nids from the array.
     $nids = array_unique($nids);
