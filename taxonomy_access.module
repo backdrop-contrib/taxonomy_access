@@ -927,7 +927,7 @@ function taxonomy_access_user_list_terms() {
  *    _taxonomy_access_user_term_grants()
  *
  * @return
- *   An array of term IDs, or TRUE if the user may list all terms.
+ *   An array of term IDs, or TRUE if the user may create all terms.
  */
 function taxonomy_access_user_create_terms() {
   return _taxonomy_access_user_term_grants(TRUE);
@@ -939,13 +939,14 @@ function taxonomy_access_user_create_terms() {
  * @param $create = FALSE
  *   Whether to fetch grants for create (TRUE) or list (FALSE)
  * @return
- *   An array of term IDs, or TRUE if the user may list all terms.
+ *   An array of term IDs, or TRUE if the user has the grant for all terms.
  */
 
 function _taxonomy_access_user_term_grants($create = FALSE) {
   $grant_type = $create ? 'create' : 'list';
   $grant_field_name = 'grant_' . $grant_type;
 
+  // If the user can administer taxonomy, return TRUE for a global grant.
   if (user_access('administer taxonomy')) {
     return TRUE;
   }
@@ -961,24 +962,27 @@ function _taxonomy_access_user_term_grants($create = FALSE) {
     ->condition('tadg.rid', array_keys($user->roles), 'IN')
     ;
 
-  // Fetch results.
+  // Fetch term ids.
   $r = $query->execute()->fetchAll();
-  $all = TRUE;
   $tids = array();
+  
+  // If there are results, initialize a flag to test whether the user 
+  // has the grant for all terms.
+  $grants_for_all_terms = empty($r) ? FALSE : TRUE;
 
   foreach ($r as $record) {
-    
     // If the user has the grant, add the term to the array.
     if ($record->$grant_field_name) {
       $tids[] = $record->tid;
     }
-    // Otherwise, flag that the user does not have all grants.
+    // Otherwise, flag that the user does not have the grant for all terms.
     else {
-      $all = FALSE;
+      $grants_for_all_terms = FALSE;
     }
   }
 
-  if ($all) {
+  // If the user has the grant for all terms, return TRUE for a global grant.
+  if ($grants_for_all_terms) {
     return TRUE;
   }
 
