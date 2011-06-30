@@ -618,7 +618,7 @@ function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
  *   An individual role ID, or an array of role IDs.
  */
 function taxonomy_access_delete_default($vocab_id, $role_ids = NULL) {
-  return taxonomy_access_delete_defaults(array($vocab_id, $role_ids));
+  return taxonomy_access_delete_defaults(array($vocab_id), $role_ids);
 }
 
 /**
@@ -674,7 +674,7 @@ function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
  *   An individual role ID, or an array of role IDs.
  */
 function taxonomy_access_delete_term($term_id, $role_ids = NULL) {
-  return taxonomy_access_delete_terms(array($term_id, $role_ids));
+  return taxonomy_access_delete_terms(array($term_id), $role_ids);
 }
 
 
