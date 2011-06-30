@@ -215,6 +215,41 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
 }
 
 /**
+ * Implements hook_query_TAG_alter() for 'term_access'.
+ */
+function taxonomy_access_query_term_access_alter($query) {
+
+  // Take no action while the list op is disabled.
+  if (taxonomy_access_disable_list()) {
+    return;
+  }
+
+  // Take no action if there is no term table in the query.
+  $alias = '';
+  $tables =& $query->getTables();
+
+  foreach ($tables as $i => $table) {
+    if (strpos($table['table'], 'taxonomy_term_') === 0) {
+      $alias = $table['alias'];
+    }
+  }
+
+  if (empty($alias)) {
+    return;
+  }
+
+  $tids = taxonomy_access_user_list_terms();
+
+  // If a value of exactly TRUE was returned, the user can list all terms.
+  if ($tids === TRUE) {
+    return;
+  }
+
+  $query->condition($alias . ".tid", $tids, "IN");
+
+}
+
+/**
  * Implements hook_form_BASE_FORM_ID_alter().
  *
  * @todo
@@ -909,6 +944,7 @@ function taxonomy_access_user_create_terms() {
 
 function _taxonomy_access_user_term_grants($create = FALSE) {
   $grant_type = $create ? 'create' : 'list';
+  $grant_field_name = 'grant_' . $grant_type;
 
   if (user_access('administer taxonomy')) {
     return TRUE;
@@ -918,19 +954,35 @@ function _taxonomy_access_user_term_grants($create = FALSE) {
   $query = _taxonomy_access_grant_query(array($grant_type));
 
   // Select term grants for the current user's roles.
+  global $user;
   $query
     ->fields('td', array('tid'))
     ->groupBy('td.tid')
-    ->condition('tadg.rid', _taxonomy_access_user_roles(), 'IN')
+    ->condition('tadg.rid', array_keys($user->roles), 'IN')
     ;
 
-  $grants = $query->execute()->fetchAllKeyed(1, 0);
-  if (!in_array(0, $grants)) {
+  // Fetch results.
+  $r = $query->execute()->fetchAll();
+  $all = TRUE;
+  $tids = array();
+
+  foreach ($r as $record) {
+    
+    // If the user has the grant, add the term to the array.
+    if ($record->$grant_field_name) {
+      $tids[] = $record->tid;
+    }
+    // Otherwise, flag that the user does not have all grants.
+    else {
+      $all = FALSE;
+    }
+  }
+
+  if ($all) {
     return TRUE;
   }
-  else {
-    return $grants;
-  }
+
+  return $tids;
 }
 
 
