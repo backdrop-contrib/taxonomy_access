@@ -206,8 +206,16 @@ function taxonomy_access_node_update($node) {
 
 /**
  * Implements hook_field_info_alter().
+ *
+ * @todo
+ *   Should we somehow pass the originl callback to our callback dynamically?
  */
 function taxonomy_access_field_info_alter(&$info) {
+  // Return if there's no term reference field type.
+  if (empty($info['taxonomy_term_reference'])) {
+    return;
+  }
+
   // Use our custom callback in order to disable list while generating options.
   $info['taxonomy_term_reference']['settings']['options_list_callback'] = '_taxonomy_access_term_options';
 }
