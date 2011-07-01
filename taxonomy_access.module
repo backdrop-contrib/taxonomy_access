@@ -302,6 +302,9 @@ function taxonomy_access_query_term_access_alter($query) {
 
 }
 
+/**
+ * Implements hook_form_alter().
+ */
 function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
   foreach ($form_state['field'] as $fieldname => $el) {
     foreach ($el as $langcode => $field) {
