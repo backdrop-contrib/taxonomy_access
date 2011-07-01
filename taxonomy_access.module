@@ -186,11 +186,30 @@ function taxonomy_access_node_access_records($node) {
 }
 
 /**
+ * Implements hook_node_validate().
+ */
+function taxonomy_access_node_validate($node) {
+  // Disable the list op for the duration of the validation.
+  taxonomy_access_disable_list(TRUE);
+}
+
+/**
  * Implements hook_node_update().
  */
 function taxonomy_access_node_update($node) {
+  // Re-enable the list op now that the node has been saved.
+  taxonomy_access_disable_list(FALSE);
+
   // restore terms that the user shouldn't have access to delete
   //taxonomy_access_restore_terms($node->nid, $node->vid, $node->tac_protected_terms);
+}
+
+/**
+ * Implements hook_field_info_alter().
+ */
+function taxonomy_access_field_info_alter(&$info) {
+  // Use our custom callback in order to disable list while generating options.
+  $info['taxonomy_term_reference']['settings']['options_list_callback'] = '_taxonomy_access_term_options';
 }
 
 /**
@@ -897,6 +916,34 @@ function taxonomy_access_disable_list($set_flag = NULL) {
 
   // If we were passed anything but null, set the flag.
   $flag = $set_flag ? TRUE : FALSE;
+}
+
+/**
+ * Field options callback to generate options unfiltered by list grants.
+ *
+ * @param $field
+ *   The field object.
+ *
+ * @return
+ *   Allowed terms from taxonomy_allowed_values().
+ *
+ * @see
+ *   taxonomy_allowed_values()
+ */
+function _taxonomy_access_term_options($field) {
+  // Preserve the original state of the list flag.
+  $flag_state = taxonomy_access_disable_list();
+
+  // Enforce that list grants do not filter the options list.
+  taxonomy_access_disable_list(TRUE);
+
+  // Use taxonomy.module to generate the list of options.
+  $options = taxonomy_allowed_values($field);
+
+  // Restore list flag to previous state.
+  taxonomy_access_disable_list($flag_state);
+
+  return $options;
 }
 
 /**
