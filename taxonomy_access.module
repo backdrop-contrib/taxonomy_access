@@ -194,14 +194,6 @@ function taxonomy_access_node_update($node) {
 }
 
 /**
- * Implements hook_node_delete().
- */
-function taxonomy_access_node_delete($node) {
-  // Remove our entries for this node from table {node_access}.
-  node_access_write_grants($node, array(), 'term_access');
-}
-
-/**
  * Implements hook_field_attach_delete().
  */
 function taxonomy_access_field_attach_delete($entity_type, $entity) {
