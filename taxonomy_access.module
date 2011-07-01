@@ -135,6 +135,13 @@ function taxonomy_access_menu() {
     'page arguments' => array('taxonomy_access_admin_form'),
     'access arguments' => array('administer permissions'),
   );
+  $items['taxonomy_access/autocomplete'] = array(
+    'title' => 'Autocomplete taxonomy',
+    'page callback' => 'taxonomy_access_autocomplete',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
 
   return $items;
 }
@@ -221,6 +228,25 @@ function taxonomy_access_field_info_alter(&$info) {
 }
 
 /**
+ * Implements hook_field_widget_info_alter().
+ *
+ * @todo
+ *   Should we somehow pass the originl callback to our callback dynamically?
+ * @todo
+ *   This doesn't work...
+ */
+function taxonomy_access_field_widget_info_alter(&$info) {
+
+  // Return if there's autocomplete field type.
+  if (empty($info['taxonomy_autocomplete'])) {
+    return;
+  }
+
+  // Use our custom callback in order to disable list while autocompleting.
+  $info['taxonomy_autocomplete']['settings']['autocomplete_path'] = 'taxonomy_access/autocomplete';
+}
+
+/**
  * Implements hook_field_attach_delete().
  */
 function taxonomy_access_field_attach_delete($entity_type, $entity) {
@@ -235,33 +261,12 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
 
 /**
  * Implements hook_query_TAG_alter() for 'term_access'.
- *
- * @todo
- *   It would be better to override the autocomplete widget to our 
- *   "safe" callback rather than checking for the autocomplete path, 
- *   but I can't get it to work in hook_field_widget_info_alter(). :(
- *
- * @see
- *   taxonomy_field_widget_info()
- * @see
- *   taxonomy_field_widget_form()
- * @see
- *   taxonomy_autocomplete()
  */
 function taxonomy_access_query_term_access_alter($query) {
 
   // Take no action while the list op is disabled.
   if (taxonomy_access_disable_list()) {
     return;
-  }
-
-  // Take no action on the taxonomy autocomplete path.
-  if ($item = menu_get_item()) {
-    if (is_array($item)) {
-      if ($item['path'] == 'taxonomy/autocomplete') {
-        return;
-      }
-    }
   }
 
   // Take no action if there is no term table in the query.
@@ -295,6 +300,28 @@ function taxonomy_access_query_term_access_alter($query) {
     $query->condition($alias . ".tid", $tids, "IN");
   }
 
+}
+
+function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
+  foreach ($form_state['field'] as $fieldname => $el) {
+    foreach ($el as $langcode => $field) {
+      if ($field['field']['type'] == 'taxonomy_term_reference') {
+        if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
+            // Add our damn autocomplete handler.
+            $form[$fieldname][$langcode]['#autocomplete_path'] 
+              = 'taxonomy_access/autocomplete/' . $fieldname;
+
+            // Add our damn validator.
+            $form[$fieldname][$langcode]['#element_validate'] 
+              = array('taxonomy_access_autocomplete_validate');
+
+            // Set our damn default value.
+            $form[$fieldname][$langcode]['#default_value'] 
+              = taxonomy_access_autocomplete_default_value($form_state['build_info']['args'][0]->{$fieldname}[$langcode]);
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -981,6 +1008,68 @@ function _taxonomy_access_term_options($field) {
   taxonomy_access_disable_list($flag_state);
 
   return $options;
+}
+
+/**
+ * Autocomplete menu callback to prevent filtering by list grants.
+ *
+ * @see
+ *   taxonomy_autocomplete()
+ */
+function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
+  // Enforce that list grants do not filter the autocomplete.
+  taxonomy_access_disable_list(TRUE);
+
+  module_load_include('inc', 'taxonomy', 'taxonomy.pages');
+
+  // Use taxonomy.module for the autocomplete.
+  taxonomy_autocomplete($field_name, $tags_typed);
+}
+
+/**
+ * Autocomplete validation callback to prevent filtering by list grants.
+ *
+ * @see
+ *   taxonomy_autocomplete_validate()
+ */
+function taxonomy_access_autocomplete_validate($element, &$form_state) {
+  // Enforce that list grants do not filter the autocomplete.
+  taxonomy_access_disable_list(TRUE);
+
+  // Use taxonomy.module for the validation.
+  taxonomy_autocomplete_validate($element, &$form_state);
+}
+
+/**
+ * Default value re-generation to undo filtering by list grants.
+ *
+ * @param array $items
+ *   An array of values from form build info.
+ *
+ * @return
+ *   Field default value.
+ *
+ * @see
+ *   taxonomy_field_widget_form()
+ */
+function taxonomy_access_autocomplete_default_value(array $items) {
+  // Preserve the original state of the list flag.
+  $flag_state = taxonomy_access_disable_list();
+
+  // Enforce that list grants do not filter the options list.
+  taxonomy_access_disable_list(TRUE);
+
+  $tags = array();
+  foreach ($items as $item) {
+    $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
+  }  
+
+  $tags = taxonomy_implode_tags($tags);
+
+  // Restore list flag to previous state.
+  taxonomy_access_disable_list($flag_state);
+
+  return $tags;
 }
 
 /**
