@@ -964,7 +964,12 @@ function _taxonomy_access_term_options($field) {
  *   An array of term IDs, or TRUE if the user may list all terms.
  */
 function taxonomy_access_user_list_terms() {
-  return _taxonomy_access_user_term_grants(FALSE);
+  // Cache the terms the current user can list.
+  static $terms = NULL;
+  if (is_null($terms)) {
+    $terms = _taxonomy_access_user_term_grants(FALSE);
+  }
+  return $terms;
 }
 
 /**
@@ -977,7 +982,12 @@ function taxonomy_access_user_list_terms() {
  *   An array of term IDs, or TRUE if the user may create all terms.
  */
 function taxonomy_access_user_create_terms() {
-  return _taxonomy_access_user_term_grants(TRUE);
+  // Cache the terms the current user can create.
+  static $terms = NULL;
+  if (is_null($terms)) {
+    $terms = _taxonomy_access_user_term_grants(TRUE);
+  }
+  return $terms;
 }
 
 /**
