@@ -235,12 +235,33 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
 
 /**
  * Implements hook_query_TAG_alter() for 'term_access'.
+ *
+ * @todo
+ *   It would be better to override the autocomplete widget to our 
+ *   "safe" callback rather than checking for the autocomplete path, 
+ *   but I can't get it to work in hook_field_widget_info_alter(). :(
+ *
+ * @see
+ *   taxonomy_field_widget_info()
+ * @see
+ *   taxonomy_field_widget_form()
+ * @see
+ *   taxonomy_autocomplete()
  */
 function taxonomy_access_query_term_access_alter($query) {
 
   // Take no action while the list op is disabled.
   if (taxonomy_access_disable_list()) {
     return;
+  }
+
+  // Take no action on the taxonomy autocomplete path.
+  if ($item = menu_get_item()) {
+    if (is_array($item)) {
+      if ($item['path'] == 'taxonomy/autocomplete') {
+        return;
+      }
+    }
   }
 
   // Take no action if there is no term table in the query.
