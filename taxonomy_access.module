@@ -256,7 +256,15 @@ function taxonomy_access_query_term_access_alter($query) {
     return;
   }
 
-  $query->condition($alias . ".tid", $tids, "IN");
+  // If the user cannot list any terms, then allow only null values.
+  if (empty($tids)) {
+    $query->isNull($alias . ".tid");
+  }
+
+  // Otherwise, filter to the list provided.
+  else {
+    $query->condition($alias . ".tid", $tids, "IN");
+  }
 
 }
 
