@@ -995,11 +995,15 @@ function taxonomy_access_user_create_terms() {
  *
  * @param $create = FALSE
  *   Whether to fetch grants for create (TRUE) or list (FALSE)
+ * @param $account = NULL
+ *   The account for which to retrieve grants.  If no account is passed, the 
+ *   current user will be used.
+ *
  * @return
  *   An array of term IDs, or TRUE if the user has the grant for all terms.
  */
 
-function _taxonomy_access_user_term_grants($create = FALSE) {
+function _taxonomy_access_user_term_grants($create = FALSE, $account = NULL) {
   $grant_type = $create ? 'create' : 'list';
   $grant_field_name = 'grant_' . $grant_type;
 
@@ -1012,11 +1016,14 @@ function _taxonomy_access_user_term_grants($create = FALSE) {
   $query = _taxonomy_access_grant_query(array($grant_type));
 
   // Select term grants for the current user's roles.
-  global $user;
+  if (is_null($account)){
+    global $user;
+    $account = $user;
+  }
   $query
     ->fields('td', array('tid'))
     ->groupBy('td.tid')
-    ->condition('tadg.rid', array_keys($user->roles), 'IN')
+    ->condition('tadg.rid', array_keys($account->roles), 'IN')
     ;
 
   // Fetch term ids.
