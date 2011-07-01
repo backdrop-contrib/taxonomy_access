@@ -306,21 +306,23 @@ function taxonomy_access_query_term_access_alter($query) {
  * Implements hook_form_alter().
  */
 function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
-  foreach ($form_state['field'] as $fieldname => $el) {
-    foreach ($el as $langcode => $field) {
-      if ($field['field']['type'] == 'taxonomy_term_reference') {
-        if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
+  if (is_array($form_state) && !empty($form_state['field'])) {
+    foreach ($form_state['field'] as $fieldname => $el) {
+      foreach ($el as $langcode => $field) {
+        if ($field['field']['type'] == 'taxonomy_term_reference') {
+          if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
             // Add our damn autocomplete handler.
             $form[$fieldname][$langcode]['#autocomplete_path'] 
               = 'taxonomy_access/autocomplete/' . $fieldname;
-
+            
             // Add our damn validator.
             $form[$fieldname][$langcode]['#element_validate'] 
               = array('taxonomy_access_autocomplete_validate');
-
+            
             // Set our damn default value.
             $form[$fieldname][$langcode]['#default_value'] 
               = taxonomy_access_autocomplete_default_value($form_state['build_info']['args'][0]->{$fieldname}[$langcode]);
+          }
         }
       }
     }
