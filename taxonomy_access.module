@@ -193,25 +193,6 @@ function taxonomy_access_node_access_records($node) {
 }
 
 /**
- * Implements hook_node_validate().
- */
-function taxonomy_access_node_validate($node) {
-  // Disable the list op for the duration of the validation.
-  taxonomy_access_disable_list(TRUE);
-}
-
-/**
- * Implements hook_node_update().
- */
-function taxonomy_access_node_update($node) {
-  // Re-enable the list op now that the node has been saved.
-  taxonomy_access_disable_list(FALSE);
-
-  // restore terms that the user shouldn't have access to delete
-  //taxonomy_access_restore_terms($node->nid, $node->vid, $node->tac_protected_terms);
-}
-
-/**
  * Implements hook_field_info_alter().
  *
  * @todo
