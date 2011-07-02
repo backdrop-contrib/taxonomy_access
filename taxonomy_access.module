@@ -218,6 +218,7 @@ function taxonomy_access_node_update($node) {
  *   Should we somehow pass the originl callback to our callback dynamically?
  */
 function taxonomy_access_field_info_alter(&$info) {
+
   // Return if there's no term reference field type.
   if (empty($info['taxonomy_term_reference'])) {
     return;
@@ -228,22 +229,13 @@ function taxonomy_access_field_info_alter(&$info) {
 }
 
 /**
- * Implements hook_field_widget_info_alter().
- *
+ * Implements hook_field_attach_validate().
+ * 
  * @todo
- *   Should we somehow pass the originl callback to our callback dynamically?
- * @todo
- *   This doesn't work...
+ *   Add create validation here.
  */
-function taxonomy_access_field_widget_info_alter(&$info) {
-
-  // Return if there's autocomplete field type.
-  if (empty($info['taxonomy_autocomplete'])) {
-    return;
-  }
-
-  // Use our custom callback in order to disable list while autocompleting.
-  $info['taxonomy_autocomplete']['settings']['autocomplete_path'] = 'taxonomy_access/autocomplete';
+function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) {
+  
 }
 
 /**
@@ -304,24 +296,62 @@ function taxonomy_access_query_term_access_alter($query) {
 
 /**
  * Implements hook_form_alter().
+ *
+ * @todo
+ *   The structure of $form_state['build_info'] differs between entities.
+ *   Find a way to make it entity-agnostic.
  */
 function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
-  if (is_array($form_state) && !empty($form_state['field'])) {
-    foreach ($form_state['field'] as $fieldname => $el) {
-      foreach ($el as $langcode => $field) {
-        if ($field['field']['type'] == 'taxonomy_term_reference') {
-          if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
-            // Add our damn autocomplete handler.
-            $form[$fieldname][$langcode]['#autocomplete_path'] 
-              = 'taxonomy_access/autocomplete/' . $fieldname;
+  if (!is_array($form_state)) {
+    return;
+  }
+  if (empty($form_state['field'])) {
+    return;
+  }
+  foreach ($form_state['field'] as $fieldname => $el) {
+    foreach ($el as $langcode => $field) {
+      if ($field['field']['type'] == 'taxonomy_term_reference') {
+ 
+        // Override validation (disable list) when there are taxonomy fields.
+        if ($form['#validate'][0] != 'taxonomy_access_pre_validate') {
+          $form['#validate'] = 
+            array_unshift('taxonomy_access_pre_validate', $form['#validate']);
+        }
+          
+        // Add custom handling to make autocomplete fields work.
+        if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
+
+          // Add our damn autocomplete handler.
+          $form[$fieldname][$langcode]['#autocomplete_path'] 
+            = 'taxonomy_access/autocomplete/' . $fieldname;
             
-            // Add our damn validator.
-            $form[$fieldname][$langcode]['#element_validate'] 
-              = array('taxonomy_access_autocomplete_validate');
+          // Add our damn validator.
+          $form[$fieldname][$langcode]['#element_validate'] 
+            = array('taxonomy_access_autocomplete_validate');
             
-            // Set our damn default value.
-            $form[$fieldname][$langcode]['#default_value'] 
-              = taxonomy_access_autocomplete_default_value($form_state['build_info']['args'][0]->{$fieldname}[$langcode]);
+          // Set our damn default value.
+          if (!empty($form_state['build_info']['args'][0])) {
+            $tmp = $form_state['build_info']['args'][0];
+            if (is_object($tmp) && isset($tmp->{$fieldname})) {
+
+              // This structure is used on node forms.
+              if (is_array($tmp->{$fieldname}) 
+                && !empty($tmp->{$fieldname}[$langcode])) {
+                $values = $tmp->{$fieldname}[$langcode];
+              }
+
+              // This structure is used on user forms.
+              elseif (!empty($tmp->{$fieldname})) {
+                $values = $tmp->{$fieldname};
+              }
+
+              else {
+                $values = array();
+              }
+
+              $form[$fieldname][$langcode]['#default_value'] 
+                = taxonomy_access_autocomplete_default_value($values);
+            }
           }
         }
       }
@@ -329,25 +359,9 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
-/**
- * Implements hook_form_BASE_FORM_ID_alter().
- *
- * @todo
- *     Move control of "create" op here
- * @todo
- *     Look at feasability to eliminate _restore_terms and _preserve_terms
- *     by simply setting the '#access' attribute for those terms.
- */
-/*
-  function taxonomy_access_form_node_form_alter(&$form, &$form_state, $form_id) {
-  if (!empty($form_state['node']->nid)) {
-  $form['tac_protected_terms'] = array(
-  '#type' => 'value',
-  '#value' => taxonomy_access_preserve_terms($form_state['node']),
-  );
-  }
-  }
-*/
+function taxonomy_access_pre_validate(&$form, &$form_state) {
+  taxonomy_access_disable_list(TRUE);
+}
 
 
 
@@ -998,6 +1012,9 @@ function taxonomy_access_disable_list($set_flag = NULL) {
  *
  * @see
  *   taxonomy_allowed_values()
+ *
+ * @todo
+ *   This doesn't seem to work.
  */
 function _taxonomy_access_term_options($field) {
   // Preserve the original state of the list flag.
@@ -1038,11 +1055,17 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
  *   taxonomy_autocomplete_validate()
  */
 function taxonomy_access_autocomplete_validate($element, &$form_state) {
+  // Preserve the original state of the list flag.
+  $flag_state = taxonomy_access_disable_list();
+
   // Enforce that list grants do not filter the autocomplete.
   taxonomy_access_disable_list(TRUE);
 
   // Use taxonomy.module for the validation.
   taxonomy_autocomplete_validate($element, &$form_state);
+
+  // Restore list flag to previous state.
+  taxonomy_access_disable_list($flag_state);
 }
 
 /**
