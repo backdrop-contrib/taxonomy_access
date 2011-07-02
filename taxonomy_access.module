@@ -605,13 +605,22 @@ function _taxonomy_access_get_descendants($tid) {
   static $descendants = array();
 
   if (!isset($descendants[$tid])) {
+    // Preserve the original state of the list flag.
+    $flag_state = taxonomy_access_disable_list();
+
+    // Enforce that list grants do not filter the results.
+    taxonomy_access_disable_list(TRUE);
+    
     $descendants[$tid] = array();
     $term = taxonomy_term_load($tid);
     $tree = taxonomy_get_tree($term->vid, $tid);
-
+    
     foreach ($tree as $term) {
       $descendants[$tid][] = $term->tid;
     }
+
+    // Restore list flag to previous state.
+    taxonomy_access_disable_list($flag_state);
 
     unset($term);
     unset($tree);

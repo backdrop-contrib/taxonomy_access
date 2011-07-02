@@ -170,6 +170,12 @@ function taxonomy_access_admin_build_row(array $grants = NULL) {
  *     The role id.
  */
 function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
+  // Preserve the original state of the list flag.
+  $flag_state = taxonomy_access_disable_list();
+
+  // Disable list filtering while preparing this form.
+  taxonomy_access_disable_list(TRUE);
+
   // Fetch all default grants.
   $default_grants = db_query('SELECT * FROM {taxonomy_access_default} WHERE rid = :rid', array(':rid' => $rid))->fetchAllAssoc('vid', PDO::FETCH_ASSOC);
 
@@ -263,6 +269,9 @@ function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
     '#type' => 'submit',
     '#value' => t('Save all'),
   );
+
+  // Restore list flag to previous state.
+  taxonomy_access_disable_list($flag_state);
 
   return $form;
 }
