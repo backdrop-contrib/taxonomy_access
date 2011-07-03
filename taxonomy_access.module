@@ -1,13 +1,13 @@
 <?php
-/**
- * @file
- * Allows administrators to specify how each taxonomy category can be used by each role.
- */
+  /**
+   * @file
+   * Allows administrators to specify how each taxonomy category can be used by each role.
+   */
 
-/**
- * Maximum number of nodes for which to update node access within the module.
- * If it's greater, then node_access_needs_rebuild() will be set instead.
- */
+  /**
+   * Maximum number of nodes for which to update node access within the module.
+   * If it's greater, then node_access_needs_rebuild() will be set instead.
+   */
 define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
 
 /**
@@ -280,6 +280,11 @@ function taxonomy_access_query_term_access_alter($query) {
  * @todo
  *   The structure of $form_state['build_info'] differs between entities.
  *   Find a way to make it entity-agnostic.
+ * @todo
+ *   See if we can factor out some of the logic here.
+ *
+ * @see
+ *   http://drupal.org/node/1168710
  */
 function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
   if (!is_array($form_state)) {
@@ -296,7 +301,7 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
         // Disable list filtering prior to validation.
         if ($form['#validate'][0] != '_taxonomy_access_pre_validate') {
           $form['#validate'] = array_merge(
-            array('_taxonomy_access_pre_validate'), 
+            array('_taxonomy_access_pre_validate'),
             $form['#validate']
           );
         }
@@ -380,7 +385,7 @@ function _taxonomy_access_flag_rebuild() {
 /**
  * Updates node access grants for a set of nodes.
  *
- * @param (array) $nids
+ * @param array $nids
  *    An array of node ids for which to acquire access permissions.
  *
  * @todo
@@ -416,7 +421,7 @@ function _taxonomy_access_node_access_update(array $nids) {
 /**
  * Cache and retrieve nodes affected by a taxonomy change.
  *
- * @param (array) $affected_nodes
+ * @param array $affected_nodes
  *    If we are caching, the list of nids to cache.
  * @param $reset = FALSE
  *    Flag to manually reset the list.
@@ -473,9 +478,9 @@ function _taxonomy_access_get_nodes_for_role($rid) {
 /**
  * Gets node ids associated with a given vocabulary.
  *
- * @param $vocab_ids
+ * @param array $vocab_ids
  *    The vocabulary ids for which to retrieve associated node ids.
- * @param $rid
+ * @param $rid = NULL
  *    The role id for which to retrieve node ids, if any.
  *    This argument has the effect of filtering out nodes in terms that
  *    are already controlled invidually for the role.
@@ -525,7 +530,7 @@ function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) 
  *
  * @param $vocab_id
  *   A single vocabulary ID for which to retrieve associated nodes.
- * @param $rid
+ * @param $rid = NULL
  *    The role id for which to retrieve node ids, if any.
  *    This argument has the effect of filtering out nodes in terms that
  *    are already controlled invidually for the role.
@@ -537,9 +542,9 @@ function _taxonomy_access_get_nodes_for_default($vocab_id, $rid = NULL) {
 /**
  * Gets node ids associated with a given term.
  *
- * @param $term_ids
+ * @param array $term_ids
  *    An array of term ids for which to retrieve associated nodes.
- * @param $get_children
+ * @param $get_children = FALSE
  *    Whether to recursively get nodes tagged with the term's children as well.
  *
  * @return
@@ -585,7 +590,7 @@ function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = F
  *
  * @param $term_id
  *   A single term ID for which to retrieve associated nodes.
- * @param $get_children
+ * @param $get_children = FALSE
  *    Whether to recursively get nodes tagged with the term's children as well.
  */
 function _taxonomy_access_get_nodes_for_term($term_id, $get_children = FALSE) {
@@ -610,11 +615,11 @@ function _taxonomy_access_get_descendants($tid) {
 
     // Enforce that list grants do not filter the results.
     taxonomy_access_disable_list(TRUE);
-    
+
     $descendants[$tid] = array();
     $term = taxonomy_term_load($tid);
     $tree = taxonomy_get_tree($term->vid, $tid);
-    
+
     foreach ($tree as $term) {
       $descendants[$tid][] = $term->tid;
     }
@@ -640,7 +645,7 @@ function _taxonomy_access_get_descendants($tid) {
 /**
  * Delete module configurations for the given role IDs.
  *
- * @param (array) $role_ids
+ * @param array $role_ids
  *   An array of role IDs.
  * @param $in = TRUE
  *   Whether to delete the selected roles, or all but the selected roles.
@@ -680,9 +685,9 @@ function taxonomy_access_delete_role($role_id) {
 /**
  * Delete module configurations for the given vocabulary IDs.
  *
- * @param (array) $vocab_ids
+ * @param array $vocab_ids
  *   An array of vocabulary IDs.
- * @param $role_ids
+ * @param $role_ids = NULL
  *   An individual role ID, or an array of role IDs.
  *
  * @todo
@@ -735,7 +740,7 @@ function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
  *
  * @param $vocab_id
  *   A single vocabulary ID.
- * @param $role_ids = ''
+ * @param $role_ids = NULL
  *   An individual role ID, or an array of role IDs.
  */
 function taxonomy_access_delete_default($vocab_id, $role_ids = NULL) {
@@ -941,7 +946,7 @@ function taxonomy_access_global_defaults() {
 /**
  * Formats a row for hook_node_access_records.
  *
- * @param (stdClass) $record
+ * @param stdClass $record
  *   The term record object from a TAC query to format.
  *
  * @return
@@ -1109,9 +1114,6 @@ function _taxonomy_access_pre_validate() {
  *
  * @see
  *   taxonomy_allowed_values()
- *
- * @todo
- *   This doesn't seem to work.
  */
 function _taxonomy_access_term_options($field) {
   // Preserve the original state of the list flag.
@@ -1139,9 +1141,8 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
   // Enforce that list grants do not filter the autocomplete.
   taxonomy_access_disable_list(TRUE);
 
-  module_load_include('inc', 'taxonomy', 'taxonomy.pages');
-
   // Use taxonomy.module for the autocomplete.
+  module_load_include('inc', 'taxonomy', 'taxonomy.pages');
   taxonomy_autocomplete($field_name, $tags_typed);
 }
 
