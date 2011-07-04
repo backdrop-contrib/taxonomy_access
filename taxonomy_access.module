@@ -214,66 +214,75 @@ function taxonomy_access_field_info_alter(&$info) {
  *
  * This hook mainly prevents disallowed creation via unexpected routes.
  * For form validation:
- *   @see FIXME
+ *   @see _taxonomy_access_pre_validate()
  *
  * @todo
- *   Add form validation callback above.
- * @todo
- *   Find a better way than looping over the entity and string-matching keys?
+ *   Use field label and term names in errors rather than field name and tids.
  * @todo
  *   What's the deal with delta?
+ * @todo
+ *   For some reason this throws errors even when the validator above has
+ *   updated the entity.  Commenting for now.
  */
-function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) {
+/*
+ function _taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) {
 
-  // We need this later for errors.  Check validity.
-  $delta = 0;
+ // We need this later for errors.  Check validity.
+ $delta = 0;
 
-  // Check for a pre-existing entity (i.e., the entity is being updated).
-  $entity_ids = entity_extract_ids($entity_type, $entity);
-  if ($entity_ids[0]) {
-    $orig_entity = entity_load($entity_type, array($entity_ids[0]));
-    $orig_entity = $orig_entity[$entity_ids[0]];
-  }
-  else {
-    $orig_entity = FALSE;
-  }
+ // Check for a pre-existing entity (i.e., the entity is being updated).
+ $entity_ids = entity_extract_ids($entity_type, $entity);
+ if ($entity_ids[0]) {
+ $orig_entity = entity_load($entity_type, array($entity_ids[0]));
+ $orig_entity = $orig_entity[$entity_ids[0]];
+ }
+ else {
+ $orig_entity = FALSE;
+ }
 
-  // Check whether each entity field is a taxonomy field.
-  foreach ($entity as $field_name => $field) {
-    if (strpos($field_name, "field_") === 0) {
-      $field_info = field_info_field($field_name);
-      if ($field_info['module'] == 'taxonomy') {
+ $new_fields =
+ _taxonomy_access_extract_entity_field_items($entity_type, $entity);
+ $orig_fields =
+ _taxonomy_access_extract_entity_field_items($entity_type, $orig_entity);
 
-        // Get the langcode.
-        $langcode = field_language($entity_type, $entity, $field_name);
+ // Check each field's values.
+ foreach ($new_fields as $field_name => $field) {
+ $new_items =
+ $field['items']
+ ? $field['items']
+ : array();
+ $langcode = $field['langcode'];
+ $old_items =
+ $orig_fields[$field_name]['items']
+ ? $orig_fields[$field_name]['items']
+ : array();
 
-        // Set an error if there are any invalid changes.
-        if ($invalid = _taxonomy_access_invalid_changes($entity_type, $entity, $field_name, $orig_entity)) {
-          if (!empty($invalid['added'])) {
-            $message = 'You may not add the following tags to %field: %tids';
-            $errors[$field_name][$langcode][$delta][] = array(
-              'error' => 'taxonomy_access_invalid_added',
-              'message' => t($message, array(
-                           '%field' => $field_name,
-                           '%tids' => implode(', ', $invalid['added']),
-                         )),
-            );
-          }
-          if (!empty($invalid['removed'])) {
-            $message = 'You may not remove the following tags from %field: %tids';
-            $errors[$field_name][$langcode][$delta][] = array(
-              'error' => 'taxonomy_access_invalid_removed',
-              'message' => t($message, array(
-                           '%field' => $field_name,
-                           '%tids' => implode(', ', $invalid['added']),
-                         )),
-            );
-          }
-        }
-      }
-    }
-  }
-}
+ // Set an error if there are any invalid changes.
+ if ($invalid = _taxonomy_access_invalid_changes($new_items, $old_items)) {
+ if (!empty($invalid['added'])) {
+ $message = 'You may not add the following tags to %field: %tids';
+ $errors[$field_name][$langcode][$delta][] = array(
+ 'error' => 'taxonomy_access_invalid_added',
+ 'message' => t($message, array(
+ '%field' => $field_name,
+ '%tids' => implode(', ', $invalid['added']),
+ )),
+ );
+ }
+ if (!empty($invalid['removed'])) {
+ $message = 'You may not remove the following tags from %field: %tids';
+ $errors[$field_name][$langcode][$delta][] = array(
+ 'error' => 'taxonomy_access_invalid_removed',
+ 'message' => t($message, array(
+ '%field' => $field_name,
+ '%tids' => implode(', ', $invalid['removed']),
+ )),
+ );
+ }
+ }
+ }
+ }
+*/
 
 /**
  * Implements hook_field_attach_delete().
