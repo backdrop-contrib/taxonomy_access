@@ -378,7 +378,7 @@ function taxonomy_access_query_term_access_alter($query) {
  * Implements hook_form_alter().
  *
  * We check every form for taxonomy fields, because there is no
- * hook_field_widget_form_alter().
+ * hook_field_widget_form_alter(). :(
  *
  * @see
  *   http://drupal.org/node/1204230
@@ -437,7 +437,7 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
           $ac_fields[] = $field_name;
         }
         // Check for fields with options.
-        elseif (isset($form[$field_name][$langcode]['#options']) 
+        elseif (isset($form[$field_name][$langcode]['#options'])
           && is_array($form[$field_name][$langcode]['#options'])) {
           $o_fields[] = $field_name;
         }
@@ -465,11 +465,11 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
   // Get active language codes.
   $langcodes = array();
   foreach (array_merge($ac_fields, $o_fields) as $field_name) {
-    $langcodes[$field_name] = 
+    $langcodes[$field_name] =
       field_language($entity_type, $orig_entity, $field_name);
   }
 
-  // Disable list filtering prior to validation.
+  // Add our special handling prior to validation.
   if ($form['#validate'][0] != '_taxonomy_access_pre_validate') {
     $form['#validate'] = array_merge(
       array('_taxonomy_access_pre_validate'),
@@ -516,7 +516,7 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
     $langcode = $langcodes[$field_name];
     $options = array_keys($form[$field_name][$langcode]['#options']);
 
-    // Ignore the "none" option if present.                                
+    // Ignore the "none" option if present.
     if ($options[0] == '_none') {
       unset($options[0]);
     }
@@ -528,7 +528,7 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
     // We use jQuery because FAPI does not currently support attributes
     // for individual options.
 
-    // Add a css class to the field that we can use in jQuery.          
+    // Add a css class to the field that we can use in jQuery.
     if (!isset($form[$field_name][$langcode]['#attributes'])) {
       $form[$field_name][$langcode]['#attributes'] = array();
     }
