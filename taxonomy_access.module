@@ -1463,30 +1463,26 @@ function taxonomy_access_autocomplete_default_value(array $items) {
  *   - 'added' => An array of tags added tags that are disallowed.
  *   - 'removed' => An array of tags removed tags that are disallowed.
  */
-function _taxonomy_access_invalid_changes($entity_type, $entity, $field_name, $orig_entity = FALSE) {
+function _taxonomy_access_invalid_changes($new_field, $old_field = FALSE) {
 
   // Assemble a list of term ids from the original entity, if any.
   $old_tids = array();
-  if ($orig_entity) {
-    if ($old = field_get_items($entity_type, $orig_entity, $field_name)) {
-      foreach ($old as $old_item) {
-        // Some things are NULL for some reason.
-        if ($old_item['tid']) {
-          $old_tids[] = $old_item['tid'];
-        }
+  if ($old_field) {
+    foreach ($old_field as $old_item) {
+      // Some things are NULL for some reason.
+      if ($old_item['tid']) {
+        $old_tids[] = $old_item['tid'];
       }
     }
   }
 
   // Assemble a list of term ids from the updated entity.
   $new_tids = array();
-  if ($new = field_get_items($entity_type, $entity, $field_name)) {
-    foreach ($new as $delta => $new_item) {
-      // Some things are NULL for some reason.
-      // Allow the special tid "autocreate" so users can create new terms.
-      if ($new_item['tid'] && ($new_item['tid'] != 'autocreate')) {
-        $new_tids[$delta] = $new_item['tid'];
-      }
+  foreach ($new_field as $delta => $new_item) {
+    // Some things are NULL for some reason.
+    // Allow the special tid "autocreate" so users can create new terms.
+    if ($new_item['tid'] && ($new_item['tid'] != 'autocreate')) {
+      $new_tids[$delta] = $new_item['tid'];
     }
   }
 
