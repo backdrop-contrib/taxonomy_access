@@ -1100,7 +1100,14 @@ function taxonomy_access_user_create_terms() {
  *   An array of disallowed term ids.
  */
 function taxonomy_access_create_disallowed(array $tids) {
-  return array_diff($tids, taxonomy_access_user_create_terms());
+  $all_allowed = taxonomy_access_user_create_terms();
+  
+  // If the user's create grant info is exactly TRUE, no terms are disallowed.
+  if ($all_allowed === TRUE) {
+    return array();
+  }
+
+  return array_diff($tids, $all_allowed);
 }
 
 /**
@@ -1113,7 +1120,14 @@ function taxonomy_access_create_disallowed(array $tids) {
  *   An array of disallowed term ids.
  */
 function taxonomy_access_create_allowed(array $tids) {
-  return array_intersect($tids, taxonomy_access_user_create_terms());
+  $all_allowed = taxonomy_access_user_create_terms();
+
+  // If the user's create grant info is exactly TRUE, all terms are allowed.
+  if ($all_allowed === TRUE) {
+    return $tids;
+  }
+
+  return array_intersect($tids, $all_allowed);
 }
 
 /**
