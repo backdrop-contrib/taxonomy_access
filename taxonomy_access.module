@@ -542,6 +542,15 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
     );
   }
 
+  // Add js for disabling create options.
+  if (!empty($settings)) {
+    $form['#attached']['js'][] =
+      drupal_get_path('module', 'taxonomy_access') . '/tac_create.js';
+    $form['#attached']['js'][] = array(
+      'data' => array('taxonomy_access' => $settings),
+      'type' => 'setting',
+    );
+  }
 
   unset($orig_entity);
 }
