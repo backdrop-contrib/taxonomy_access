@@ -326,7 +326,7 @@ function taxonomy_access_query_term_access_alter($query) {
 
   if ($create) {
     $tids = taxonomy_access_user_create_terms();
-    
+
     // If exactly TRUE was returned, the user can create all terms.
     if ($tids === TRUE) {
       return;
@@ -341,7 +341,7 @@ function taxonomy_access_query_term_access_alter($query) {
     else {
       $query->condition($alias . ".tid", $tids, "IN");
     }
-      
+
     // Return; we have set our create condition.
     return;
   }
@@ -372,73 +372,99 @@ function taxonomy_access_query_term_access_alter($query) {
  *   The structure of $form_state['build_info'] differs between entities.
  *   Find a way to make it entity-agnostic.
  * @todo
+ *   Is the way we are using field_langauge() here okay?
+ * @todo
  *   See if we can factor out some of the logic here.
  *
+ * @see
+ *   field_langauge()
  * @see
  *   http://drupal.org/node/1168710
  */
 function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
+  // Do not handle empty or fieldless forms.
   if (!is_array($form_state)) {
     return;
   }
   if (empty($form_state['field'])) {
     return;
   }
-  foreach ($form_state['field'] as $fieldname => $el) {
+
+  $ac_fields = array();
+  $o_fields = array();
+
+  // Find taxonomy fields.
+  foreach ($form_state['field'] as $field_name => $el) {
     foreach ($el as $langcode => $field) {
-      // Only take action if there is a taxonomy field.
+      // Only take action if it is a taxonomy field.
       if ($field['field']['type'] == 'taxonomy_term_reference') {
 
-        // Disable list filtering prior to validation.
-        if ($form['#validate'][0] != '_taxonomy_access_pre_validate') {
-          $form['#validate'] = array_merge(
-            array('_taxonomy_access_pre_validate'),
-            $form['#validate']
-          );
-        }
-
-        // Add custom handling to make autocomplete fields work.
+        // Check for taxonomy autocomplete fields.
         if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
-
-          // Override autocomplete handler.
-          $form[$fieldname][$langcode]['#autocomplete_path']
-            = 'taxonomy_access/autocomplete/' . $fieldname;
-
-          // Override autocomplete validator.
-          $form[$fieldname][$langcode]['#element_validate']
-            = array('taxonomy_access_autocomplete_validate');
-
-          // Set default value.
-          if (!empty($form_state['build_info']['args'][0])) {
-            $tmp = $form_state['build_info']['args'][0];
-            if (is_object($tmp) && isset($tmp->{$fieldname})) {
-
-              // This structure is used on node forms.
-              if (is_array($tmp->{$fieldname})
-                && !empty($tmp->{$fieldname}[$langcode])) {
-                $values = $tmp->{$fieldname}[$langcode];
-              }
-
-              // This structure is used on user forms.
-              elseif (!empty($tmp->{$fieldname})) {
-                $values = $tmp->{$fieldname};
-              }
-
-              else {
-                $values = array();
-              }
-
-              $form[$fieldname][$langcode]['#default_value']
-                = taxonomy_access_autocomplete_default_value($values);
-            }
-          }
+          $ac_fields[] = $field_name;
         }
       }
     }
   }
   unset($el);
   unset($field);
-  unset($tmp);
+
+  // Proceed only if there are taxonomy fields.
+  if (empty($ac_fields) && empty($o_fields)) {
+    return;
+  }
+
+  // Check the entity type and extract the original entity from the build info.
+  $entity_type = $form['#entity_type'];
+  $orig_entity = $form_state['build_info']['args'][0];
+  if (empty($orig_entity) || !is_object($orig_entity)) {
+    $orig_entity = FALSE;
+  }
+
+  // Disable list filtering prior to validation.
+  if ($form['#validate'][0] != '_taxonomy_access_pre_validate') {
+    $form['#validate'] = array_merge(
+      array('_taxonomy_access_pre_validate'),
+      $form['#validate']
+    );
+  }
+
+  // Add custom handling to make autocomplete fields work.
+  foreach ($ac_fields as $field_name) {
+
+    // Get the langcode.
+    $langcode = field_language($entity_type, $entity, $field_name);
+
+    // Override autocomplete handler.
+    $form[$field_name][$langcode]['#autocomplete_path']
+      = 'taxonomy_access/autocomplete/' . $field_name;
+
+    // Override autocomplete validator.
+    $form[$field_name][$langcode]['#element_validate']
+      = array('taxonomy_access_autocomplete_validate');
+
+    // Set default value.
+    if ($orig_entity && isset($orig_entity->{$field_name})) {
+
+      // This structure is used on node forms.
+      if (is_array($orig_entity->{$field_name})
+        && !empty($orig_entity->{$field_name}[$langcode])) {
+        $values = $orig_entity->{$field_name}[$langcode];
+      }
+
+      // This structure is used on user forms.
+      elseif (!empty($orig_entity->{$field_name})) {
+        $values = $orig_entity->{$field_name};
+      }
+
+      else {
+        $values = array();
+      }
+      $form[$field_name][$langcode]['#default_value']
+        = taxonomy_access_autocomplete_default_value($values);
+    }
+  }
+  unset($orig_entity);
 }
 
 
@@ -1136,7 +1162,7 @@ function taxonomy_access_user_create_terms() {
  */
 function taxonomy_access_create_disallowed(array $tids) {
   $all_allowed = taxonomy_access_user_create_terms();
-  
+
   // If the user's create grant info is exactly TRUE, no terms are disallowed.
   if ($all_allowed === TRUE) {
     return array();
@@ -1320,7 +1346,7 @@ function taxonomy_access_autocomplete_default_value(array $items) {
     $tids[] = $item['tid'];
   }
   $tids = taxonomy_access_create_allowed($tids);
-  
+
   // Assemble list of tags.
   foreach ($items as $item) {
     if (in_array($item['tid'], $tids)) {
