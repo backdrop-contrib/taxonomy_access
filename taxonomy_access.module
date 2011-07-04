@@ -290,11 +290,23 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
 
 /**
  * Implements hook_query_TAG_alter() for 'term_access'.
+ *
+ * Provides sitewide list grant filtering, as well as create grant filtering
+ * for autocomplete paths.
  */
 function taxonomy_access_query_term_access_alter($query) {
 
-  // Take no action while the list op is disabled.
-  if (taxonomy_access_disable_list()) {
+  $create = FALSE;
+
+  // Special case: if we are at the autocomplete path, filter by create grants.
+  if ($menu_item = menu_get_item()) {
+    if ($menu_item['path'] == 'taxonomy_access/autocomplete') {
+      $create = TRUE;
+    }
+  }
+
+  // Otherwise, take no action while the list op is disabled.
+  if (!$create && taxonomy_access_disable_list()) {
     return;
   }
 
@@ -312,9 +324,32 @@ function taxonomy_access_query_term_access_alter($query) {
     return;
   }
 
+  if ($create) {
+    $tids = taxonomy_access_user_create_terms();
+    
+    // If exactly TRUE was returned, the user can create all terms.
+    if ($tids === TRUE) {
+      return;
+    }
+
+    // If the user cannot create any terms, then allow only null values.
+    if (empty($tids)) {
+      $query->isNull($alias . ".tid");
+    }
+
+    // Otherwise, filter to the terms provided.
+    else {
+      $query->condition($alias . ".tid", $tids, "IN");
+    }
+      
+    // Return; we have set our create condition.
+    return;
+  }
+
+
   $tids = taxonomy_access_user_list_terms();
 
-  // If a value of exactly TRUE was returned, the user can list all terms.
+  // If exactly TRUE was returned, the user can list all terms.
   if ($tids === TRUE) {
     return;
   }
@@ -324,7 +359,7 @@ function taxonomy_access_query_term_access_alter($query) {
     $query->isNull($alias . ".tid");
   }
 
-  // Otherwise, filter to the list provided.
+  // Otherwise, filter to the terms provided.
   else {
     $query->condition($alias . ".tid", $tids, "IN");
   }
@@ -1234,9 +1269,6 @@ function _taxonomy_access_term_options($field) {
  *   taxonomy_autocomplete()
  */
 function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
-  // Enforce that list grants do not filter the autocomplete.
-  taxonomy_access_disable_list(TRUE);
-
   // Use taxonomy.module for the autocomplete.
   module_load_include('inc', 'taxonomy', 'taxonomy.pages');
   taxonomy_autocomplete($field_name, $tags_typed);
@@ -1282,15 +1314,27 @@ function taxonomy_access_autocomplete_default_value(array $items) {
   taxonomy_access_disable_list(TRUE);
 
   $tags = array();
+  $tids = array();
+  // Filter tags by current user's create permissions.
   foreach ($items as $item) {
-    $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
+    $tids[] = $item['tid'];
+  }
+  $tids = taxonomy_access_create_allowed($tids);
+  
+  // Assemble list of tags.
+  foreach ($items as $item) {
+    if (in_array($item['tid'], $tids)) {
+      $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
+    }
   }
 
+  // Assemble the default value using taxonomy.module.
   $tags = taxonomy_implode_tags($tags);
 
   // Restore list flag to previous state.
   taxonomy_access_disable_list($flag_state);
 
+  unset($tids);
   return $tags;
 }
 
@@ -1318,7 +1362,8 @@ function _taxonomy_access_invalid_changes($entity_type, $entity, $field_name, $o
   if ($orig_entity) {
     if ($old = field_get_items($entity_type, $orig_entity, $field_name)) {
       foreach ($old as $old_item) {
-        if ($old_item['tid']) { // Some things are NULL for some reason.
+        // Some things are NULL for some reason.
+        if ($old_item['tid']) {
           $old_tids[] = $old_item['tid'];
         }
       }
@@ -1329,7 +1374,9 @@ function _taxonomy_access_invalid_changes($entity_type, $entity, $field_name, $o
   $new_tids = array();
   if ($new = field_get_items($entity_type, $entity, $field_name)) {
     foreach ($new as $delta => $new_item) {
-      if ($new_item['tid']) { // Some things are NULL for some reason.
+      // Some things are NULL for some reason.
+      // Allow the special tid "autocreate" so users can create new terms.
+      if ($new_item['tid'] && ($new_item['tid'] != 'autocreate')) {
         $new_tids[$delta] = $new_item['tid'];
       }
     }
