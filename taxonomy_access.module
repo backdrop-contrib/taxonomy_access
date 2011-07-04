@@ -455,12 +455,9 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
   // Array for JS settings.
   $settings = array();
 
-  // Check the entity type and extract the original entity from the build info.
+  // Determine the entity type and original entity, if any.
   $entity_type = $form['#entity_type'];
-  $orig_entity = $form_state['build_info']['args'][0];
-  if (empty($orig_entity) || !is_object($orig_entity)) {
-    $orig_entity = FALSE;
-  }
+  $orig_entity = _taxonomy_access_form_extract_entity($form_state);
 
   // Get active language codes.
   $langcodes = array();
@@ -1444,6 +1441,61 @@ function taxonomy_access_autocomplete_default_value(array $items) {
 
   unset($tids);
   return $tags;
+}
+
+/**
+ * Helper function to extract entity from $form_state['build_info'].
+ *
+ * @param
+ *   The $form_state from a form or form alter hook.
+ *
+ * @return
+ *   The entity object, or FALSE if the entity is not present.
+ */
+function _taxonomy_access_form_extract_entity($form_state) {
+  $orig_entity = $form_state['build_info']['args'][0];
+  if (empty($orig_entity) || !is_object($orig_entity)) {
+    $orig_entity = FALSE;
+  }
+
+  return $orig_entity;
+}
+
+/**
+ * Helper function to extract the taxonomy fields from an entity.
+ *
+ * @param $entity
+ *   The entity object.
+ *
+ * @return
+ *   An associative array, keyed by fieldname.  Each item has the format:
+ *   - 'items' => Field items.
+ *   - 'langcode' => The langcode to use for the field
+ *
+ * @todo
+ *   There has to be a better way to do this using something in the API.
+ */
+function _taxonomy_access_extract_entity_field_items($entity_type, $entity) {
+  $fields = array();
+
+  // Check whether each entity field is a taxonomy field.
+  foreach ($entity as $field_name => $field) {
+    if (strpos($field_name, "field_") === 0) {
+      $field_info = field_info_field($field_name);
+      if ($field_info['type'] == 'taxonomy_term_reference') {
+        $fields[$field_name] = array();
+
+        // Get the field items and langcode.
+        $fields[$field_name]['items']  =
+          field_get_items($entity_type, $entity, $field_name);
+
+        $fields[$field_name]['langcode'] =
+          field_language($entity_type, $entity, $field_name);
+      }
+    }
+  }
+
+  return $fields;
 }
 
 /**
