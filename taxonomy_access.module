@@ -1,13 +1,13 @@
 <?php
-  /**
-   * @file
-   * Allows administrators to specify how each taxonomy category can be used by each role.
-   */
+/**
+ * @file
+ * Allows administrators to specify how each taxonomy category can be used by each role.
+ */
 
-  /**
-   * Maximum number of nodes for which to update node access within the module.
-   * If it's greater, then node_access_needs_rebuild() will be set instead.
-   */
+/**
+ * Maximum number of nodes for which to update node access within the module.
+ * If it's greater, then node_access_needs_rebuild() will be set instead.
+ */
 define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
 
 /**
@@ -365,15 +365,15 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
         // Add custom handling to make autocomplete fields work.
         if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
 
-          // Add our damn autocomplete handler.
+          // Override autocomplete handler.
           $form[$fieldname][$langcode]['#autocomplete_path']
             = 'taxonomy_access/autocomplete/' . $fieldname;
 
-          // Add our damn validator.
+          // Override autocomplete validator.
           $form[$fieldname][$langcode]['#element_validate']
             = array('taxonomy_access_autocomplete_validate');
 
-          // Set our damn default value.
+          // Set default value.
           if (!empty($form_state['build_info']['args'][0])) {
             $tmp = $form_state['build_info']['args'][0];
             if (is_object($tmp) && isset($tmp->{$fieldname})) {
