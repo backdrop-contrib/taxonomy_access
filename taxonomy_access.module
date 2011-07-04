@@ -368,18 +368,41 @@ function taxonomy_access_query_term_access_alter($query) {
 /**
  * Implements hook_form_alter().
  *
+ * We check every form for taxonomy fields, because there is no
+ * hook_field_widget_form_alter().
+ *
+ * @see
+ *   http://drupal.org/node/1204230
+ * @see
+ *   http://drupal.org/node/1168710
+ *
+ * Perform several tasks:
+ *   - Add validation for create grants.
+ *   - For autocomplete fields, override handling to disable list grants.
+ *   - For fields with options, disable options the user cannot create.
+ *     This is done with jQuery because FAPI does not support attributes for
+ *     individual form options.
+ *
+ * @see
+ *   http://drupal.org/node/284917
+ * @see
+ *   http://drupal.org/node/342316
+ * @see
+ *   http://drupal.org/node/414562
+ * @see
+ *   http://drupal.org/node/12089
+ *
  * @todo
  *   The structure of $form_state['build_info'] differs between entities.
  *   Find a way to make it entity-agnostic.
  * @todo
- *   Is the way we are using field_langauge() here okay?
+ *   Is our use of field_language() here correct?
  * @todo
  *   See if we can factor out some of the logic here.
- *
- * @see
- *   field_langauge()
- * @see
- *   http://drupal.org/node/1168710
+ * @todo
+ *   Provide more graceful degradation when JavaScript is disabled.
+ * @todo
+ *   Follow up when any of the above issues are fixed.
  */
 function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
   // Do not handle empty or fieldless forms.
@@ -392,6 +415,7 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
 
   $ac_fields = array();
   $o_fields = array();
+  $langcodes = array();
 
   // Find taxonomy fields.
   foreach ($form_state['field'] as $field_name => $el) {
@@ -402,6 +426,11 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
         // Check for taxonomy autocomplete fields.
         if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
           $ac_fields[] = $field_name;
+        }
+        // Check for fields with options.
+        elseif (isset($form[$field_name][$langcode]['#options']) 
+          && is_array($form[$field_name][$langcode]['#options'])) {
+          $o_fields[] = $field_name;
         }
       }
     }
@@ -414,11 +443,21 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
     return;
   }
 
+  // Array for JS settings.
+  $settings = array();
+
   // Check the entity type and extract the original entity from the build info.
   $entity_type = $form['#entity_type'];
   $orig_entity = $form_state['build_info']['args'][0];
   if (empty($orig_entity) || !is_object($orig_entity)) {
     $orig_entity = FALSE;
+  }
+
+  // Get active language codes.
+  $langcodes = array();
+  foreach (array_merge($ac_fields, $o_fields) as $field_name) {
+    $langcodes[$field_name] = 
+      field_language($entity_type, $orig_entity, $field_name);
   }
 
   // Disable list filtering prior to validation.
@@ -431,9 +470,7 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
 
   // Add custom handling to make autocomplete fields work.
   foreach ($ac_fields as $field_name) {
-
-    // Get the langcode.
-    $langcode = field_language($entity_type, $entity, $field_name);
+    $langcode = $langcodes[$field_name];
 
     // Override autocomplete handler.
     $form[$field_name][$langcode]['#autocomplete_path']
@@ -464,6 +501,42 @@ function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
         = taxonomy_access_autocomplete_default_value($values);
     }
   }
+
+  // Disable options for which the user does not have create permissions.
+  foreach ($o_fields as $field_name) {
+    $langcode = $langcodes[$field_name];
+    $options = array_keys($form[$field_name][$langcode]['#options']);
+
+    // Ignore the "none" option if present.                                
+    if ($options[0] == '_none') {
+      unset($options[0]);
+    }
+
+    // Check for terms the user may not create.
+    $dis = taxonomy_access_create_disallowed($options);
+
+    // If there are disallowed, terms, add CSS and JS for jQuery.
+    // We use jQuery because FAPI does not currently support attributes
+    // for individual options.
+
+    // Add a css class to the field that we can use in jQuery.          
+    if (!isset($form[$field_name][$langcode]['#attributes'])) {
+      $form[$field_name][$langcode]['#attributes'] = array();
+    }
+    if (!isset($form[$field_name][$langcode]['#attributes']['class'])) {
+      $form[$field_name][$langcode]['#attributes']['class'] = array();
+    }
+    $class_name = "tac-" . $field_name;
+    $form[$field_name][$langcode]['#attributes']['class'][] = $class_name;
+
+    // Add terms to disable for each field to JS settings.
+    $settings[] = array(
+      'field' => $class_name,
+      'dis' => $dis,
+    );
+  }
+
+
   unset($orig_entity);
 }
 
