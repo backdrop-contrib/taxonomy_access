@@ -212,11 +212,67 @@ function taxonomy_access_field_info_alter(&$info) {
 /**
  * Implements hook_field_attach_validate().
  *
+ * This hook mainly prevents disallowed creation via unexpected routes.
+ * For form validation:
+ *   @see FIXME
+ *
  * @todo
- *   Add create validation here.
+ *   Add form validation callback above.
+ * @todo
+ *   Find a better way than looping over the entity and string-matching keys?
+ * @todo
+ *   What's the deal with delta?
  */
 function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) {
 
+  // We need this later for errors.  Check validity.
+  $delta = 0;
+
+  // Check for a pre-existing entity (i.e., the entity is being updated).
+  $entity_ids = entity_extract_ids($entity_type, $entity);
+  if ($entity_ids[0]) {
+    $orig_entity = entity_load($entity_type, array($entity_ids[0]));
+    $orig_entity = $orig_entity[$entity_ids[0]];
+  }
+  else {
+    $orig_entity = FALSE;
+  }
+
+  // Check whether each entity field is a taxonomy field.
+  foreach ($entity as $field_name => $field) {
+    if (strpos($field_name, "field_") === 0) {
+      $field_info = field_info_field($field_name);
+      if ($field_info['module'] == 'taxonomy') {
+
+        // Get the langcode.
+        $langcode = field_language($entity_type, $entity, $field_name);
+
+        // Set an error if there are any invalid changes.
+        if ($invalid = _taxonomy_access_invalid_changes($entity_type, $entity, $field_name, $orig_entity)) {
+          if (!empty($invalid['added'])) {
+            $message = 'You may not add the following tags to %field: %tids';
+            $errors[$field_name][$langcode][$delta][] = array(
+              'error' => 'taxonomy_access_invalid_added',
+              'message' => t($message, array(
+                           '%field' => $field_name,
+                           '%tids' => implode(', ', $invalid['added']),
+                         )),
+            );
+          }
+          if (!empty($invalid['removed'])) {
+            $message = 'You may not remove the following tags from %field: %tids';
+            $errors[$field_name][$langcode][$delta][] = array(
+              'error' => 'taxonomy_access_invalid_removed',
+              'message' => t($message, array(
+                           '%field' => $field_name,
+                           '%tids' => implode(', ', $invalid['added']),
+                         )),
+            );
+          }
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -1035,6 +1091,32 @@ function taxonomy_access_user_create_terms() {
 }
 
 /**
+ * Check a list of term ids for terms the user may not create.
+ *
+ * @param array $tids
+ *   The array of term ids.
+ *
+ * @return
+ *   An array of disallowed term ids.
+ */
+function taxonomy_access_create_disallowed(array $tids) {
+  return array_diff($tids, taxonomy_access_user_create_terms());
+}
+
+/**
+ * Filter a list of term ids to terms the user may create.
+ *
+ * @param array $tids
+ *   The array of term ids.
+ *
+ * @return
+ *   An array of disallowed term ids.
+ */
+function taxonomy_access_create_allowed(array $tids) {
+  return array_intersect($tids, taxonomy_access_user_create_terms());
+}
+
+/**
  * Retrieve terms that the current user may create or list.
  *
  * @param $create = FALSE
@@ -1198,6 +1280,63 @@ function taxonomy_access_autocomplete_default_value(array $items) {
   return $tags;
 }
 
+/**
+ * Helper function to check for term reference changes disallowed by create.
+ *
+ * @param $entity_type
+ *   The type of the entity, e.g., 'node'.
+ * @param $entity
+ *   The entity object being processed.
+ * @param $field_name
+ *   The taxonomy field to check for disallowed changes.
+ * @param $orig_entity = FALSE
+ *   The original entity as loaded from the database, if any.
+ *
+ * @return
+ *   Returns FALSE if there are no invalid changes.  Otherwise, an array:
+ *   - 'added' => An array of tags added tags that are disallowed.
+ *   - 'removed' => An array of tags removed tags that are disallowed.
+ */
+function _taxonomy_access_invalid_changes($entity_type, $entity, $field_name, $orig_entity = FALSE) {
+
+  // Assemble a list of term ids from the original entity, if any.
+  $old_tids = array();
+  if ($orig_entity) {
+    if ($old = field_get_items($entity_type, $orig_entity, $field_name)) {
+      foreach ($old as $old_item) {
+        if ($old_item['tid']) { // Some things are NULL for some reason.
+          $old_tids[] = $old_item['tid'];
+        }
+      }
+    }
+  }
+
+  // Assemble a list of term ids from the updated entity.
+  $new_tids = array();
+  if ($new = field_get_items($entity_type, $entity, $field_name)) {
+    foreach ($new as $delta => $new_item) {
+      if ($new_item['tid']) { // Some things are NULL for some reason.
+        $new_tids[$delta] = $new_item['tid'];
+      }
+    }
+  }
+
+  // Check for added tids, and unset ones the user may not add.
+  $added = array_diff($new_tids, $old_tids);
+  $may_not_add = taxonomy_access_create_disallowed($added);
+
+  // Check for removed tids, and restore ones the user may not remove.
+  $removed = array_diff($old_tids, $new_tids);
+  $may_not_remove = taxonomy_access_create_disallowed($removed);
+
+  // If there were any invalid changes, return them.
+  if (!empty($may_not_add) || !empty($may_not_remove)) {
+    return array('added' => $may_not_add, 'removed' => $may_not_remove);
+  }
+
+  // Return FALSE if all changes were valid.
+  return FALSE;
+}
 
 
 
