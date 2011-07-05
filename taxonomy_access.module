@@ -302,17 +302,23 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
  *
  * Provides sitewide list grant filtering, as well as create grant filtering
  * for autocomplete paths.
+ *
+ * @todo
+ *   Fix create permission filtering for autocomplete paths.
  */
 function taxonomy_access_query_term_access_alter($query) {
 
   $create = FALSE;
 
   // Special case: if we are at the autocomplete path, filter by create grants.
-  if ($menu_item = menu_get_item()) {
-    if ($menu_item['path'] == 'taxonomy_access/autocomplete') {
-      $create = TRUE;
-    }
-  }
+  // FIXME: this causes segfaults on forum pages.
+  /*
+   if ($menu_item = menu_get_item()) {
+   if ($menu_item['path'] == 'taxonomy_access/autocomplete') {
+   $create = TRUE;
+   }
+   }
+  */
 
   // Otherwise, take no action while the list op is disabled.
   if (!$create && taxonomy_access_disable_list()) {
