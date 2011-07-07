@@ -3,3 +3,5 @@ description = Access control for user roles based on taxonomy categories.
 dependencies[] = taxonomy
 core = 7.x
 configure = admin/config/system/taxonomy_access
+
+files[] = taxonomy_access.test

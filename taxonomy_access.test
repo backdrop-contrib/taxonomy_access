@@ -1,0 +1,116 @@
+<?php
+
+class TaxonomyAccessTestCase extends DrupalWebTestCase {
+
+  // There are four types of users: 
+  // site admins, taxonomy admins, content editors, and regular users.
+  protected $users = array(
+    'site_admin' => array(
+      'access content',
+      'administer permissions',
+      'create page content',
+      'edit any page content',
+    ),
+    'tax_admin' => array(
+      'access content',
+      'administer taxonomy',
+    ),
+
+    'editor' => array(
+      'access content',
+      'create page content',
+    ),
+    'regular_user' =>
+      array(
+        'access content',
+      ),
+  );
+
+  // There are three roles for node access testing:
+  // global_allow   Receives "Allow" in the global default.
+  // global_ignore  Receives "Ignore" in the global default.
+  // global_deny    Receives "Deny" in the global default.
+
+  // There are then four roles for term access testing:
+  // ctlt   Receives both "Create" and "List" in the global default.
+  // ctlf   Receives "Create" but not "List" in the global default.
+  // cflt   Receives "List" but not "Create" in the global default.
+  // cflf   Receives neither "Create" nor "List" in the global default.
+
+  // All roles receive the same permissions for terms and vocab defaults.
+  protected $roles = array(
+    'global_allow' => array(),
+    'global_ignore' => array(),
+    'global_deny' => array(),
+    'ctlt' => array(),
+    'ctlf' => array(),
+    'cflt' => array(),
+    'cflf' => array(),
+  );
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Taxonomy Access Control',
+      'description' => 'Ensure proper functioning of the Taxonomy Access Control module',
+      'group' => 'Taxonomy Access Control',
+    );
+  }
+
+  public function setUp() {
+    // Enable module and dependencies.
+    parent::setUp('taxonomy_access');
+
+    // Configure users with base permission patterns.
+    foreach ($this->users as $user => $permissions) {
+      $this->users[$user] = $this->drupalCreateUser($permissions);
+    }
+
+    // Configure roles with no additional permissions.
+    foreach ($this->roles as $role => $permissions) {
+      $this->roles[$role] = $this->drupalCreateRole($permissions, $role);
+    }
+
+    // Set up our testing taxonomy.
+
+    // Create 4 vocabularies: A, I, D, and NC
+    // These names indicate what grant the vocab. default will have for view.
+    // (NC means the vocab default is not configured.)
+
+    // View alone can be used to test V/U/D because the logic is identical.
+
+    // Each vocabulary has four parent terms in the same fashion:
+    // A-parent, I-parent, D-parent, and NC-parent.
+
+    // Each of these-parent terms has children in each class, as well:
+    // A-child, I-child, D-child, and NC-child.
+
+    // So, each vocab looks something like:
+    // - A-parent
+    // - - A-child
+    // - - I-child
+    // - - D-child
+    // - - NC-child
+    // - I-parent
+    // - - A-child
+    // - - I-child
+    // - - D-child
+    // - - NC-child
+    // - D-parent
+    // - - A-child
+    // - - I-child
+    // - - D-child
+    // - - NC-child
+    // - NC-parent
+    // - - A-child
+    // - - I-child
+    // - - D-child
+    // - - NC-child
+
+  }
+
+    public function testTaxonomyAccessAdminCreateNode() {
+      
+      
+    }
+
+}
