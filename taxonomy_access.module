@@ -1372,7 +1372,10 @@ function _taxonomy_access_pre_validate(&$form, &$form_state) {
   foreach ($new_fields as $field_name => $field) {
     $new_items = $field['items'];
     $langcode = $field['langcode'];
-    $old_items = $old_fields[$field_name]['items'];
+    $old_items = 
+      isset($old_fields[$field_name])
+      ? $old_fields[$field_name]['items']
+      : array();
 
     // We add back invalid removed terms, and remove invalid added terms.
     if ($changed = _taxonomy_access_invalid_changes($new_items, $old_items)) {
