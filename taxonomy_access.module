@@ -1526,8 +1526,8 @@ function _taxonomy_access_form_extract_entity($form_state) {
  *
  * @return
  *   An associative array, keyed by fieldname.  Each item has the format:
- *   - 'items' => Field items.
- *   - 'langcode' => The langcode to use for the field
+ *   - 'items' => Array of field items.
+ *   - 'langcode' => The langcode to use for the field.
  *
  * @todo
  *   There has to be a better way to do this using something in the API.
@@ -1543,8 +1543,8 @@ function _taxonomy_access_extract_entity_field_items($entity_type, $entity) {
         $fields[$field_name] = array();
 
         // Get the field items and langcode.
-        $fields[$field_name]['items']  =
-          field_get_items($entity_type, $entity, $field_name);
+        $field_items = field_get_items($entity_type, $entity, $field_name);
+        $fields[$field_name]['items'] = $field_items ? $field_items : array();
 
         $fields[$field_name]['langcode'] =
           field_language($entity_type, $entity, $field_name);
