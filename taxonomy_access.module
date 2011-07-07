@@ -1391,7 +1391,7 @@ function _taxonomy_access_pre_validate(&$form, &$form_state) {
       }
 
       // Set the values.
-      form_set_value($form[$field_name], $submitted_values, &$form_state);
+      form_set_value($form[$field_name], $submitted_values, $form_state);
     }
   }
 }
@@ -1450,7 +1450,7 @@ function taxonomy_access_autocomplete_validate($element, &$form_state) {
   taxonomy_access_disable_list(TRUE);
 
   // Use taxonomy.module for the validation.
-  taxonomy_autocomplete_validate($element, &$form_state);
+  taxonomy_autocomplete_validate($element, $form_state);
 
   // Restore list flag to previous state.
   taxonomy_access_disable_list($flag_state);
