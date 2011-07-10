@@ -1636,9 +1636,9 @@ function taxonomy_access_help($path, $arg) {
         . '<li><a href="#good-to-know">' . t("Good to know") . '</a></li>'
         . "</ol><hr /><br />"
         . '<h3 id="grant">' . t("Grant types") . '</h3>'
-        . '<p>' . t('On the category permissions page for each role, administrators can configure five types of permission for each term: <em>View, Update, Delete, Create</em> and <em>List</em>:') . '</p>'
+        . '<p>' . t('On the category permissions page for each role, administrators can configure five types of permission for each term: <em>View, Update, Delete, Add Tag</em> (formerly <em>Create</em>), and <em>View Tag</em>: (formerly <em>List</em>') . '</p>'
         . _taxonomy_access_grant_help_table()
-        . '<p>' . t('<em>View</em>, <em>Update</em>, and <em>Delete</em> control the node access system.  <em>List</em> and <em>Create</em> control the terms themselves.  (Note: In previous versions of Taxonomy Access Control, there was no <em>List</em> permission its functionality was controlled by the <em>View</em> permission.)') . '</p><hr /><br />'
+        . '<p>' . t('<em>View</em>, <em>Update</em>, and <em>Delete</em> control the node access system.  <em>View Tag</em> and <em>Add Tag</em> control the terms themselves.  (Note: In previous versions of Taxonomy Access Control, there was no <em>View Tag</em> permission its functionality was controlled by the <em>View</em> permission.)') . '</p><hr /><br />'
         . '<h3 id="perm">' . t("Permission options") . "</h3>"
         . '<p>' . t('<strong><em>View</em>, <em>Update</em>, and <em>Delete</em> have three options for each term:</strong> <em>Allow</em> (<acronym title="Allow">A</acronym>), <em>Ignore</em> (<acronym title="Ignore">I</acronym>), and <em>Deny</em> (<acronym title="Deny">D</acronym>).  Indicate which rights each role should have for each term.  If a node is tagged with multiple terms:') . '</p>'
         . "<ul>\n"
@@ -1652,7 +1652,7 @@ function taxonomy_access_help($path, $arg) {
         . t('If a user has <strong>multiple roles</strong>, an <em>Allow</em> (<acronym title="Allow">A</acronym>) from one role <strong>will</strong> override a <em>Deny</em> (<acronym title="Deny">D</acronym>) in another.  (For more information, see section <a href="#good-to-know">Good to know</a> below.)')
         . "</li>"
         . "</ul>\n\n"
-        . '<p>' . t('<strong><em>Create</em> and <em>List</em> have only two options for each term:</strong>  <em>Yes</em> (selected) or <em>No</em> (deselected).  Indicate what each role should be allowed to do with each term.') . '</p>'
+        . '<p>' . t('<strong><em>Add Tag</em> and <em>View Tag</em> have only two options for each term:</strong>  <em>Yes</em> (selected) or <em>No</em> (deselected).  Indicate what each role should be allowed to do with each term.') . '</p>'
         . "<h4>" . t("Important notes") . "</h4>"
         . "<ol>"
         . "<li>"
@@ -1724,20 +1724,20 @@ function _taxonomy_access_grant_help_table() {
   );
 
   $rows[] = array(
-    array('header' => TRUE, 'data' => t("Create")),
+    array('header' => TRUE, 'data' => t("Add Tag")),
     "<p>"
     . t("Grants this role the ability to add the term to a node when creating or updating it.")
     . "</p>"
     . "<p>"
-    . t('This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
+    . t('(Formerly <em>Create</em>).  This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
       array('@path' => url('admin/permissions', array('fragment' => 'module-node'))))
     . "</p>",
   );
 
   $rows[] = array(
-    array('header' => TRUE, 'data' => t("List")),
+    array('header' => TRUE, 'data' => t("View Tag")),
     "<p>"
-    . t("Whether this role can see the term listed on node pages and in lists, and whether the user can view the %taxonomy-term-page page for the term.",
+    . t("(Formerly <em>List</em>.)  Whether this role can see the term listed on node pages and in lists, and whether the user can view the %taxonomy-term-page page for the term.",
       array(
         '%taxonomy-term-page' => "taxonomy/term/x"
       ))

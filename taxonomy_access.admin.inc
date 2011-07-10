@@ -291,8 +291,8 @@ function theme_taxonomy_access_admin_form($variables) {
     array( 'data' => t('View'), 'colspan' => 4),
     array( 'data' => t('Update'), 'colspan' => 4),
     array( 'data' => t('Delete'), 'colspan' => 4),
-    array( 'data' => t('Create')),
-    array( 'data' => t('List')),
+    array( 'data' => t('Add Tag')),
+    array( 'data' => t('View Tag')),
   );
   $sub_header = array(
     '&nbsp;<strong>' . t('<acronym title="Allow">A</acronym>') . '</strong>',
