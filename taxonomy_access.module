@@ -91,7 +91,7 @@ function taxonomy_access_init() {
   if (arg(0) == 'admin') {
     // Only include administrative callbacks and css on admin pages.
     $path = drupal_get_path('module', 'taxonomy_access');
-    include_once($path . '/taxonomy_access_admin.inc');
+    include_once($path . '/taxonomy_access.admin.inc');
     drupal_add_css($path . '/admin.css');
   }
 
@@ -106,7 +106,7 @@ function taxonomy_access_theme() {
   return array(
     'taxonomy_access_admin_form' => array(
       'render element' => 'form',
-      'file' => 'taxonomy_access_admin.inc',
+      'file' => 'taxonomy_access.admin.inc',
     ),
   );
 }
