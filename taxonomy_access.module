@@ -1380,21 +1380,25 @@ function _taxonomy_access_pre_validate(&$form, &$form_state) {
     // We add back invalid removed terms, and remove invalid added terms.
     if ($changed = _taxonomy_access_invalid_changes($new_items, $old_items)) {
       $submitted_values = $form_state['values'][$field_name][$langcode];
+      $new_values = array();
 
       // Unset any added values.
       foreach ($submitted_values as $delta => $value) {
-        if (in_array($value['tid'], $changed['added'])) {
-          unset($submitted_values[$delta]);
+        if (!in_array($value['tid'], $changed['added'])) {
+          $new_values[] = $value;
         }
       }
 
       // Add back removed values.
       foreach ($changed['removed'] as $tid) {
-        $submitted_values[] = array('tid' => $tid);
+        $new_values[] = array('tid' => $tid);
       }
 
+      // Nest it in the langcode.
+      $new_values = array($langcode => $new_values);
+
       // Set the values.
-      form_set_value($form[$field_name], $submitted_values, $form_state);
+      form_set_value($form[$field_name], $new_values, $form_state);
     }
   }
 }
