@@ -189,7 +189,9 @@ function taxonomy_access_node_grants($user, $op) {
  * Implements hook_node_access_records().
  */
 function taxonomy_access_node_access_records($node) {
-  return _taxonomy_access_node_access_records($node->nid);
+  if ($node->status) {
+    return _taxonomy_access_node_access_records($node->nid);
+  }
 }
 
 /**
