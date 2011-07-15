@@ -227,20 +227,21 @@ function taxonomy_access_field_info_alter(&$info) {
    // We need this later for errors.  Check validity.
    $delta = 0;
 
+   $new_fields =
+     _taxonomy_access_extract_entity_field_items($entity_type, $entity);
+
    // Check for a pre-existing entity (i.e., the entity is being updated).
    $entity_ids = entity_extract_ids($entity_type, $entity);
    if ($entity_ids[0]) {
      $orig_entity = entity_load($entity_type, array($entity_ids[0]));
      $orig_entity = $orig_entity[$entity_ids[0]];
+     $orig_fields =
+       _taxonomy_access_extract_entity_field_items($entity_type, $orig_entity);
    }
    else {
      $orig_entity = FALSE;
+     $orig_fields = array();
    }
-
-   $new_fields =
-     _taxonomy_access_extract_entity_field_items($entity_type, $entity);
-   $orig_fields =
-     _taxonomy_access_extract_entity_field_items($entity_type, $orig_entity);
 
    // Check each field's values.
    foreach ($new_fields as $field_name => $field) {
@@ -1361,8 +1362,10 @@ function _taxonomy_access_pre_validate(&$form, &$form_state) {
   $entity_type = $form['#entity_type'];
   $orig_entity = _taxonomy_access_form_extract_entity($form_state);
 
-  $old_fields =
-    _taxonomy_access_extract_entity_field_items($entity_type, $orig_entity);
+  $old_fields = 
+    $orig_entity 
+    ? _taxonomy_access_extract_entity_field_items($entity_type, $orig_entity)
+    : array();
   $new_fields =
     _taxonomy_access_extract_entity_field_items($entity_type, (object) $form_state['values']);
 
