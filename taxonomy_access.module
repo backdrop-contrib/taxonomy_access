@@ -250,7 +250,7 @@ function taxonomy_access_field_info_alter(&$info) {
        : array();
      $langcode = $field['langcode'];
      $old_items =
-       $orig_fields[$field_name]['items']
+       isset($orig_fields[$field_name]['items'])
        ? $orig_fields[$field_name]['items']
        : array();
 
