@@ -220,62 +220,58 @@ function taxonomy_access_field_info_alter(&$info) {
  *
  * @todo
  *   Use field label and term names in errors rather than field name and tids.
- * @todo
- *   What's the deal with delta?
+ *
+ * @see
+ *   http://drupal.org/node/1220212
  */
  function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) {
-   // We need this later for errors.  Check validity.
+   // Check for a pre-existing entity (i.e., the entity is being updated).
+   $old_fields = FALSE;
+   list($entity_id, , $bundle) = entity_extract_ids($entity_type, $entity);
+   if ($entity_id) {
+     // Load the entity.
+     $old_entity = entity_load($entity_type, array($entity_id));
+     $old_entity = $old_entity[$entity_id];
+
+     // Fetch the original entity's taxonomy fields.
+     $old_fields =
+       _taxonomy_access_entity_fields($entity_type, $old_entity, $bundle);
+   }
+
+   // Fetch the updated entity's taxonomy fields.
+   $new_fields =
+     _taxonomy_access_entity_fields($entity_type, $entity, $bundle);
+
+   // Set errors if there are any disallowed changes.
+   $changes = _taxonomy_access_compare_fields($new_fields, $old_fields);
+
+   // We care about the overall value list, so delta is not important.
    $delta = 0;
 
-   $new_fields =
-     _taxonomy_access_extract_entity_field_items($entity_type, $entity);
-
-   // Check for a pre-existing entity (i.e., the entity is being updated).
-   $entity_ids = entity_extract_ids($entity_type, $entity);
-   if ($entity_ids[0]) {
-     $orig_entity = entity_load($entity_type, array($entity_ids[0]));
-     $orig_entity = $orig_entity[$entity_ids[0]];
-     $orig_fields =
-       _taxonomy_access_extract_entity_field_items($entity_type, $orig_entity);
-   }
-   else {
-     $orig_entity = FALSE;
-     $orig_fields = array();
-   }
-
-   // Check each field's values.
-   foreach ($new_fields as $field_name => $field) {
-     $new_items =
-       $field['items']
-       ? $field['items']
-       : array();
-     $langcode = $field['langcode'];
-     $old_items =
-       isset($orig_fields[$field_name]['items'])
-       ? $orig_fields[$field_name]['items']
-       : array();
-
-     // Set an error if there are any invalid changes.
-     if ($invalid = _taxonomy_access_invalid_changes($new_items, $old_items)) {
-       if (!empty($invalid['added'])) {
-         $message = 'You may not add the following tags to %field: %tids';
-         $errors[$field_name][$langcode][$delta][] = array(
-           'error' => 'taxonomy_access_invalid_added',
-           'message' => t($message, array(
-                        '%field' => $field_name,
-                        '%tids' => implode(', ', $invalid['added']),
-                      )),
-         );
-       }
-       if (!empty($invalid['removed'])) {
-         $message = 'You may not remove the following tags from %field: %tids';
-         $errors[$field_name][$langcode][$delta][] = array(
-           'error' => 'taxonomy_access_invalid_removed',
-           'message' => t($message, array(
-                        '%field' => $field_name,
-                        '%tids' => implode(', ', $invalid['removed']),
-                      )),
-         );
+   // Check each field and langcode for disallowed changes.
+   foreach ($changes as $field_name => $langcodes) {
+     foreach ($langcodes as $langcode => $disallowed) {
+       if ($disallowed) {
+         if (!empty($disallowed['added'])) {
+           $text = 'You may not add the following tags to %field: %tids';
+           $errors[$field_name][$langcode][$delta][] = array(
+             'error' => 'taxonomy_access_disallowed_added',
+             'message' => t($text, array(
+                          '%field' => $field_name,
+                          '%tids' => implode(', ', $disallowed['added']),
+                        )),
+           );
+         }
+         if (!empty($disallowed['removed'])) {
+           $text = 'You may not remove the following tags from %field: %tids';
+           $errors[$field_name][$langcode][$delta][] = array(
+             'error' => 'taxonomy_access_disallowed_removed',
+             'message' => t($text, array(
+                          '%field' => $field_name,
+                          '%tids' => implode(', ', $disallowed['removed']),
+                        )),
+           );
+         }
        }
      }
    }
@@ -1358,48 +1354,51 @@ function _taxonomy_access_user_term_grants($create = FALSE, $account = NULL) {
 function _taxonomy_access_pre_validate(&$form, &$form_state) {
   taxonomy_access_disable_list(TRUE);
 
-  // Determine the entity type and original entity, if any.
+  // Determine the entity type and bundle.
   $entity_type = $form['#entity_type'];
+  $bundle = $form['#bundle'];
+
+  // Fetch the original entity's taxonomy fields, if any.
   $orig_entity = _taxonomy_access_form_extract_entity($form_state);
+  $old_fields =
+    $orig_entity
+    ? _taxonomy_access_entity_fields($entity_type, $orig_entity, $bundle)
+    : FALSE;
 
-  $old_fields = 
-    $orig_entity 
-    ? _taxonomy_access_extract_entity_field_items($entity_type, $orig_entity)
-    : array();
+  // Fetch the updated entity's taxonomy fields.
   $new_fields =
-    _taxonomy_access_extract_entity_field_items($entity_type, (object) $form_state['values']);
+    _taxonomy_access_entity_fields($entity_type, $form_state['values'], $bundle);
 
-  foreach ($new_fields as $field_name => $field) {
-    $new_items = $field['items'];
-    $langcode = $field['langcode'];
-    $old_items = 
-      isset($old_fields[$field_name])
-      ? $old_fields[$field_name]['items']
-      : array();
+  // Identify any disallowed changes.
+  $changes = _taxonomy_access_compare_fields($new_fields, $old_fields);
 
-    // We add back invalid removed terms, and remove invalid added terms.
-    if ($changed = _taxonomy_access_invalid_changes($new_items, $old_items)) {
-      $submitted_values = $form_state['values'][$field_name][$langcode];
-      $new_values = array();
+  // Check each field and langcode for disallowed changes, and fix them.
+  $set_values = array();
+  foreach ($changes as $field_name => $langcodes) {
+    foreach ($langcodes as $langcode => $disallowed) {
+      if ($disallowed) {
+        $submitted_values = $form_state['values'][$field_name][$langcode];
+        $new_values = array();
 
-      // Unset any added values.
-      foreach ($submitted_values as $delta => $value) {
-        if (!in_array($value['tid'], $changed['added'])) {
-          $new_values[] = $value;
+        // Unset any added values.
+        foreach ($submitted_values as $delta => $value) {
+          if (!in_array($value['tid'], $disallowed['added'])) {
+            $new_values[] = $value;
+          }
         }
+
+        // Add back removed values.
+        foreach ($disallowed['removed'] as $tid) {
+          $new_values[] = array('tid' => $tid);
+        }
+
+        // Group by langcode.
+        $set_values[$langcode] = $new_values;
       }
-
-      // Add back removed values.
-      foreach ($changed['removed'] as $tid) {
-        $new_values[] = array('tid' => $tid);
-      }
-
-      // Nest it in the langcode.
-      $new_values = array($langcode => $new_values);
-
-      // Set the values.
-      form_set_value($form[$field_name], $new_values, $form_state);
     }
+
+    // Set the field's values.
+    form_set_value($form[$field_name], $set_values, $form_state);
   }
 }
 
@@ -1532,63 +1531,161 @@ function _taxonomy_access_form_extract_entity($form_state) {
  *   The entity object.
  *
  * @return
- *   An associative array, keyed by fieldname.  Each item has the format:
- *   - 'items' => Array of field items.
- *   - 'langcode' => The langcode to use for the field.
+ *   An associative array of field information, containing:
+ *   - field_list: A flat array of all this entity's taxonomy fields, with the
+ *     format $field_name => $field_name.
+ *   - langcodes: A flat array of all langcodes in this entity's fields, with
+ *     the format $langcode => $langcode.
+ *   - data: An associative array of non-empty fields:
+ *     - $field_name: An associative array keyed by langcode.
+ *       - $langcode: Array of field values for this field name and langcode.
  *
- * @todo
- *   There has to be a better way to do this using something in the API.
+ * @see
+ *   http://drupal.org/node/1220168
  */
-function _taxonomy_access_extract_entity_field_items($entity_type, $entity) {
+function _taxonomy_access_entity_fields($entity_type, $entity, $bundle) {  
+  // Maintain separate lists of field names and langcodes for quick comparison.
   $fields = array();
+  $fields['field_list'] = array();
+  $fields['langcodes'] = array();
+  $fields['data'] = array();
 
-  // Check whether each entity field is a taxonomy field.
+  // If there is no entity, return the empty structure.
+  if (!$entity) {
+    return $fields;
+  }
+
+  // Get a list of possible fields for the bundle.
+  // The bundle does not contain the field type (see #122016), so our only use
+  // for it is the field names.
+  $possible = array_keys(field_info_instances($entity_type, $bundle));
+
+  // Sort through the entity for relevant field data.
   foreach ($entity as $field_name => $field) {
-    if (strpos($field_name, "field_") === 0) {
-      $field_info = field_info_field($field_name);
-      if ($field_info['type'] == 'taxonomy_term_reference') {
-        $fields[$field_name] = array();
 
-        // Get the field items and langcode.
-        $field_items = field_get_items($entity_type, $entity, $field_name);
-        $fields[$field_name]['items'] = $field_items ? $field_items : array();
+    // Only proceed if this element is a valid field for the bundle.
+    if (in_array($field_name, $possible, TRUE)) {
 
-        $fields[$field_name]['langcode'] =
-          field_language($entity_type, $entity, $field_name);
+      // Check whether each entity field is a taxonomy field.
+      $info = field_info_field($field_name);
+      if ($info['type'] == 'taxonomy_term_reference') {
+        foreach ($field as $langcode => $values) {
+
+          // Add non-empty fields to the lists.
+          if (!empty($values)) {
+            $fields['langcodes'][$langcode] = $langcode;
+            $fields['field_list'][$field_name] = $field_name;
+            $fields['data'][$field_name][$langcode] = $values;
+          }
+          unset($values);
+        }
       }
     }
+    unset($info);
+    unset($field);
   }
+
+  unset($entity);
 
   return $fields;
 }
 
 /**
- * Helper function to check for term reference changes disallowed by create.
+ * Helper function to compare field values and look for disallowed changes.
  *
- * @param $entity_type
- *   The type of the entity, e.g., 'node'.
- * @param $entity
- *   The entity object being processed.
- * @param $field_name
- *   The taxonomy field to check for disallowed changes.
- * @param $orig_entity = FALSE
- *   The original entity as loaded from the database, if any.
+ * @param $new
+ *   An associative array of the updated field information as returned by 
+ *   _taxonomy_access_entity_fields().
+ * @param $old
+ *   An associative array of the original field information, or FALSE if there 
+ *   is no original field data.
  *
  * @return
- *   Returns FALSE if there are no invalid changes.  Otherwise, an array:
- *   - 'added' => An array of tags added tags that are disallowed.
- *   - 'removed' => An array of tags removed tags that are disallowed.
+ *   An array of disallowed changes, with the structure:
+ *   - $field_name: An associative array keyed by langcode.
+ *     - $langcode: Disallowed changes for this field name and langcode, 
+ *       or FALSE if none.
+ *       - 'added' => An array of added terms that are disallowed.
+ *       - 'removed' => An array of removed termss that are disallowed.
+ *
+ * @see
+ *   _taxonomy_access_entity_fields()
+ * @see
+ *   _taxonomy_access_disallowed_changes()
  */
-function _taxonomy_access_invalid_changes($new_field, $old_field = FALSE) {
+function _taxonomy_access_compare_fields($new, $old = FALSE) {
+  $disallowed_changes = array();
+
+  // If there are no original fields, simply process new.
+  if (!$old) {
+    dpm('foo');
+    foreach ($new['data'] as $field_name => $langcodes) {
+      foreach ($langcodes as $langcode => $values) {
+        $changes = _taxonomy_access_disallowed_changes($values, array());
+        if ($changes) {
+          if (!isset($disallowed_changes[$field_name])) {
+            $disallowed_changes[$field_name] = array();
+          }
+          $disallowed_changes[$field_name][$langcode] = $changes;
+        }
+      }
+    }
+  }
+
+  // Otherwise, aggregate and compare field data.
+  else {
+    $all_fields = $new['field_list'] + $old['field_list'];
+    $all_langcodes = $new['langcodes'] + $old['langcodes'];
+
+    foreach ($all_fields as $field_name) {
+      foreach ($all_langcodes as $langcode) {
+        $new_values = array();
+        if (isset($new['field_list'][$field_name]) 
+          && isset($new['data'][$field_name][$langcode])) {
+          $new_values = $new['data'][$field_name][$langcode];
+        }
+        $old_values = array();
+        if (isset($old['field_list'][$field_name]) 
+          && isset($old['data'][$field_name][$langcode])) {
+          $old_values = $old['data'][$field_name][$langcode];
+        }
+        $changes = _taxonomy_access_disallowed_changes($new_values, $old_values);
+        if ($changes) {
+          if (!isset($disallowed_changes[$field_name])) {
+            $disallowed_changes[$field_name] = array();
+          }
+          $disallowed_changes[$field_name][$langcode] = $changes;
+        }
+      }
+    }
+  }
+
+  unset($old);
+  unset($new);
+  return $disallowed_changes;
+}
+
+/**
+ * Helper function to check for term reference changes disallowed by create.
+ *
+ * @param array $new_field
+ *   The entity or form values of the updated field.
+ * @param array $old_field
+ *   The entity or form values of the original field.
+ *
+ * @return
+ *   Returns FALSE if there are no disallowed changes.  Otherwise, an array:
+ *   - 'added' => An array of added terms that are disallowed.
+ *   - 'removed' => An array of removed termss that are disallowed.
+ */
+function _taxonomy_access_disallowed_changes(array $new_field, array $old_field) {
 
   // Assemble a list of term ids from the original entity, if any.
   $old_tids = array();
-  if ($old_field) {
-    foreach ($old_field as $old_item) {
-      // Some things are NULL for some reason.
-      if ($old_item['tid']) {
-        $old_tids[] = $old_item['tid'];
-      }
+  foreach ($old_field as $old_item) {
+    // Some things are NULL for some reason.
+    if ($old_item['tid']) {
+      $old_tids[] = $old_item['tid'];
     }
   }
 
@@ -1610,7 +1707,7 @@ function _taxonomy_access_invalid_changes($new_field, $old_field = FALSE) {
   $removed = array_diff($old_tids, $new_tids);
   $may_not_remove = taxonomy_access_create_disallowed($removed);
 
-  // If there were any invalid changes, return them.
+  // If there were any disallowed changes, return them.
   if (!empty($may_not_add) || !empty($may_not_remove)) {
     return array('added' => $may_not_add, 'removed' => $may_not_remove);
   }
