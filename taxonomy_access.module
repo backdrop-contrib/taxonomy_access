@@ -1618,7 +1618,6 @@ function _taxonomy_access_compare_fields($new, $old = FALSE) {
 
   // If there are no original fields, simply process new.
   if (!$old) {
-    dpm('foo');
     foreach ($new['data'] as $field_name => $langcodes) {
       foreach ($langcodes as $langcode => $values) {
         $changes = _taxonomy_access_disallowed_changes($values, array());
