@@ -18,18 +18,22 @@ define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
 /**
  * Cache a list of all roles.
  *
+ * @param
+ *   A string containing a permission. If set, only roles containing that
+ *   permission are returned.
+ *
  * @return
  *   An array of roles from user_roles().
  *
  * @todo
  *   Replace this function once http://drupal.org/node/6463 is backported.
  */
-function _taxonomy_access_user_roles() {
-  static $roles;
-  if (!is_array($roles)) {
-    $roles = user_roles();
+function _taxonomy_access_user_roles($permission = NULL) {
+  static $roles = array();
+  if (!isset($roles[$permission])) {
+    $roles[$permission] = user_roles(FALSE, $permission);
   }
-  return $roles;
+  return $roles[$permission];
 }
 
 
