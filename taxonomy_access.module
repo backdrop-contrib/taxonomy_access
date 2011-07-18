@@ -665,15 +665,16 @@ function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = F
  *    controlled for the role.
  */
 function _taxonomy_access_get_nodes_for_role($rid) {
-  $query = db_select('taxonomy_index', 'n')
-    ->fields('n', array('nid'));
-  $query->leftJoin('taxonomy_term_data', 'd', 'n.tid = d.tid');
-  $query->leftJoin('taxonomy_access_term', 'a', 'n.tid = a.tid');
-  $query->leftJoin('taxonomy_access_default', 'ad', 'ad.vid = d.vid');
+  $query = db_select('taxonomy_index', 'ti')
+    ->fields('ti', array('nid'))
+    ->addTag('taxonomy_access_node');
+  $query->leftJoin('taxonomy_term_data', 'td', 'ti.tid = td.tid');
+  $query->leftJoin('taxonomy_access_term', 'ta', 'ti.tid = ta.tid');
+  $query->leftJoin('taxonomy_access_default', 'tad', 'tad.vid = td.vid');
   $query->condition(
     db_or()
-    ->condition('a.rid', $rid)
-    ->condition('ad.rid', $rid)
+    ->condition('ta.rid', $rid)
+    ->condition('tad.rid', $rid)
   );
 
   $nids = $query->execute()->fetchCol();
@@ -712,6 +713,7 @@ function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) 
     db_select('taxonomy_index', 'ti')
     ->condition('td.vid', $vocab_ids)
     ->fields('ti', array('nid'))
+    ->addTag('taxonomy_access_node');
     ;
   $query->join('taxonomy_term_data', 'td', 'td.tid = ti.tid');
 
@@ -757,12 +759,12 @@ function _taxonomy_access_get_nodes_for_default($vocab_id, $rid = NULL) {
  */
 function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = FALSE) {
   $nids =
-    db_query(
-      "SELECT nid FROM {taxonomy_index} WHERE tid IN (:term_ids)",
-      array(':term_ids' => $term_ids)
-    )
+    db_select('taxonomy_index', 'ti')
+    ->condition('ti.tid', $term_ids, 'IN')
+    ->fields('ti', array('nid'))
+    ->addTag('taxonomy_access_node')
+    ->execute()
     ->fetchCol();
-
 
   // If requested, get nodes tagged with all children as well.
   if ($get_children) {
@@ -773,10 +775,11 @@ function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = F
     }
     if (sizeof($child_tids) > 0) {
       $child_nids =
-        db_query(
-          'SELECT nid FROM {taxonomy_index} WHERE tid IN (:term_ids)',
-          array(':term_ids' => $child_tids)
-        )
+        db_select('taxonomy_index', 'ti')
+        ->condition('ti.tid', $child_tids, 'IN')
+        ->fields('ti', array('nid'))
+        ->addTag('taxonomy_access_node')
+        ->execute()
         ->fetchCol();
 
       $nids = array_unique(array_merge($nids, $child_nids));
@@ -1100,6 +1103,7 @@ function _taxonomy_access_node_access_records($node_nid) {
     ->condition('ti.nid', $node_nid)
     ->groupBy('tadg.rid')
     ->addTag('taxonomy_access_node_access')
+    ->addTag('taxonomy_access_node')
     ;
 
   // Fetch and format all grant records for the node.
