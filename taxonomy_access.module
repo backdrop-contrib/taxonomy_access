@@ -1039,7 +1039,7 @@ function taxonomy_access_delete_term($term_id, $role_ids = NULL) {
  * @todo
  *     Refactor to allow multiple values?
  */
-function taxonomy_access_grant_update($tid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
+function taxonomy_access_set_term_grants($tid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
   if (!isset($tid) OR !is_numeric($rid)) {
     return FALSE;
   }
@@ -1079,9 +1079,9 @@ function taxonomy_access_grant_update($tid, $rid = NULL, array $grants = NULL, $
  * @todo
  *     Refactor to allow multiple values?
  */
-function taxonomy_access_recursive_grant_update($tid, $rid = NULL, array $grants = NULL) {
+function taxonomy_access_set_recursive_grants($tid, $rid = NULL, array $grants = NULL) {
   // First, process the original.
-  taxonomy_access_grant_update($tid, $rid, $grants);
+  taxonomy_access_set_term_grants($tid, $rid, $grants);
 
   // Process the children.
   $ran_tids = array(); // tids that have been processed.
@@ -1099,7 +1099,7 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, array $grants
         $child_tids = db_query('SELECT th.tid FROM {taxonomy_term_hierarchy} th WHERE th.parent = :run_tid', array(':run_tid' => $run_tid))->fetchCol();
         // If this tid has children, update grants and queue the children
         foreach ($child_tids as $child_tid) {
-          taxonomy_access_grant_update($child_tid, $rid, $grants);
+          taxonomy_access_set_term_grants($child_tid, $rid, $grants);
           $run_tids[] = $child_tid;
         }
 
@@ -1127,7 +1127,7 @@ function taxonomy_access_recursive_grant_update($tid, $rid = NULL, array $grants
  * @todo
  *     Refactor to allow multiple values?
  */
-function taxonomy_access_defaults_update($vid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
+function taxonomy_access_set_default_grants($vid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
   if (!is_numeric($vid) || (isset($rid) && !is_numeric($rid))) {
     return FALSE;
   }

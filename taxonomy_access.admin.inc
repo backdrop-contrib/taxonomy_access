@@ -422,14 +422,14 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
       list($type, $id) = explode(' ', $new['item']);
       if ($type == 'term') {
         if ($new['recursive'] == 1) {
-          taxonomy_access_recursive_grant_update($id, $values['rid'], $new['grants']);
+          taxonomy_access_set_recursive_grants($id, $values['rid'], $new['grants']);
         }
         else {
-          taxonomy_access_grant_update($id, $values['rid'], $new['grants']);
+          taxonomy_access_set_term_grants($id, $values['rid'], $new['grants']);
         }
       }
       elseif ($type == 'default') {
-        taxonomy_access_defaults_update($id, $values['rid'], $new['grants']);
+        taxonomy_access_set_default_grants($id, $values['rid'], $new['grants']);
       }
 
       break;
@@ -457,10 +457,10 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
               }
             }
             if ($tid == 0) {
-              taxonomy_access_defaults_update($vid, $values['rid'], $grants, $skip_nodes);
+              taxonomy_access_set_default_grants($vid, $values['rid'], $grants, $skip_nodes);
             }
             else {
-              taxonomy_access_grant_update($tid, $values['rid'], $grants, $skip_nodes);
+              taxonomy_access_set_term_grants($tid, $values['rid'], $grants, $skip_nodes);
             }
           }
         }
