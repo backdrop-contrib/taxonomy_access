@@ -1019,6 +1019,149 @@ function taxonomy_access_delete_term($term_id, $role_ids = NULL) {
 
 
 /*****************************************************************************/
+/******************************** UPDATE API *********************************/
+/*****************************************************************************/
+
+
+/**
+ * Updates permissions for a role for a term.
+ *
+ * @param $tid
+ *   The term to add the permission for.
+ * @param $rid
+ *   The role id to add the permission for.
+ * @param (array) $grants
+ *   A hash of the grants in the form of $grants['perm'] = boolean
+ *   A value of 1 will grant the permission for this user and term.
+ * @param $skip_nodes
+ *   A flag indicating whether to skip node updates when processing.
+ *
+ * @todo
+ *     Refactor to allow multiple values?
+ */
+function taxonomy_access_grant_update($tid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
+  if (!isset($tid) OR !is_numeric($rid)) {
+    return FALSE;
+  }
+
+  // Assemble a $row object for Schema API.
+  $row = new stdClass();
+  $row->tid = $tid;
+  if (isset($rid)) {
+    $row->rid = $rid;
+  }
+  if (isset($grants) && is_array($grants)) {
+    foreach ($grants as $op => $value) {
+      if (is_numeric($value)) {
+        $grant_name = "grant_$op";
+        $row->$grant_name = $value;
+      }
+    }
+  }
+
+  taxonomy_access_delete_term($tid, $rid);
+
+  // Insert new entries.
+  drupal_write_record('taxonomy_access_term', $row);
+}
+
+/**
+ * Recursively updates permissions for a role for a term.
+ *
+ * @param $tid
+ *   The term to add the permission for.
+ * @param $rid
+ *   The role id to add the permission for.
+ * @param array $grants
+ *   A hash of the grants in the form of $grants['perm'] = boolean
+ *   A value of 1 will grant the permission for this user and term.
+ *
+ * @todo
+ *     Refactor to allow multiple values?
+ */
+function taxonomy_access_recursive_grant_update($tid, $rid = NULL, array $grants = NULL) {
+  // First, process the original.
+  taxonomy_access_grant_update($tid, $rid, $grants);
+
+  // Process the children.
+  $ran_tids = array(); // tids that have been processed.
+  $run_tids = array($tid); // tids that are in the queue to be processed.
+  while (count($run_tids) > 0) {
+    foreach ($run_tids as $run_key => $run_tid) {
+      // Some basic loop protection.
+      if (!(array_search($run_tid, $ran_tids) === FALSE)) {
+        drupal_set_message(
+          t("Loop detected for tid %run_tid. Stopping.",
+            array('%run_tid' => $run_tid)));
+        $run_tids = array(); // stop the execution
+      }
+      else {
+        $child_tids = db_query('SELECT th.tid FROM {taxonomy_term_hierarchy} th WHERE th.parent = :run_tid', array(':run_tid' => $run_tid))->fetchCol();
+        // If this tid has children, update grants and queue the children
+        foreach ($child_tids as $child_tid) {
+          taxonomy_access_grant_update($child_tid, $rid, $grants);
+          $run_tids[] = $child_tid;
+        }
+
+        // Remove this tid from the queue and mark as processed,
+        unset($run_tids[$run_key]);
+        $ran_tids[] = $run_tid;
+      }
+    }
+  }
+}
+
+/**
+ * Updates default permissions for a role for a vocabulary.
+ *
+ * @param $vid
+ *   The vocab to add the permission for.
+ * @param $rid
+ *   The role id to add the permission to.
+ * @param (array) $grants
+ *   A hash of the grants in the form of $grants['perm'] = boolean
+ *   A value of 1 will grant the permission for this user and term.
+ * @param $skip_nodes
+ *   A flag indicating whether to skip node updates when processing.
+ *
+ * @todo
+ *     Refactor to allow multiple values?
+ */
+function taxonomy_access_defaults_update($vid, $rid = NULL, array $grants = NULL, $skip_nodes = FALSE) {
+  if (!is_numeric($vid) || (isset($rid) && !is_numeric($rid))) {
+    return FALSE;
+  }
+
+  // Assemble $row object for Schema API.
+  $row = new stdClass();
+  $row->vid = $vid;
+  $row->rid = $rid;
+  if (isset($grants) && is_array($grants)) {
+    foreach ($grants as $op => $value) {
+      if (is_numeric($value)) {
+        $grant_name = "grant_$op";
+        $row->$grant_name = $value;
+      }
+    }
+  }
+
+  if (!$skip_nodes) {
+    // If we are updating the global default, flag node access for rebuild.
+    if ($vid === 0) {
+      _taxonomy_access_flag_rebuild();
+    }
+  }
+
+  // Delete old entries.
+  taxonomy_access_delete_default($vid, $rid);
+
+  // Insert new entries.
+  drupal_write_record('taxonomy_access_default', $row);
+}
+
+
+
+/*****************************************************************************/
 /******************************* NODE ACCESS *********************************/
 /*****************************************************************************/
 
