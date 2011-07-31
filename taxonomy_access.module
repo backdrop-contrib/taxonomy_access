@@ -418,11 +418,14 @@ function taxonomy_access_query_term_access_alter($query) {
  *   Follow up when any of the above issues are fixed.
  */
 function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
-  // Do not handle empty or fieldless forms.
+  // Do not handle empty or fieldless forms, nor non-entity forms.
   if (!is_array($form_state)) {
     return;
   }
   if (empty($form_state['field'])) {
+    return;
+  }
+  if (empty($form['#entity_type'])) {
     return;
   }
 
