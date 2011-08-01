@@ -9,12 +9,12 @@
  * Renders the TAC permissions administration form.
  *
  * @param $op
- *     The operation to perform, if any.
- *     Options are 'edit' or 'delete' (access rules for the role).
+ *   (optional) The operation to perform, if any.  Defaults to NULL.
+ *   Options are 'edit' or 'delete' (access rules for the role).
  * @param $rid
- *     The role id of the role to configure.
+ *   (optional) The role id of the role to configure.  Defaults to NULL.
  * @param $arg
- *     Additional arguments.  (Not used.)
+ *   (optional) Additional arguments.  Defaults to NULL.  (Not used.)
  *
  * @return
  *     Form to render.
@@ -79,8 +79,9 @@ function theme_taxonomy_access_admin() {
 
 /**
  * Form callback to delete all access rules for a particular role.
+ *
  * @param $rid
- *     The role id to disable.
+ *   The role id to disable.
  */
 function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
   if (is_numeric($rid)
@@ -140,7 +141,7 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
  * Assembles a row of grant options for a term or default on the admin form.
  *
  * @param (array) $grants
- *     An array of grants to use as form defaults, if any.
+ *   (optional) An array of grants to use as form defaults.  Defaults to NULL.
  */
 function taxonomy_access_admin_build_row(array $grants = NULL) {
   $form['#title'] = '';
@@ -167,7 +168,7 @@ function taxonomy_access_admin_build_row(array $grants = NULL) {
  * Form for managing grants by role.
  *
  * @param $rid
- *     The role id.
+ *   (optional) The role id.  Defaults to NULL.
  */
 function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
   // Preserve the original state of the list flag.
