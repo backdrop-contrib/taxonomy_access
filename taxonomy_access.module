@@ -1423,8 +1423,8 @@ function taxonomy_access_user_create_terms() {
 /**
  * Retrieve terms that the current user may create in specific vocabularies.
  *
- * @param array $vids
- *   An array of vids to use as a filter.
+ * @param $vid
+ *   A vid to use as a filter.
  *
  * @see
  *   taxonomy_access_user_create_terms() 
@@ -1434,19 +1434,13 @@ function taxonomy_access_user_create_terms() {
  * @return
  *   An array of term IDs, or TRUE if the user may create all terms.
  */
-function taxonomy_access_user_create_terms_by_vocab(array $vids) {
-  $return = array();
-
+function taxonomy_access_user_create_terms_by_vocab($vid) {
   // Cache the terms the current user can create per vocabulary.
   static $terms = array();
-  foreach ($vids as $vid) {
-    if (!isset($terms[$vid])) {
-      $terms[$vid] = _taxonomy_access_user_term_grants(TRUE, array($vid));
-    }
-    // Append terms to the list.
-    $return = array_merge($return, $terms[$vid]);
+  if (!isset($terms[$vid])) {
+    $terms[$vid] = _taxonomy_access_user_term_grants(TRUE, array($vid));
   }
-  return $return;
+  return $terms[$vid];
 }
 
 /**
