@@ -1419,6 +1419,24 @@ function taxonomy_access_user_create_terms() {
 }
 
 /**
+ * Retrieve terms that the current user may create.
+ *
+ * @see
+ *    _taxonomy_access_create_defaults()
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user may create all terms.
+ */
+function taxonomy_access_user_create_defaults() {
+  // Cache the terms the current user can create.
+  static $vids = NULL;
+  if (is_null($vids)) {
+    $vids = _taxonomy_access_create_defaults();
+  }
+  return $vids;
+}
+
+/**
  * Check a list of term ids for terms the user may not create.
  *
  * @param array $tids
@@ -1456,6 +1474,26 @@ function taxonomy_access_create_allowed(array $tids) {
   }
 
   return array_intersect($tids, $all_allowed);
+}
+
+/**
+ * Filter a list of vocab ids to those in which the user may create by default.
+ *
+ * @param array $vids
+ *   The array of vocabulary ids.
+ *
+ * @return
+ *   An array of disallowed vocabulary ids.
+ */
+function taxonomy_access_create_default_allowed(array $vids) {
+  $all_allowed = taxonomy_access_user_create_defaults();
+
+  // If the user's create grant info is exactly TRUE, all terms are allowed.
+  if ($all_allowed === TRUE) {
+    return $vids;
+  }
+
+  return array_intersect($vids, $all_allowed);
 }
 
 /**
@@ -1531,7 +1569,7 @@ function _taxonomy_access_user_term_grants($create = FALSE, $account = NULL) {
  * @return
  *   An array of term IDs, or TRUE if the user has the grant for all terms.
  */
-function _taxonomy_access_user_default_create($account = NULL) {
+function _taxonomy_access_create_defaults($account = NULL) {
 
   // If the user can administer taxonomy, return TRUE for a global grant.
   if (user_access('administer taxonomy', $account)) {
