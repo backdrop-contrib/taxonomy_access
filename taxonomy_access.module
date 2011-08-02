@@ -1188,13 +1188,16 @@ function taxonomy_access_set_default_grants($vid, $rid = NULL, array $grants = N
  * @param array $grants
  *   Grants to select.
  *   Allowed values: 'view', 'update', 'delete', 'create', 'list'
+ * @param $default
+ *   (optional) Flag to select default grants only.  Defaults to FALSE.
  *
  * @return
  *    Query object.
  */
-function _taxonomy_access_grant_query(array $grants) {
+function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
+  $table = $default ? 'taxonomy_vocabulary' : 'taxonomy_term_data';
   $query =
-    db_select('taxonomy_term_data', 'td')
+    db_select($table, 'td')
     ->addTag('taxonomy_access')
     ->addTag('taxonomy_access_grants')
     ;
@@ -1207,10 +1210,12 @@ function _taxonomy_access_grant_query(array $grants) {
     'taxonomy_access_default', 'tad',
     'tad.vid = td.vid AND tad.rid = tadg.rid'
   );
-  $query->leftJoin(
-    'taxonomy_access_term', 'ta',
-    'ta.tid = td.tid AND ta.rid = tadg.rid'
-  );
+  if (!$default) {
+    $query->leftJoin(
+      'taxonomy_access_term', 'ta',
+      'ta.tid = td.tid AND ta.rid = tadg.rid'
+    );
+  }
 
   // We add grant fields this way to reduce the risk of future vulnerabilities.
   $grant_fields = array(
@@ -1223,14 +1228,25 @@ function _taxonomy_access_grant_query(array $grants) {
 
   foreach ($grant_fields as $name => $grant) {
     if (in_array($name, $grants)) {
-      $query->addExpression(
-        'BIT_OR(COALESCE('
-        . 'ta.' . db_escape_table($grant) . ', '
-        . 'tad.' . db_escape_table($grant) . ', '
-        . 'tadg.' . db_escape_table($grant)
-        . '))',
-        $grant
-      );
+      if ($default) {
+        $query->addExpression(
+          'BIT_OR(COALESCE('
+          . 'tad.' . db_escape_table($grant) . ', '
+          . 'tadg.' . db_escape_table($grant)
+          . '))',
+          $grant
+        );
+      }
+      else {
+        $query->addExpression(
+          'BIT_OR(COALESCE('
+          . 'ta.' . db_escape_table($grant) . ', '
+          . 'tad.' . db_escape_table($grant) . ', '
+          . 'tadg.' . db_escape_table($grant)
+          . '))',
+          $grant
+        );
+      }
     }
   }
 
@@ -1503,6 +1519,64 @@ function _taxonomy_access_user_term_grants($create = FALSE, $account = NULL) {
   }
 
   return $tids;
+}
+
+/**
+ * Retrieve vocabularies in which the current user may create terms.
+ *
+ * @param $account
+ *   (optional) The account for which to retrieve grants.  If no account is 
+ *   passed, the current user will be used.  Defaults to NULL.
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user has the grant for all terms.
+ */
+function _taxonomy_access_user_default_create($account = NULL) {
+
+  // If the user can administer taxonomy, return TRUE for a global grant.
+  if (user_access('administer taxonomy', $account)) {
+    return TRUE;
+  }
+
+  // Build a term grant query.
+  $query = _taxonomy_access_grant_query(array('create'), TRUE);
+
+  // Select term grants for the current user's roles.
+  if (is_null($account)){
+    global $user;
+    $account = $user;
+  }
+  $query
+    ->fields('td', array('vid'))
+    ->groupBy('td.vid')
+    ->condition('tadg.rid', array_keys($account->roles), 'IN')
+    ;
+
+  // Fetch term ids.
+  $r = $query->execute()->fetchAll();
+  $vids = array();
+
+  // If there are results, initialize a flag to test whether the user
+  // has the grant for all terms.
+  $grants_for_all_vocabs = empty($r) ? FALSE : TRUE;
+
+  foreach ($r as $record) {
+    // If the user has the grant, add the term to the array.
+    if ($record->grant_create) {
+      $vids[] = $record->vid;
+    }
+    // Otherwise, flag that the user does not have the grant for all terms.
+    else {
+      $grants_for_all_vocabs = FALSE;
+    }
+  }
+
+  // If the user has the grant for all terms, return TRUE for a global grant.
+  if ($grants_for_all_vocabs) {
+    return TRUE;
+  }
+
+  return $vids;
 }
 
 /**
