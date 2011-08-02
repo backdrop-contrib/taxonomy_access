@@ -1404,6 +1404,8 @@ function taxonomy_access_user_list_terms() {
  * Retrieve terms that the current user may create.
  *
  * @see
+ *   taxonomy_access_user_create_terms_by_vocab() 
+ * @see
  *    _taxonomy_access_user_term_grants()
  *
  * @return
@@ -1416,6 +1418,35 @@ function taxonomy_access_user_create_terms() {
     $terms = _taxonomy_access_user_term_grants(TRUE);
   }
   return $terms;
+}
+
+/**
+ * Retrieve terms that the current user may create in specific vocabularies.
+ *
+ * @param array $vids
+ *   An array of vids to use as a filter.
+ *
+ * @see
+ *   taxonomy_access_user_create_terms() 
+ * @see
+ *   _taxonomy_access_user_term_grants()
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user may create all terms.
+ */
+function taxonomy_access_user_create_terms_by_vocab(array $vids) {
+  $return = array();
+
+  // Cache the terms the current user can create per vocabulary.
+  static $terms = array();
+  foreach ($vids as $vid) {
+    if (!isset($terms[$vid])) {
+      $terms[$vid] = _taxonomy_access_user_term_grants(TRUE, array($vid));
+    }
+    // Append terms to the list.
+    $return = array_merge($return, $terms[$vid]);
+  }
+  return $return;
 }
 
 /**
@@ -1502,6 +1533,8 @@ function taxonomy_access_create_default_allowed(array $vids) {
  * @param $create
  *   (optional) Whether to fetch grants for create (TRUE) or list (FALSE).
  *   Defaults to FALSE.
+ * @param array $vids
+ *   (optional) An array of vids to limit the query.  Defaults to array().
  * @param $account
  *   (optional) The account for which to retrieve grants.  If no account is 
  *   passed, the current user will be used.  Defaults to NULL.
@@ -1509,9 +1542,15 @@ function taxonomy_access_create_default_allowed(array $vids) {
  * @return
  *   An array of term IDs, or TRUE if the user has the grant for all terms.
  */
-function _taxonomy_access_user_term_grants($create = FALSE, $account = NULL) {
+function _taxonomy_access_user_term_grants($create = FALSE, array $vids = array(), $account = NULL) {
   $grant_type = $create ? 'create' : 'list';
   $grant_field_name = 'grant_' . $grant_type;
+
+  // If no account was passed, default to current user.
+  if (is_null($account)) {
+    global $user;
+    $account = $user;
+  }
 
   // If the user can administer taxonomy, return TRUE for a global grant.
   if (user_access('administer taxonomy', $account)) {
@@ -1522,15 +1561,19 @@ function _taxonomy_access_user_term_grants($create = FALSE, $account = NULL) {
   $query = _taxonomy_access_grant_query(array($grant_type));
 
   // Select term grants for the user's roles.
-  if (is_null($account)){
-    global $user;
-    $account = $user;
-  }
   $query
     ->fields('td', array('tid'))
     ->groupBy('td.tid')
     ->condition('tadg.rid', array_keys($account->roles), 'IN')
     ;
+
+  // Filter by the indicated vids, if any.
+  if (!empty($vids)) {
+    $query
+      ->fields('td', array('vid'))
+      ->condition('td.vid', $vids, 'IN')
+      ;
+  }
 
   // Fetch term ids.
   $r = $query->execute()->fetchAll();
