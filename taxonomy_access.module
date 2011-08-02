@@ -1460,14 +1460,14 @@ function _taxonomy_access_user_term_grants($create = FALSE, $account = NULL) {
   $grant_field_name = 'grant_' . $grant_type;
 
   // If the user can administer taxonomy, return TRUE for a global grant.
-  if (user_access('administer taxonomy')) {
+  if (user_access('administer taxonomy', $account)) {
     return TRUE;
   }
 
   // Build a term grant query.
   $query = _taxonomy_access_grant_query(array($grant_type));
 
-  // Select term grants for the current user's roles.
+  // Select term grants for the user's roles.
   if (is_null($account)){
     global $user;
     $account = $user;
