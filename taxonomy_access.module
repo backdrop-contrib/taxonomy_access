@@ -1401,7 +1401,7 @@ function taxonomy_access_user_list_terms() {
 }
 
 /**
- * Retrieve terms that the current user may list.
+ * Retrieve terms that the current user may create.
  *
  * @see
  *    _taxonomy_access_user_term_grants()
