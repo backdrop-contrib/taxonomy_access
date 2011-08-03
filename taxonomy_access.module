@@ -218,9 +218,9 @@ function taxonomy_access_field_info_alter(&$info) {
 /**
  * Implements hook_field_attach_validate().
  *
- * This hook mainly prevents disallowed creation via unexpected routes.
  * For form validation:
  *   @see _taxonomy_access_pre_validate()
+ *   @see taxonomy_access_autocomplete_validate()
  *
  * @todo
  *   Use field label and term names in errors rather than field name and tids.
