@@ -314,8 +314,9 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
  *   Fix create permission filtering for autocomplete paths.
  */
 function taxonomy_access_query_term_access_alter($query) {
+
   // Take no action while the list op is disabled.
-  if (!taxonomy_access_list_enabled()) {
+  if (!$create && taxonomy_access_disable_list()) {
     return;
   }
 
@@ -327,6 +328,7 @@ function taxonomy_access_query_term_access_alter($query) {
       $alias = $table['alias'];
     }
   }
+
   if (empty($alias)) {
     return;
   }
@@ -800,10 +802,10 @@ function _taxonomy_access_get_descendants($tid) {
 
   if (!isset($descendants[$tid])) {
     // Preserve the original state of the list flag.
-    $flag_state = taxonomy_access_list_enabled();
+    $flag_state = taxonomy_access_disable_list();
 
     // Enforce that list grants do not filter the results.
-    taxonomy_access_disable_list();
+    taxonomy_access_disable_list(TRUE);
 
     $descendants[$tid] = array();
     $term = taxonomy_term_load($tid);
@@ -1342,8 +1344,8 @@ function _taxonomy_access_format_grant_record(stdClass $record) {
  *   (optional) When passed, sets the the flag.  Pass either TRUE or FALSE.
  *   Defaults to NULL.
  */
-function _taxonomy_access_list_state($set_flag = NULL) {
-  static $flag = TRUE;
+function taxonomy_access_disable_list($set_flag = NULL) {
+  static $flag = FALSE;
 
   // If no flag was passed, return the current state of the flag.
   if (is_null($set_flag)) {
@@ -1352,36 +1354,6 @@ function _taxonomy_access_list_state($set_flag = NULL) {
 
   // If we were passed anything but null, set the flag.
   $flag = $set_flag ? TRUE : FALSE;
-}
-
-/**
- * Wrapper for taxonomy_access_list_state() to enable list grant filtering.
- *
- * @see
- *   taxonomy_access_list_state()
- */
-function taxonomy_access_enable_list() {
-  _taxonomy_access_list_state(TRUE);
-}
-
-/**
- * Wrapper for taxonomy_access_list_state() to disable list grant filtering.
- *
- * @see
- *   _taxonomy_access_list_state()
- */
-function taxonomy_access_disable_list() {
-  _taxonomy_access_list_state(FALSE);
-}
-
-/**
- * Wrapper for taxonomy_access_list_state() to check list grant filtering.
- *
- * @see
- *   _taxonomy_access_list_state()
- */
-function taxonomy_access_list_enabled() {
-  _taxonomy_access_list_state();
 }
 
 /**
@@ -1667,7 +1639,7 @@ function _taxonomy_access_create_defaults($account = NULL) {
  *   them from changing disallowed values or breaking submissions.
  */
 function _taxonomy_access_pre_validate(&$form, &$form_state) {
-  taxonomy_access_disable_list();
+  taxonomy_access_disable_list(TRUE);
 
   // Determine the entity type and bundle.
   $entity_type = $form['#entity_type'];
@@ -1731,10 +1703,10 @@ function _taxonomy_access_pre_validate(&$form, &$form_state) {
  */
 function _taxonomy_access_term_options($field) {
   // Preserve the original state of the list flag.
-  $flag_state = taxonomy_access_list_enabled();
+  $flag_state = taxonomy_access_disable_list();
 
   // Enforce that list grants do not filter the options list.
-  taxonomy_access_disable_list();
+  taxonomy_access_disable_list(TRUE);
 
   // Use taxonomy.module to generate the list of options.
   $options = taxonomy_allowed_values($field);
@@ -1765,10 +1737,10 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
  */
 function taxonomy_access_autocomplete_validate($element, &$form_state) {
   // Preserve the original state of the list flag.
-  $flag_state = taxonomy_access_list_enabled();
+  $flag_state = taxonomy_access_disable_list();
 
   // Enforce that list grants do not filter the autocomplete.
-  taxonomy_access_disable_list();
+  taxonomy_access_disable_list(TRUE);
 
   // Use taxonomy.module for the validation.
   taxonomy_autocomplete_validate($element, $form_state);
@@ -1791,10 +1763,10 @@ function taxonomy_access_autocomplete_validate($element, &$form_state) {
  */
 function taxonomy_access_autocomplete_default_value(array $items) {
   // Preserve the original state of the list flag.
-  $flag_state = taxonomy_access_list_enabled();
+  $flag_state = taxonomy_access_disable_list();
 
   // Enforce that list grants do not filter the options list.
-  taxonomy_access_disable_list();
+  taxonomy_access_disable_list(TRUE);
 
   $tags = array();
   $tids = array();
