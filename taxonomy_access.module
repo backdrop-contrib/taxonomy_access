@@ -314,61 +314,24 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
  *   Fix create permission filtering for autocomplete paths.
  */
 function taxonomy_access_query_term_access_alter($query) {
-
-  $create = FALSE;
-
-  // Special case: if we are at the autocomplete path, filter by create grants.
-  // FIXME: this causes segfaults on forum pages.
-  /*
-   if ($menu_item = menu_get_item()) {
-   if ($menu_item['path'] == 'taxonomy_access/autocomplete') {
-   $create = TRUE;
-   }
-   }
-  */
-
-  // Otherwise, take no action while the list op is disabled.
-  if (!$create && !taxonomy_access_list_enabled()) {
+  // Take no action while the list op is disabled.
+  if (!taxonomy_access_list_enabled()) {
     return;
   }
 
   // Take no action if there is no term table in the query.
   $alias = '';
   $tables =& $query->getTables();
-
   foreach ($tables as $i => $table) {
     if (strpos($table['table'], 'taxonomy_term_') === 0) {
       $alias = $table['alias'];
     }
   }
-
   if (empty($alias)) {
     return;
   }
 
-  if ($create) {
-    $tids = taxonomy_access_user_create_terms();
-
-    // If exactly TRUE was returned, the user can create all terms.
-    if ($tids === TRUE) {
-      return;
-    }
-
-    // If the user cannot create any terms, then allow only null values.
-    if (empty($tids)) {
-      $query->isNull($alias . ".tid");
-    }
-
-    // Otherwise, filter to the terms provided.
-    else {
-      $query->condition($alias . ".tid", $tids, "IN");
-    }
-
-    // Return; we have set our create condition.
-    return;
-  }
-
-
+  // Fetch a list of all terms the user may list.
   $tids = taxonomy_access_user_list_terms();
 
   // If exactly TRUE was returned, the user can list all terms.
