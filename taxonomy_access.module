@@ -316,7 +316,7 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
 function taxonomy_access_query_term_access_alter($query) {
 
   // Take no action while the list op is disabled.
-  if (!$create && taxonomy_access_disable_list()) {
+  if (taxonomy_access_disable_list()) {
     return;
   }
 
