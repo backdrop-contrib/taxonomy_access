@@ -237,8 +237,9 @@ function taxonomy_access_field_info_alter(&$info) {
    // The entity is actually a "pseudo-entity," and the user profile form
    // neglects to include the uid.  So, load it.
    if ($entity_type == 'user') {
-     $account = user_load_by_name($entity->name);
-     $entity->uid = $account->uid;
+     if ($account = user_load_by_name($entity->name)) {
+       $entity->uid = $account->uid;
+     }
    }
    list($entity_id, , $bundle) = entity_extract_ids($entity_type, $entity);
    if ($entity_id) {
