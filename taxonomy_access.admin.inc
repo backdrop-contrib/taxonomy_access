@@ -110,7 +110,7 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
           // all uncontrolled nodes, so flag node access for rebuild.
           _taxonomy_access_flag_rebuild();
         }
-        taxonomy_access_delete_role($rid);
+        taxonomy_access_delete_roles($rid);
         if (!empty($affected_nodes)) {
           taxonomy_access_affected_nodes($affected_nodes);
         }

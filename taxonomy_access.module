@@ -163,21 +163,21 @@ function taxonomy_access_admin_paths() {
  * Implements hook_user_role_delete().
  */
 function taxonomy_access_user_role_delete($role) {
-  taxonomy_access_delete_role($role->rid);
+  taxonomy_access_delete_roles($role->rid);
 }
 
 /**
  * Implements hook_taxonomy_vocabulary_delete().
  */
 function taxonomy_access_taxonomy_vocabulary_delete($vocab) {
-  taxonomy_access_delete_default($vocab->vid);
+  taxonomy_access_delete_defaults($vocab->vid);
 }
 
 /**
  * Implements hook_taxonomy_term_delete().
  */
 function taxonomy_access_taxonomy_term_delete($term) {
-  taxonomy_access_delete_term($term->tid);
+  taxonomy_access_delete_terms($term->tid);
 }
 
 /**
@@ -301,7 +301,7 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
   }
 
   // Cache a list of impacted nodes prior to term deletion.
-  $affected_nodes = _taxonomy_access_get_nodes_for_term($entity->tid);
+  $affected_nodes = _taxonomy_access_get_nodes_for_terms($entity->tid);
   taxonomy_access_affected_nodes($affected_nodes);
 }
 
@@ -665,19 +665,24 @@ function _taxonomy_access_get_nodes_for_role($rid) {
 }
 
 /**
- * Gets node ids associated with a given vocabulary.
+ * Gets node IDs associated with a given vocabulary.
  *
- * @param array $vocab_ids
- *    The vocabulary ids for which to retrieve associated node ids.
+ * @param $vocab_ids
+ *    A single vocabulary ID or an array of ids.
  * @param $rid
- *    (optional) The role id for which to retrieve node ids, if any.
+ *    (optional) The role ID for which to retrieve node ids, if any.
  *    This argument has the effect of filtering out nodes in terms that
  *    are already controlled invidually for the role.  Defaults to NULL.
  *
  * @return
- *    An array of node ids associated with the given vocabulary.
+ *    An array of node IDs associated with the given vocabulary.
  */
-function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) {
+function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
+  // Accept either a single vocabulary ID or an array thereof.
+  if (is_numeric($vocab_ids)) {
+    $vocab_ids = array($vocab_ids);
+  }
+
   if (!is_null($rid)) {
     // Get terms in the vocabularies that are controlled for this role.
     $tids =
@@ -713,35 +718,23 @@ function _taxonomy_access_get_nodes_for_defaults(array $vocab_ids, $rid = NULL) 
 }
 
 /**
- * Single-value wrapper for taxonomy_access_get_nodes_for_defaults().
+ * Gets node IDs associated with a given term.
  *
- * @see
- *   taxonomy_access_get_nodes_for_defaults()
- *
- * @param $vocab_id
- *   A single vocabulary ID for which to retrieve associated nodes.
- * @param $rid
- *    (optional) The role id for which to retrieve node ids, if any.
- *    This argument has the effect of filtering out nodes in terms that
- *    are already controlled invidually for the role.  Defaults to NULL.
- */
-function _taxonomy_access_get_nodes_for_default($vocab_id, $rid = NULL) {
-  return _taxonomy_access_get_nodes_for_defaults(array($vocab_id), $rid);
-}
-
-/**
- * Gets node ids associated with a given term.
- *
- * @param array $term_ids
- *    An array of term ids for which to retrieve associated nodes.
+ * @param $term_ids
+ *    A single term ID or anarray of term IDs.
  * @param $get_children
  *    (optional) Whether to recursively get nodes tagged with the term's 
  *    children as well.  Defaults to FALSE.
  *
  * @return
- *    An array of node ids associated with the given terms.
+ *    An array of node IDs associated with the given terms.
  */
-function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = FALSE) {
+function _taxonomy_access_get_nodes_for_terms($term_ids, $get_children = FALSE) {
+  // Accept either a single term ID or an array thereof.
+  if (is_numeric($term_ids)) {
+    $term_ids = array($term_ids);
+  }
+
   $nids =
     db_select('taxonomy_index', 'ti')
     ->condition('ti.tid', $term_ids, 'IN')
@@ -772,21 +765,6 @@ function _taxonomy_access_get_nodes_for_terms(array $term_ids, $get_children = F
     unset($child_tids);
   }
   return $nids;
-}
-
-/**
- * Single-value wrapper for taxonomy_access_get_nodes_for_terms().
- *
- * @see
- *   taxonomy_access_get_nodes_for_terms()
- *
- * @param $term_id
- *   A single term ID for which to retrieve associated nodes.
- *    (optional) Whether to recursively get nodes tagged with the term's 
- *    children as well.  Defaults to FALSE.
- */
-function _taxonomy_access_get_nodes_for_term($term_id, $get_children = FALSE) {
-  return _taxonomy_access_get_nodes_for_terms(array($term_id), $get_children);
 }
 
 /**
@@ -837,8 +815,8 @@ function _taxonomy_access_get_descendants($tid) {
 /**
  * Delete module configurations for the given role IDs.
  *
- * @param array $role_ids
- *   An array of role IDs.
+ * @param $role_ids
+ *   A single role id or an array of role IDs.
  * @param $in
  *   (optional) Whether to delete the selected roles (TRUE), or all but the 
  *   selected roles (FALSE).  Defaults to TRUE.
@@ -848,7 +826,11 @@ function _taxonomy_access_get_descendants($tid) {
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_roles(array $role_ids, $in = TRUE) {
+function taxonomy_access_delete_roles($role_ids, $in = TRUE) {
+  // Accept either a single role ID or an array thereof.
+  if (is_numeric($role_ids)) {
+    $role_ids = array($role_ids);
+  }
 
   $condition = $in ? 'IN' : 'NOT IN';
 
@@ -862,24 +844,10 @@ function taxonomy_access_delete_roles(array $role_ids, $in = TRUE) {
 }
 
 /**
- * Single-value wrapper for taxonomy_access_delete_roles().
- *
- * @see
- *  taxonomy_access_delete_roles()
- *
- * @param $role_id
- *   A single role ID.
- */
-function taxonomy_access_delete_role($role_id) {
-  return taxonomy_access_delete_roles(array($role_id));
-}
-
-
-/**
  * Delete module configurations for the given vocabulary IDs.
  *
- * @param array $vocab_ids
- *   An array of vocabulary IDs.
+ * @param $vocab_ids
+ *   A single vocabulary ID or an array of vocabulary IDs.
  * @param $role_ids
  *   (optional) An individual role ID or array of role IDs.  Defaults to NULL.
  *
@@ -888,12 +856,17 @@ function taxonomy_access_delete_role($role_id) {
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
+function taxonomy_access_delete_defaults($vocab_ids, $role_ids = NULL) {
   if (empty($vocab_ids)) {
     return;
   }
 
-  // Accept either a single role id or an array thereof.
+  // Accept either a single vocabulary ID or an array thereof.
+  if (is_numeric($vocab_ids)) {
+    $vocab_ids = array($vocab_ids);
+  }
+
+  // Accept either a single role ID or an array thereof.
   if (is_numeric($role_ids)) {
     // Check affected nodes first.
     // We can filter out certain nodes if there is just one role.
@@ -926,37 +899,27 @@ function taxonomy_access_delete_defaults(array $vocab_ids, $role_ids = NULL) {
 }
 
 /**
- * Single-value wrapper for taxonomy_access_delete_defaults().
- *
- * @see
- *   taxonomy_access_delete_defaults()
- *
- * @param $vocab_id
- *   A single vocabulary ID.
- * @param $role_ids
- *   (optional) An individual role ID or array of role IDs.  Defaults to NULL.
- */
-function taxonomy_access_delete_default($vocab_id, $role_ids = NULL) {
-  return taxonomy_access_delete_defaults(array($vocab_id), $role_ids);
-}
-
-/**
  * Delete module configurations for the given term IDs.
  *
- * @param (array) $term_ids
- *   An array of term IDs.
+ * @param $term_ids
+ *   A single term ID or an array of term IDs.
  * @param $role_ids
- *   (optional) An individual role ID or array of role IDs.  Defaults to NULL.
+ *   (optional) A single role ID or array of role IDs.  Defaults to NULL.
  *
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
+function taxonomy_access_delete_terms($term_ids, $role_ids = NULL) {
   if (empty($term_ids)) {
     return;
   }
 
-  // Accept either a single role id or an array thereof.
+  // Accept either a single term ID or an array thereof.
+  if (is_numeric($term_ids)) {
+    $term_ids = array($term_ids);
+  }
+
+  // Accept either a single role ID or an array thereof.
   if (is_numeric($role_ids)) {
     $role_ids = array($role_ids);
   }
@@ -979,21 +942,6 @@ function taxonomy_access_delete_terms(array $term_ids, $role_ids = NULL) {
 
   unset($term_ids);
   unset($query);
-}
-
-/**
- * Single-value wrapper for taxonomy_access_delete_terms().
- *
- * @see
- *   taxonomy_access_delete_terms()
- *
- * @param $term_id
- *   A single term ID.
- * @param $role_ids
- *   (optional) An individual role ID or array of role IDs.  Defaults to NULL.
- */
-function taxonomy_access_delete_term($term_id, $role_ids = NULL) {
-  return taxonomy_access_delete_terms(array($term_id), $role_ids);
 }
 
 
@@ -1042,7 +990,7 @@ function taxonomy_access_set_term_grants($tid, $rid = NULL, array $grants = NULL
     }
   }
 
-  taxonomy_access_delete_term($tid, $rid);
+  taxonomy_access_delete_terms($tid, $rid);
 
   // Insert new entries.
   drupal_write_record('taxonomy_access_term', $row);
@@ -1139,7 +1087,7 @@ function taxonomy_access_set_default_grants($vid, $rid = NULL, array $grants = N
   }
 
   // Delete old entries.
-  taxonomy_access_delete_default($vid, $rid);
+  taxonomy_access_delete_defaults($vid, $rid);
 
   // Insert new entries.
   drupal_write_record('taxonomy_access_default', $row);
