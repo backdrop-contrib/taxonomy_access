@@ -3,6 +3,13 @@ Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 For complete changelog, see:
 http://drupalcode.org/project/taxonomy_access.git/log/refs/heads/7.x-1.x
 
+o Renamed several API functions:
+  - from: taxonomy_access_grant_update()
+    to:   taxonomy_access_set_term_grants()
+  - from: taxonomy_access_defaults_update()
+    to:   taxonomy_access_set_default_grants()
+  - form: taxonomy_access_recursive_grant_update()
+    to:  taxonomy_access_set_recursive_grants()
 o Renamed "List" and "Create" grants to "View tag" and "Add tag" for clarity.
 o Automatically update node access as needed on shutdown.  
   Hooks should merely add their list of nodes to 
