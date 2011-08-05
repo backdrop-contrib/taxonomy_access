@@ -573,7 +573,7 @@ function _taxonomy_access_flag_rebuild() {
  * Updates node access grants for a set of nodes.
  *
  * @param array $nids
- *    An array of node ids for which to acquire access permissions.
+ *    An array of node IDs for which to acquire access permissions.
  *
  * @todo
  *   Unset rebuild message when we set the flag to false?
@@ -638,13 +638,13 @@ function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = F
 }
 
 /**
- * Gets node ids associated with the given role.
+ * Gets node IDs associated with the given role.
  *
  * @param $rid
- *    The role id.
+ *    The role ID.
  *
  * @return
- *    An array of node ids associated with terms or vocabularies that are
+ *    An array of node IDs associated with terms or vocabularies that are
  *    controlled for the role.
  */
 function _taxonomy_access_get_nodes_for_role($rid) {
@@ -668,9 +668,9 @@ function _taxonomy_access_get_nodes_for_role($rid) {
  * Gets node IDs associated with a given vocabulary.
  *
  * @param $vocab_ids
- *    A single vocabulary ID or an array of ids.
+ *    A single vocabulary ID or an array of IDs.
  * @param $rid
- *    (optional) The role ID for which to retrieve node ids, if any.
+ *    (optional) The role ID for which to retrieve node IDs, if any.
  *    This argument has the effect of filtering out nodes in terms that
  *    are already controlled invidually for the role.  Defaults to NULL.
  *
@@ -816,7 +816,7 @@ function _taxonomy_access_get_descendants($tid) {
  * Delete module configurations for the given role IDs.
  *
  * @param $role_ids
- *   A single role id or an array of role IDs.
+ *   A single role ID or an array of role IDs.
  * @param $in
  *   (optional) Whether to delete the selected roles (TRUE), or all but the 
  *   selected roles (FALSE).  Defaults to TRUE.
@@ -958,7 +958,7 @@ function taxonomy_access_delete_terms($term_ids, $role_ids = NULL) {
  * @param $tid
  *   The term to add the permission for.
  * @param $rid
- *   (optional) The role id to add the permission for.  Defaults to NULL.
+ *   (optional) The role ID to add the permission for.  Defaults to NULL.
  * @param (array) $grants
  *   (optional) A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
@@ -1002,7 +1002,7 @@ function taxonomy_access_set_term_grants($tid, $rid = NULL, array $grants = NULL
  * @param $tid
  *   The term to add the permission for.
  * @param $rid
- *   (optional) The role id to add the permission for.  Defauls to NULL.
+ *   (optional) The role ID to add the permission for.  Defauls to NULL.
  * @param array $grants
  *   (optional) A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
@@ -1049,7 +1049,7 @@ function taxonomy_access_set_recursive_grants($tid, $rid = NULL, array $grants =
  * @param $vid
  *   The vocab to add the permission for.
  * @param $rid
- *   (optional) The role id to add the permission to.  Defaults to NULL.
+ *   (optional) The role ID to add the permission to.  Defaults to NULL.
  * @param (array) $grants
  *   (optional) A hash of the grants in the form of $grants['perm'] = boolean
  *   A value of 1 will grant the permission for this user and term.
@@ -1177,10 +1177,10 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
 }
 
 /**
- * Calculates node access grants by role for the given node id.
+ * Calculates node access grants by role for the given node ID.
  *
  * @param $node_nid
- *   The node id for which to calculate grants.
+ *   The node ID for which to calculate grants.
  *
  * @return
  *    Array formatted for hook_node_access_records().
@@ -1385,13 +1385,13 @@ function taxonomy_access_user_create_defaults() {
 }
 
 /**
- * Check a list of term ids for terms the user may not create.
+ * Check a list of term IDs for terms the user may not create.
  *
  * @param array $tids
- *   The array of term ids.
+ *   The array of term IDs.
  *
  * @return
- *   An array of disallowed term ids.
+ *   An array of disallowed term IDs.
  */
 function taxonomy_access_create_disallowed(array $tids) {
   $all_allowed = taxonomy_access_user_create_terms();
@@ -1405,13 +1405,13 @@ function taxonomy_access_create_disallowed(array $tids) {
 }
 
 /**
- * Filter a list of term ids to terms the user may create.
+ * Filter a list of term IDs to terms the user may create.
  *
  * @param array $tids
- *   The array of term ids.
+ *   The array of term IDs.
  *
  * @return
- *   An array of disallowed term ids.
+ *   An array of disallowed term IDs.
  */
 function taxonomy_access_create_allowed(array $tids) {
   $all_allowed = taxonomy_access_user_create_terms();
@@ -1425,13 +1425,13 @@ function taxonomy_access_create_allowed(array $tids) {
 }
 
 /**
- * Filter a list of vocab ids to those in which the user may create by default.
+ * Filter a list of vocab IDs to those in which the user may create by default.
  *
  * @param array $vids
- *   The array of vocabulary ids.
+ *   The array of vocabulary IDs.
  *
  * @return
- *   An array of disallowed vocabulary ids.
+ *   An array of disallowed vocabulary IDs.
  */
 function taxonomy_access_create_default_allowed(array $vids) {
   $all_allowed = taxonomy_access_user_create_defaults();
@@ -1492,7 +1492,7 @@ function _taxonomy_access_user_term_grants($create = FALSE, array $vids = array(
       ;
   }
 
-  // Fetch term ids.
+  // Fetch term IDs.
   $r = $query->execute()->fetchAll();
   $tids = array();
 
@@ -1550,7 +1550,7 @@ function _taxonomy_access_create_defaults($account = NULL) {
     ->condition('tadg.rid', array_keys($account->roles), 'IN')
     ;
 
-  // Fetch term ids.
+  // Fetch term IDs.
   $r = $query->execute()->fetchAll();
   $vids = array();
 
@@ -1915,7 +1915,7 @@ function _taxonomy_access_compare_fields($new, $old = FALSE) {
  */
 function _taxonomy_access_disallowed_changes(array $new_field, array $old_field) {
 
-  // Assemble a list of term ids from the original entity, if any.
+  // Assemble a list of term IDs from the original entity, if any.
   $old_tids = array();
   foreach ($old_field as $old_item) {
     // Some things are NULL for some reason.
@@ -1924,7 +1924,7 @@ function _taxonomy_access_disallowed_changes(array $new_field, array $old_field)
     }
   }
 
-  // Assemble a list of term ids from the updated entity.
+  // Assemble a list of term IDs from the updated entity.
   $new_tids = array();
   foreach ($new_field as $delta => $new_item) {
     // Some things are NULL for some reason.

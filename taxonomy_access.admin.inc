@@ -12,7 +12,7 @@
  *   (optional) The operation to perform, if any.  Defaults to NULL.
  *   Options are 'edit' or 'delete' (access rules for the role).
  * @param $rid
- *   (optional) The role id of the role to configure.  Defaults to NULL.
+ *   (optional) The role ID of the role to configure.  Defaults to NULL.
  * @param $arg
  *   (optional) Additional arguments.  Defaults to NULL.  (Not used.)
  *
@@ -81,7 +81,7 @@ function theme_taxonomy_access_admin() {
  * Form callback to delete all access rules for a particular role.
  *
  * @param $rid
- *   The role id to disable.
+ *   The role ID to disable.
  */
 function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
   if (is_numeric($rid)
@@ -168,7 +168,7 @@ function taxonomy_access_admin_build_row(array $grants = NULL) {
  * Form for managing grants by role.
  *
  * @param $rid
- *   (optional) The role id.  Defaults to NULL.
+ *   (optional) The role ID.  Defaults to NULL.
  */
 function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
   // Preserve the original state of the list flag.
