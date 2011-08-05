@@ -231,6 +231,20 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
     }
   }
 
+  // Role config tests:
+  // Create a role
+  // Create a user with the role
+  // Configure role grants via form
+  // Add, with children, delete
+  // Confirm records stored
+  // Confirm node access properly updated
+  // Go back and edit, repeat.
+  // Disable role.
+  // Confirm form.
+  // Update node access if prompted.
+  // Confirm records deleted.
+  // Confirm node access updated.
+
 }
 
 
