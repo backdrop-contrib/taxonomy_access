@@ -245,6 +245,18 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
   // Confirm records deleted.
   // Confirm node access updated.
 
+  /*
+1. delete a term
+2. change a grant config
+3. delete a grant config
+4. change a vocab default
+5. delete a voacb default
+6. disable a role
+7. delete a role
+8. delete a field attachment
+9. delete a vocabulary
+  */
+
 }
 
 
