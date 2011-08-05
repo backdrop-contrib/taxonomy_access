@@ -857,10 +857,6 @@ function taxonomy_access_delete_roles($role_ids, $in = TRUE) {
  *   Should we return something?
  */
 function taxonomy_access_delete_defaults($vocab_ids, $role_ids = NULL) {
-  if (empty($vocab_ids)) {
-    return;
-  }
-
   // Accept either a single vocabulary ID or an array thereof.
   if (is_numeric($vocab_ids)) {
     $vocab_ids = array($vocab_ids);
@@ -910,10 +906,6 @@ function taxonomy_access_delete_defaults($vocab_ids, $role_ids = NULL) {
  *   Should we return something?
  */
 function taxonomy_access_delete_terms($term_ids, $role_ids = NULL) {
-  if (empty($term_ids)) {
-    return;
-  }
-
   // Accept either a single term ID or an array thereof.
   if (is_numeric($term_ids)) {
     $term_ids = array($term_ids);
