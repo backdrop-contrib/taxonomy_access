@@ -110,7 +110,7 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
           // all uncontrolled nodes, so flag node access for rebuild.
           _taxonomy_access_flag_rebuild();
         }
-        taxonomy_access_delete_roles($rid);
+        taxonomy_access_delete_role_grants($rid);
         if (!empty($affected_nodes)) {
           taxonomy_access_affected_nodes($affected_nodes);
         }
@@ -394,7 +394,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
         }
 
         if (!empty($disable_tids)) {
-          taxonomy_access_delete_terms($disable_tids, $values['rid']);
+          taxonomy_access_delete_term_grants($disable_tids, $values['rid']);
           unset($affected_nodes);
           unset($disable_tids);
         }
@@ -410,7 +410,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
 
         if (!empty($disable_vids)) {
           $affected_nodes =
-          taxonomy_access_delete_defaults($disable_vids, $values['rid']);
+          taxonomy_access_delete_default_grants($disable_vids, $values['rid']);
           unset($affected_nodes);
           unset($disable_tids);
         }

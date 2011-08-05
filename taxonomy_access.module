@@ -56,7 +56,7 @@ function taxonomy_access_enable() {
 
   // Delete any records for roles not in {roles}.
   $roles = _taxonomy_access_user_roles();
-  taxonomy_access_delete_roles(array_keys($roles), FALSE);
+  taxonomy_access_delete_role_grants(array_keys($roles), FALSE);
   unset($roles);
 
   // Delete any term configurations not in {taxonomy_term_data}.
@@ -70,7 +70,7 @@ function taxonomy_access_enable() {
     ->fetchCol()
     ;
 
-  taxonomy_access_delete_terms($term_ids);
+  taxonomy_access_delete_term_grants($term_ids);
   unset($term_ids);
 
   // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
@@ -84,7 +84,7 @@ function taxonomy_access_enable() {
     ->fetchCol()
     ;
 
-  taxonomy_access_delete_defaults($vocab_ids);
+  taxonomy_access_delete_default_grants($vocab_ids);
   unset($vocab_ids);
 }
 
@@ -163,21 +163,21 @@ function taxonomy_access_admin_paths() {
  * Implements hook_user_role_delete().
  */
 function taxonomy_access_user_role_delete($role) {
-  taxonomy_access_delete_roles($role->rid);
+  taxonomy_access_delete_role_grants($role->rid);
 }
 
 /**
  * Implements hook_taxonomy_vocabulary_delete().
  */
 function taxonomy_access_taxonomy_vocabulary_delete($vocab) {
-  taxonomy_access_delete_defaults($vocab->vid);
+  taxonomy_access_delete_default_grants($vocab->vid);
 }
 
 /**
  * Implements hook_taxonomy_term_delete().
  */
 function taxonomy_access_taxonomy_term_delete($term) {
-  taxonomy_access_delete_terms($term->tid);
+  taxonomy_access_delete_term_grants($term->tid);
 }
 
 /**
@@ -826,7 +826,7 @@ function _taxonomy_access_get_descendants($tid) {
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_roles($role_ids, $in = TRUE) {
+function taxonomy_access_delete_role_grants($role_ids, $in = TRUE) {
   // Accept either a single role ID or an array thereof.
   if (is_numeric($role_ids)) {
     $role_ids = array($role_ids);
@@ -856,7 +856,7 @@ function taxonomy_access_delete_roles($role_ids, $in = TRUE) {
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_defaults($vocab_ids, $role_ids = NULL) {
+function taxonomy_access_delete_default_grants($vocab_ids, $role_ids = NULL) {
   // Accept either a single vocabulary ID or an array thereof.
   if (is_numeric($vocab_ids)) {
     $vocab_ids = array($vocab_ids);
@@ -905,7 +905,7 @@ function taxonomy_access_delete_defaults($vocab_ids, $role_ids = NULL) {
  * @todo
  *   Should we return something?
  */
-function taxonomy_access_delete_terms($term_ids, $role_ids = NULL) {
+function taxonomy_access_delete_term_grants($term_ids, $role_ids = NULL) {
   // Accept either a single term ID or an array thereof.
   if (is_numeric($term_ids)) {
     $term_ids = array($term_ids);
@@ -982,7 +982,7 @@ function taxonomy_access_set_term_grants($tid, $rid = NULL, array $grants = NULL
     }
   }
 
-  taxonomy_access_delete_terms($tid, $rid);
+  taxonomy_access_delete_term_grants($tid, $rid);
 
   // Insert new entries.
   drupal_write_record('taxonomy_access_term', $row);
@@ -1079,7 +1079,7 @@ function taxonomy_access_set_default_grants($vid, $rid = NULL, array $grants = N
   }
 
   // Delete old entries.
-  taxonomy_access_delete_defaults($vid, $rid);
+  taxonomy_access_delete_default_grants($vid, $rid);
 
   // Insert new entries.
   drupal_write_record('taxonomy_access_default', $row);
