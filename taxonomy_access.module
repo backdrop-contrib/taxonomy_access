@@ -683,6 +683,10 @@ function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
     $vocab_ids = array($vocab_ids);
   }
 
+  if (empty($vocab_ids)) {
+    return FALSE;
+  }
+
   if (!is_null($rid)) {
     // Get terms in the vocabularies that are controlled for this role.
     $tids =
@@ -733,6 +737,10 @@ function _taxonomy_access_get_nodes_for_terms($term_ids, $get_children = FALSE) 
   // Accept either a single term ID or an array thereof.
   if (is_numeric($term_ids)) {
     $term_ids = array($term_ids);
+  }
+
+  if (empty($term_ids)) {
+    return FALSE;
   }
 
   $nids =
@@ -832,6 +840,10 @@ function taxonomy_access_delete_role_grants($role_ids, $in = TRUE) {
     $role_ids = array($role_ids);
   }
 
+  if (empty($role_ids)) {
+    return FALSE;
+  }
+
   $condition = $in ? 'IN' : 'NOT IN';
 
   db_delete('taxonomy_access_term')
@@ -860,6 +872,10 @@ function taxonomy_access_delete_default_grants($vocab_ids, $role_ids = NULL) {
   // Accept either a single vocabulary ID or an array thereof.
   if (is_numeric($vocab_ids)) {
     $vocab_ids = array($vocab_ids);
+  }
+
+  if (empty($vocab_ids)) {
+    return FALSE;
   }
 
   // Accept either a single role ID or an array thereof.
@@ -909,6 +925,10 @@ function taxonomy_access_delete_term_grants($term_ids, $role_ids = NULL) {
   // Accept either a single term ID or an array thereof.
   if (is_numeric($term_ids)) {
     $term_ids = array($term_ids);
+  }
+
+  if (empty($term_ids)) {
+    return FALSE;
   }
 
   // Accept either a single role ID or an array thereof.
