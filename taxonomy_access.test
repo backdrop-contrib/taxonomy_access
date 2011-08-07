@@ -5,9 +5,11 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   // There are four types of users: 
   // site admins, taxonomy admins, content editors, and regular users.
   protected $users = array();
+  protected $user_roles = array();
   protected $user_config = array(
     'site_admin' => array(
       'access content',
+      'access administration pages',
       'administer permissions',
       'create page content',
       'edit any page content',
@@ -31,9 +33,33 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
     // Enable module and dependencies.
     parent::setUp('taxonomy_access');
 
+    // Rebuild node access on installation.
+    node_access_rebuild();
+
     // Configure users with base permission patterns.
     foreach ($this->user_config as $user => $permissions) {
       $this->users[$user] = $this->drupalCreateUser($permissions);
+
+      // Save the role ID separately so it's easy to retrieve.
+      foreach ($this->users[$user]->roles as $rid => $role) {
+        if ($rid != DRUPAL_AUTHENTICATED_RID) {
+          $this->user_roles[$user] = user_role_load($rid);
+        }
+      }
+    }
+
+    // Give the anonymous and authenticated roles deny grants.
+    foreach (array(DRUPAL_ANONYMOUS_RID, DRUPAL_AUTHENTICATED_RID) as $rid) {
+      $deny = array('grant_view' => 2, 'grant_update' => 2, 'grant_delete' => 2);
+      taxonomy_access_set_default_grants(0, $rid, $deny);
+      $r = 
+        db_query(
+          'SELECT * FROM {taxonomy_access_default} 
+                   WHERE vid = 0 AND rid = :rid', 
+          array(':rid' => $rid)
+        )
+        ->fetchObject();
+      $this->assertTrue(TRUE, t("Set global default for role %rid to <em>Deny</em>", array('%rid' => $rid)));
     }
   }
 
@@ -52,7 +78,6 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
     $vocabulary->description = $this->randomName();
     $vocabulary->machine_name = $machine_name;
     $vocabulary->help = '';
-//    $vocabulary->nodes = array('article' => 'article');
     $vocabulary->weight = mt_rand(0, 10);
     taxonomy_vocabulary_save($vocabulary);
     return $vocabulary;
@@ -178,11 +203,21 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
       $this->vocabs[$vocab_name]['terms'] = array();
       $vocab = $this->vocabs[$vocab_name]['vocab'];
 
+      // Add a field for the vocabulary to pages.
+      $this->createField($vocab_name);
+
       // Configure default grants for the vocabulary for each role.
       if (!empty($default_grants)) {
-        foreach ($this->roles as $role) {
-          // Old code
-          // _insert_grant_record($vocab_id, $rid, $default_grants, TRUE);
+        foreach ($this->roles as $name => $role) {
+          taxonomy_access_set_default_grants($vocab->vid, $role, $default_grants);
+          $r = 
+            db_query(
+              'SELECT * FROM {taxonomy_access_default} 
+               WHERE vid = :vid AND rid = :rid', 
+              array(':vid' => $vocab->vid, ':rid' => $role)
+            )
+            ->fetchObject();
+          $this->assertTrue($r, t('Configured default grants for vocab %vocab, role %role', array('%vocab' => $vocab->machine_name, '%role' => $name)));
         }
       }
 
@@ -197,9 +232,16 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
 
         // Configure grants for the parent term for each role.
         if (!empty($parent_grants)) {
-          foreach ($this->roles as $role) {
-            // Old code
-            // _insert_grant_record($term_id, $rid, $parent_grants);
+          foreach ($this->roles as $name => $role) {
+            taxonomy_access_set_term_grants($parent_id, $role, $parent_grants);
+            $r = 
+              db_query(
+                'SELECT * FROM {taxonomy_access_term} 
+                 WHERE tid = :tid AND rid = :rid', 
+                array(':tid' => $parent_id, ':rid' => $role)
+              )
+              ->fetchObject();
+            $this->assertTrue($r, t('Configured grants for term %term, role %role', array('%term' => $parent_name, '%role' => $name)));
           }
         }
 
@@ -211,10 +253,17 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
           $child_id = $this->vocabs[$vocab_name]['terms'][$child_name]->tid;
 
           // Configure grants for the child term for each role.
-          if (!empty($parent_grants)) {
-            foreach ($this->roles as $role) {
-              // Old code
-              // _insert_grant_record($term_id, $rid, $child_grants);
+          if (!empty($child_grants)) {
+            foreach ($this->roles as $name => $role) {
+              taxonomy_access_set_term_grants($child_id, $role, $parent_grants);
+              $r = 
+                db_query(
+                  'SELECT * FROM {taxonomy_access_term} 
+                   WHERE tid = :tid AND rid = :rid', 
+                  array(':tid' => $child_id, ':rid' => $role)
+                )
+                ->fetchObject();
+              $this->assertTrue(TRUE, t('Configured grants for term %term, role %role', array('%term' => $child_name, '%role' => $name)));
             }
           }
         }
