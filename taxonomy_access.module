@@ -727,7 +727,7 @@ function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
  * @param $term_ids
  *    A single term ID or anarray of term IDs.
  * @param $get_children
- *    (optional) Whether to recursively get nodes tagged with the term's 
+ *    (optional) Whether to recursively get nodes tagged with the term's
  *    children as well.  Defaults to FALSE.
  *
  * @return
@@ -826,7 +826,7 @@ function _taxonomy_access_get_descendants($tid) {
  * @param $role_ids
  *   A single role ID or an array of role IDs.
  * @param $in
- *   (optional) Whether to delete the selected roles (TRUE), or all but the 
+ *   (optional) Whether to delete the selected roles (TRUE), or all but the
  *   selected roles (FALSE).  Defaults to TRUE.
  *
  * @todo
@@ -1339,7 +1339,7 @@ function taxonomy_access_user_list_terms() {
  * Retrieve terms that the current user may create.
  *
  * @see
- *   taxonomy_access_user_create_terms_by_vocab() 
+ *   taxonomy_access_user_create_terms_by_vocab()
  * @see
  *    _taxonomy_access_user_term_grants()
  *
@@ -1362,7 +1362,7 @@ function taxonomy_access_user_create_terms() {
  *   A vid to use as a filter.
  *
  * @see
- *   taxonomy_access_user_create_terms() 
+ *   taxonomy_access_user_create_terms()
  * @see
  *   _taxonomy_access_user_term_grants()
  *
@@ -1465,7 +1465,7 @@ function taxonomy_access_create_default_allowed(array $vids) {
  * @param array $vids
  *   (optional) An array of vids to limit the query.  Defaults to array().
  * @param $account
- *   (optional) The account for which to retrieve grants.  If no account is 
+ *   (optional) The account for which to retrieve grants.  If no account is
  *   passed, the current user will be used.  Defaults to NULL.
  *
  * @return
@@ -1535,7 +1535,7 @@ function _taxonomy_access_user_term_grants($create = FALSE, array $vids = array(
  * Retrieve vocabularies in which the current user may create terms.
  *
  * @param $account
- *   (optional) The account for which to retrieve grants.  If no account is 
+ *   (optional) The account for which to retrieve grants.  If no account is
  *   passed, the current user will be used.  Defaults to NULL.
  *
  * @return
@@ -1791,7 +1791,7 @@ function _taxonomy_access_form_extract_entity($form_state) {
  * @see
  *   http://drupal.org/node/1220168
  */
-function _taxonomy_access_entity_fields($entity_type, $entity, $bundle) {  
+function _taxonomy_access_entity_fields($entity_type, $entity, $bundle) {
   // Maintain separate lists of field names and langcodes for quick comparison.
   $fields = array();
   $fields['field_list'] = array();
@@ -1842,16 +1842,16 @@ function _taxonomy_access_entity_fields($entity_type, $entity, $bundle) {
  * Helper function to compare field values and look for disallowed changes.
  *
  * @param $new
- *   An associative array of the updated field information as returned by 
+ *   An associative array of the updated field information as returned by
  *   _taxonomy_access_entity_fields().
  * @param $old
- *   (optional) An associative array of the original field information, 
+ *   (optional) An associative array of the original field information,
  *   or FALSE if there is no original field data.  Defaults to FALSE.
  *
  * @return
  *   An array of disallowed changes, with the structure:
  *   - $field_name: An associative array keyed by langcode.
- *     - $langcode: Disallowed changes for this field name and langcode, 
+ *     - $langcode: Disallowed changes for this field name and langcode,
  *       or FALSE if none.
  *       - 'added' => An array of added terms that are disallowed.
  *       - 'removed' => An array of removed termss that are disallowed.
@@ -1887,12 +1887,12 @@ function _taxonomy_access_compare_fields($new, $old = FALSE) {
     foreach ($all_fields as $field_name) {
       foreach ($all_langcodes as $langcode) {
         $new_values = array();
-        if (isset($new['field_list'][$field_name]) 
+        if (isset($new['field_list'][$field_name])
           && isset($new['data'][$field_name][$langcode])) {
           $new_values = $new['data'][$field_name][$langcode];
         }
         $old_values = array();
-        if (isset($old['field_list'][$field_name]) 
+        if (isset($old['field_list'][$field_name])
           && isset($old['data'][$field_name][$langcode])) {
           $old_values = $old['data'][$field_name][$langcode];
         }

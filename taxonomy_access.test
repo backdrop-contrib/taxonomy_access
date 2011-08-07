@@ -1,7 +1,7 @@
 <?php
 class TaxonomyAccessTestCase extends DrupalWebTestCase {
 
-  // There are four types of users: 
+  // There are four types of users:
   // site admins, taxonomy admins, content editors, and regular users.
   protected $users = array();
   protected $user_roles = array();
@@ -55,10 +55,10 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
         'grant_delete' => 0
       );
       taxonomy_access_set_default_grants(0, $rid, $ignore);
-      $r = 
+      $r =
         db_query(
-          'SELECT grant_view FROM {taxonomy_access_default} 
-           WHERE vid = 0 AND rid = :rid', 
+          'SELECT grant_view FROM {taxonomy_access_default}
+           WHERE vid = 0 AND rid = :rid',
           array(':rid' => $rid)
         )
         ->fetchField();
@@ -101,7 +101,7 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
     $term->name = $machine_name;
     $term->description = $machine_name;
     // Use the first available text format.
-    $term->format = 
+    $term->format =
       db_query_range('SELECT format FROM {filter_format}', 0, 1)->fetchField();
     $term->vid = $vocab->vid;
     $term->vocabulary_machine_name = $vocab->machine_name;
@@ -120,7 +120,7 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
    * @param $widget
    *   (optional) The name of the widget to use.  Defaults to 'options_select'.
    * @param $count
-   *   (optional) The allowed number of values.  Defaults to unlimited. 
+   *   (optional) The allowed number of values.  Defaults to unlimited.
    */
   function createField($machine_name, $widget = 'options_select', $count = FIELD_CARDINALITY_UNLIMITED) {
     $field = array(
@@ -382,10 +382,10 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->assertUniqueText('disable', t('There is only one disable link.'));
 
     // Check that the role is configured.
-    $r = 
+    $r =
       db_query(
-        'SELECT grant_view FROM {taxonomy_access_default} 
-         WHERE vid = 0 AND rid = :rid', 
+        'SELECT grant_view FROM {taxonomy_access_default}
+         WHERE vid = 0 AND rid = :rid',
         array(':rid' => $rid)
       )
       ->fetchField();
@@ -423,12 +423,12 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Click the link to rebuild node access.
     // Eventually we should avoid the need for this.
     $this->rebuild();
-      
+
     // Check that the role is no longer configured.
-    $r = 
+    $r =
       db_query(
-        'SELECT grant_view FROM {taxonomy_access_default} 
-         WHERE vid = 0 AND rid = :rid', 
+        'SELECT grant_view FROM {taxonomy_access_default}
+         WHERE vid = 0 AND rid = :rid',
         array(':rid' => $rid)
       )
       ->fetchField();
@@ -543,10 +543,10 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
       if (!empty($default_grants)) {
         foreach ($this->roles as $name => $role) {
           taxonomy_access_set_default_grants($vocab->vid, $role, $default_grants);
-          $r = 
+          $r =
             db_query(
-              'SELECT * FROM {taxonomy_access_default} 
-               WHERE vid = :vid AND rid = :rid', 
+              'SELECT * FROM {taxonomy_access_default}
+               WHERE vid = :vid AND rid = :rid',
               array(':vid' => $vocab->vid, ':rid' => $role)
             )
             ->fetchObject();
@@ -558,8 +558,8 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
       foreach ($grant_types as $parent_name => $parent_grants) {
 
         // Create parent term.
-        $parent_name = $vocab_name . "__" . $parent_name . "_parent"; 
-        $this->vocabs[$vocab_name]['terms'][$parent_name] = 
+        $parent_name = $vocab_name . "__" . $parent_name . "_parent";
+        $this->vocabs[$vocab_name]['terms'][$parent_name] =
           parent::createTerm($parent_name, $vocab);
         $parent_id = $this->vocabs[$vocab_name]['terms'][$parent_name]->tid;
 
@@ -567,10 +567,10 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
         if (!empty($parent_grants)) {
           foreach ($this->roles as $name => $role) {
             taxonomy_access_set_term_grants($parent_id, $role, $parent_grants);
-            $r = 
+            $r =
               db_query(
-                'SELECT * FROM {taxonomy_access_term} 
-                 WHERE tid = :tid AND rid = :rid', 
+                'SELECT * FROM {taxonomy_access_term}
+                 WHERE tid = :tid AND rid = :rid',
                 array(':tid' => $parent_id, ':rid' => $role)
               )
               ->fetchObject();
@@ -580,8 +580,8 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
 
         // Create child terms.
         foreach ($grant_types as $child_name => $child_grants) {
-          $child_name = $parent_name . "__" . $child_name . "_child"; 
-          $this->vocabs[$vocab_name]['terms'][$child_name] = 
+          $child_name = $parent_name . "__" . $child_name . "_child";
+          $this->vocabs[$vocab_name]['terms'][$child_name] =
             parent::createTerm($child_name, $vocab, $parent_id);
           $child_id = $this->vocabs[$vocab_name]['terms'][$child_name]->tid;
 
@@ -589,10 +589,10 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
           if (!empty($child_grants)) {
             foreach ($this->roles as $name => $role) {
               taxonomy_access_set_term_grants($child_id, $role, $parent_grants);
-              $r = 
+              $r =
                 db_query(
-                  'SELECT * FROM {taxonomy_access_term} 
-                   WHERE tid = :tid AND rid = :rid', 
+                  'SELECT * FROM {taxonomy_access_term}
+                   WHERE tid = :tid AND rid = :rid',
                   array(':tid' => $child_id, ':rid' => $role)
                 )
                 ->fetchObject();
