@@ -48,18 +48,22 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
       }
     }
 
-    // Give the anonymous and authenticated roles deny grants.
+    // Give the anonymous and authenticated roles ignore grants.
     foreach (array(DRUPAL_ANONYMOUS_RID, DRUPAL_AUTHENTICATED_RID) as $rid) {
-      $deny = array('grant_view' => 2, 'grant_update' => 2, 'grant_delete' => 2);
-      taxonomy_access_set_default_grants(0, $rid, $deny);
+      $ignore = array(
+        'grant_view' => 0,
+        'grant_update' => 0,
+        'grant_delete' => 0
+      );
+      taxonomy_access_set_default_grants(0, $rid, $ignore);
       $r = 
         db_query(
-          'SELECT * FROM {taxonomy_access_default} 
-                   WHERE vid = 0 AND rid = :rid', 
+          'SELECT grant_view FROM {taxonomy_access_default} 
+           WHERE vid = 0 AND rid = :rid', 
           array(':rid' => $rid)
         )
-        ->fetchObject();
-      $this->assertTrue(TRUE, t("Set global default for role %rid to <em>Deny</em>", array('%rid' => $rid)));
+        ->fetchField();
+      $this->assertTrue($r == 0, t("Set global default for role %rid to <em>Ignore</em>", array('%rid' => $rid)));
     }
   }
 
