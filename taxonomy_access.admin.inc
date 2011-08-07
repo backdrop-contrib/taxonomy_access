@@ -93,7 +93,43 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
        WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
       ->fetchAssoc();
     if ($role_global_default) {
-      if ($_POST['confirm']) {
+      $form['rid'] = array(
+        '#type' => 'value',
+        '#value' => $rid,
+      );
+
+      return confirm_form($form,
+        t('Are you sure you want to delete all grant rules for role %rid?',
+          array('%rid' => $rid)),
+        TAXONOMY_ACCESS_CONFIG,
+        t('This action cannot be undone.'),
+        t('Delete all'),
+        t('Cancel'));
+    }
+  }
+
+  return drupal_not_found();
+}
+
+/**
+ * Form callback to delete all access rules for a particular role.
+ *
+ * @param $rid
+ *   The role id to disable.
+ */
+function taxonomy_access_admin_delete_role_submit($form, $form_state) {
+  $rid = $form_state['values']['rid'];
+
+  if (is_numeric($rid)
+      && $rid != DRUPAL_ANONYMOUS_RID
+      && $rid != DRUPAL_AUTHENTICATED_RID) {
+    $role_global_default = db_query(
+      'SELECT grant_view, grant_update, grant_delete
+       FROM {taxonomy_access_default}
+       WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
+      ->fetchAssoc();
+    if ($role_global_default) {
+      if ($form_state['values']['confirm']) {
 
         // Compare this role's global default node access to auth user role.
         $auth_global_default = db_query(
@@ -119,22 +155,8 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
             array('%rid' => $rid)));
         drupal_goto(TAXONOMY_ACCESS_CONFIG);
       }
-
-      else {
-        return confirm_form($form,
-          t('Are you sure you want to delete all grant rules for role %rid?',
-            array('%rid' => $rid)),
-          TAXONOMY_ACCESS_CONFIG,
-          t('This action cannot be undone.'),
-          t('Delete all'),
-          t('Cancel'));
-      }
-
-      return;
     }
   }
-
-  return drupal_not_found();
 }
 
 /**

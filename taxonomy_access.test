@@ -342,6 +342,106 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Log in as the administrator.
     $this->drupalLogin($this->users['site_admin']);
   }
+
+  public function testRoleEnableDisable() {
+    // Create an article.
+    $node = $this->createArticle();
+
+    // Save some typing.
+    $rid = $this->user_roles['regular_user']->rid;
+    $name = $this->user_roles['regular_user']->name;
+
+    // Log in as the regular_user.
+    $this->drupalLogin($this->users['regular_user']);
+
+    // Visit the node and assert that access is denied.
+    $this->drupalGet('node/' . $node->nid);
+    $this->assertResponse(403, t('Access to the node is denied.'));
+
+    // Log in as the administrator.
+    $this->drupalLogout();
+    $this->drupalLogin($this->users['site_admin']);
+
+    // Enable TAC for the regular_user role.
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid);
+    $this->assertRaw("<title>Grants for $name", t('Role configuration for regular_user (%name) enabled successfully.', array('%name' => $name)));
+
+    // Update the global default to allow view.
+    $edit = array();
+    $this->configureFormRow($edit, 0, 0, 1);
+    $this->drupalPost(NULL, $edit, 'Save all');
+
+    // Confirm that the edit and disable links appear.
+    $this->checkRoleEditEnable($rid);
+    $this->checkRoleDisable($rid);
+
+    // Confirm that the anon. and auth. links are unaffected.
+    $this->checkConfigAnonAuthLinks();
+
+    // Confirm that there is only one disable link.
+    $this->assertUniqueText('disable', t('There is only one disable link.'));
+
+    // Check that the role is configured.
+    $r = 
+      db_query(
+        'SELECT grant_view FROM {taxonomy_access_default} 
+         WHERE vid = 0 AND rid = :rid', 
+        array(':rid' => $rid)
+      )
+      ->fetchField();
+    $this->assertTrue($r == 1, t('Used form to grant the role %role view in the global default', array('%role' => $name)));
+
+    // We modified a global default; click the link to rebuild node access.
+    // Eventually we should avoid the need for this.
+    $this->rebuild();
+
+    // Log in as the regular_user.
+    $this->drupalLogout();
+    $this->drupalLogin($this->users['regular_user']);
+
+    // Visit the node and assert that access is not denied.
+    $this->drupalGet('node/' . $node->nid);
+    $this->assertResponse(200, t('Access to the node is not denied.'));
+
+    // Log in as the administrator.
+    $this->drupalLogout();
+    $this->drupalLogin($this->users['site_admin']);
+
+    // Disable the role.
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG);
+    $this->clickLink('disable');
+    $this->assertText("Are you sure you want to delete all grant rules for role $rid", t('Disable form for role loaded.'));
+    $this->drupalPost(NULL, array(), 'Delete all');
+
+    // Confirm that a confirmation message appears.
+    $this->assertText("All term access rules deleted for role $rid", t('Confirmation message found.'));
+
+    // Confirm edit/enable/disable links are in their original state.
+    $this->checkConfigAnonAuthLinks();
+    $this->checkConfigCustomRoleLinks();
+
+    // Click the link to rebuild node access.
+    // Eventually we should avoid the need for this.
+    $this->rebuild();
+      
+    // Check that the role is no longer configured.
+    $r = 
+      db_query(
+        'SELECT grant_view FROM {taxonomy_access_default} 
+         WHERE vid = 0 AND rid = :rid', 
+        array(':rid' => $rid)
+      )
+      ->fetchField();
+    $this->assertTrue(empty($r), t('All records removed for role %role.', array('%role' => $name)));
+
+    // Log in as the regular_user.
+    $this->drupalLogout();
+    $this->drupalLogin($this->users['regular_user']);
+
+    // Visit the node and assert that access is again denied.
+    $this->drupalGet('node/' . $node->nid);
+    $this->assertResponse(403, t('Access to the node is denied.'));
+  }
 }
 
 
