@@ -1,5 +1,4 @@
 <?php
-
 class TaxonomyAccessTestCase extends DrupalWebTestCase {
 
   // There are four types of users: 
@@ -182,7 +181,169 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
     $this->drupalPost(NULL, array(), t('Rebuild permissions'));
     $this->assertText(t('The content access permissions have been rebuilt.'));
   }
+
+  /**
+   * Asserts that an enable or edit link is found for the role.
+   *
+   * @param $rid
+   *   The role ID to check.
+   * @param $enable
+   *   (optional) Whether the text should be 'edit' (TRUE) or 'enable' (FALSE).
+   *   Defaults to FALSE.
+   */
+  function checkRoleEditEnable($rid, $enable = FALSE) {
+    $this->assertLinkByHref(
+      TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid,
+      0,
+      t('Edit link is available for role %rid.', array('%rid' => $rid))
+    );
+
+    if ($enable) {
+      $this->assertRaw(
+        TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid . '">enable',
+        t('Link text is "enable" for role %rid.', array('%rid' => $rid))
+      );
+      $this->assertNoRaw(
+        TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid . '">edit',
+        t('Link text is not "edit" for role %rid.', array('%rid' => $rid))
+      );
+    }
+    else {
+      $this->assertRaw(
+        TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid . '">edit',
+        t('Link text is "edit" for role %rid.', array('%rid' => $rid))
+      );
+      $this->assertNoRaw(
+        TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid . '">enable',
+        t('Link text is not "enable" for role %rid.', array('%rid' => $rid))
+      );
+    }
+  }
+
+  /**
+   * Asserts that a disable link is or is not found for the role.
+   *
+   * @param $rid
+   *   The role ID to check.
+   * @param $found
+   *   (optional) Whether the link should be found, or not.  Defaults to TRUE.
+   *   Defaults to FALSE.
+   */
+  function checkRoleDisable($rid, $found = TRUE) {
+    if ($found) {
+      $this->assertLinkByHref(
+        TAXONOMY_ACCESS_CONFIG . '/delete/' . $rid,
+        0,
+        t('Disable link is available for role %rid.', array('%rid' => $rid))
+      );
+      $this->assertRaw(
+        TAXONOMY_ACCESS_CONFIG . '/delete/' . $rid . '">disable',
+        t('Link text is "disable" for role %rid.', array('%rid' => $rid))
+      );
+    }
+    else {
+      $this->assertNoLinkByHref(
+        TAXONOMY_ACCESS_CONFIG . '/delete/' . $rid,
+        t('Disable link is not available for role %rid.', array('%rid' => $rid))
+      );
+      $this->assertNoRaw(
+        TAXONOMY_ACCESS_CONFIG . '/delete/' . $rid . '">disable',
+        t('There is no link text "disable" for role %rid.', array('%rid' => $rid))
+      );
+    }
+  }
+
+  /**
+   * Configures a row on the TAC configuration form.
+   *
+   * @param &$edit
+   *   The form data to post.
+   * @param $vid
+   *   (optional) The vocabulary ID.  Defaults to 0 (global default).
+   * @param $tid
+   *   (optional) The term ID.  Defaults to 0 (vocabulary default).
+   * @param $view
+   *   (optional) The view grant value (1, 0, or 2). Defaults to 0 (ignore).
+   * @param $update
+   *   (optional) The update grant value (1, 0, or 2). Defaults to 0 (ignore).
+   * @param $delete
+   *   (optional) The delete grant value (1, 0, or 2). Defaults to 0 (ignore).
+   * @param $create
+   *   (optional) The create grant value (0 or 1). Defaults to 0 (unchecked).
+   * @param $list
+   *   (optional) The list grant value  (0 or 1). Defaults to 1 (checked).
+   */
+  function configureFormRow(&$edit,  $vid = 0, $tid = 0, $view = 0, $update = 0, $delete = 0, $create = 0, $list = 1) {
+    $edit["grants[$vid][$tid][view]"] = $view;
+    $edit["grants[$vid][$tid][update]"] = $update;
+    $edit["grants[$vid][$tid][delete]"] = $delete;
+    $edit["grants[$vid][$tid][create]"] = $create;
+    $edit["grants[$vid][$tid][list]"] = $list;
+  }
 }
+
+class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => 'TAC Configuration Tests',
+      'description' => 'Test TAC configuration forms.',
+      'group' => 'Taxonomy Access Control',
+    );
+  }
+
+  public function setUp() {
+    parent::setUp();
+  }
+
+  function checkConfigAnonAuthLinks() {
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG);
+    $this->checkRoleEditEnable(DRUPAL_ANONYMOUS_RID);
+    $this->checkRoleEditEnable(DRUPAL_AUTHENTICATED_RID);
+    $this->checkRoleDisable(DRUPAL_ANONYMOUS_RID, FALSE);
+    $this->checkRoleDisable(DRUPAL_AUTHENTICATED_RID, FALSE);
+  }
+
+  function checkConfigCustomRoleLinks() {
+    foreach ($this->user_roles as $role) {
+      $this->checkRoleEditEnable($role->rid, TRUE);
+      $this->checkRoleDisable($role->rid, FALSE);
+    }
+  }
+
+  public function testConfigLinks() {
+    // Log in as the administrator.
+    $this->drupalLogin($this->users['site_admin']);
+
+    // Confirm that only edit links are available for anon. and auth.
+    $this->checkConfigAnonAuthLinks();
+
+    // Confirm that only enable links are available for our four custom roles.
+    $this->checkConfigCustomRoleLinks();
+  }
+
+  public function testGlobalDefaultConfig() {
+    // Create an article with no terms.
+    $node_1 = $this->createArticle();
+
+    // Create an article with a random term.
+    $node_2 = $this->createArticle($this->randomName());
+
+    // Create an article with two random terms.
+    $node_3 = $this->createArticle($this->randomName() . ", " . $this->randomName());
+
+    // Visit all three nodes and assert that access is denied.
+    $this->drupalGet('node/' . $node_1->nid);
+    $this->assertResponse(403, t('Access to node 1 is denied.'));
+    $this->drupalGet('node/' . $node_2->nid);
+    $this->assertResponse(403, t('Access to node 2 is denied.'));
+    $this->drupalGet('node/' . $node_3->nid);
+    $this->assertResponse(403, t('Access to node 3 is denied.'));
+
+    // Log in as the administrator.
+    $this->drupalLogin($this->users['site_admin']);
+  }
+}
+
 
 class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
 
