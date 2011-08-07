@@ -109,8 +109,76 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
     return $term;
   }
 
-}
+  /**
+   * Creates a taxonomy field and adds it to the page content type.
+   *
+   * @param $machine_name
+   *   The machine name of the vocabulary to use.
+   * @param $widget
+   *   (optional) The name of the widget to use.  Defaults to 'options_select'.
+   * @param $count
+   *   (optional) The allowed number of values.  Defaults to unlimited. 
+   */
+  function createField($machine_name, $widget = 'options_select', $count = FIELD_CARDINALITY_UNLIMITED) {
+    $field = array(
+      'field_name' => $machine_name,
+      'type' => 'taxonomy_term_reference',
+      'cardinality' => $count,
+      'settings' => array(
+        'allowed_values' => array(
+          array(
+            'vocabulary' => $machine_name,
+            'parent' => 0,
+          ),
+        ),
+      ),
+    );
+    $field = field_create_field($field);
 
+    $instance = array(
+      'field_name' => $machine_name,
+      'bundle' => 'article',
+      'entity_type' => 'node',
+      'widget' => array(
+        'type' => $widget,
+      ),
+      'display' => array(
+        'default' => array(
+          'type' => 'taxonomy_term_reference_link',
+        ),
+      ),
+    );
+
+    return field_create_instance($instance);
+  }
+
+  /**
+   * Creates an article with the specified terms.
+   *
+   * @param $terms
+   *   An autocomplete-style string of terms to set.
+   *
+   * @return
+   *   The node object.
+   */
+  function createArticle($terms = '') {
+    $settings = array(
+      'type' => 'article',
+      'tags' => $terms,
+    );
+
+    return $this->drupalCreateNode($settings);
+  }
+
+  /**
+   * Submits the node access rebuild form.
+   */
+  function rebuild() {
+    $this->clickLink('Rebuild permissions');
+    $this->drupalPost(NULL, array(), t('Rebuild permissions'));
+    $this->assertText(t('The content access permissions have been rebuilt.'));
+  }
+}
 
 class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
 
