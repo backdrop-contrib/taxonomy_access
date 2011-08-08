@@ -282,6 +282,30 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   }
 }
 
+class TaxonomyAccessExternalChanges extends TaxonomyAccessTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => 'TAC External Change Tests',
+      'description' => "Test TAC's response to changes from other modules.",
+      'group' => 'Taxonomy Access Control',
+    );
+  }
+
+  public function setUp() {
+    parent::setUp();
+  }
+
+  /*
+1. delete a term
+2. delete a role
+3. delete a field attachment
+4. modify a field attachment
+5. delete a vocabulary
+6. add terms to node
+7. remove terms from node
+  */
+}
+
 class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   public static function getInfo() {
     return array(
@@ -294,6 +318,15 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   public function setUp() {
     parent::setUp();
   }
+
+
+/*
+1. change a grant config
+2. delete a grant config
+3. change a vocab default
+4. delete a voacb default
+5. enable/disable a role
+ */
 
   function checkConfigAnonAuthLinks() {
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG);
