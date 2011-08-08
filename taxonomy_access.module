@@ -219,7 +219,7 @@ function taxonomy_access_field_info_alter(&$info) {
  * Implements hook_field_attach_validate().
  *
  * For form validation:
- *   @see _taxonomy_access_pre_validate()
+ *   @see taxonomy_access_options_validate()
  *   @see taxonomy_access_autocomplete_validate()
  *
  * @todo
@@ -317,7 +317,7 @@ function taxonomy_access_field_attach_delete($entity_type, $entity) {
 function taxonomy_access_query_term_access_alter($query) {
 
   // Take no action while the list op is disabled.
-  if (taxonomy_access_disable_list()) {
+  if (!taxonomy_access_list_enabled()) {
     return;
   }
 
@@ -329,7 +329,6 @@ function taxonomy_access_query_term_access_alter($query) {
       $alias = $table['alias'];
     }
   }
-
   if (empty($alias)) {
     return;
   }
@@ -354,22 +353,89 @@ function taxonomy_access_query_term_access_alter($query) {
 }
 
 /**
- * Implements hook_form_alter().
+ * Implements hook_field_widget_WIDGET_TYPE_form_alter().
  *
- * We check every form for taxonomy fields, because there is no
- * hook_field_widget_form_alter(). :(
+ * This implements the create grant for autocomplete fields:
+ * 1. Denies access if the user cannot alter the field values.
+ * 2. Determines whether the user can autocreate new terms for the field.
+ * 3. Removes default values disallowed by create.
+ * 4. Adds #2 and #3 to the element so they are available to the validator.
+ * 5. Adds the custom validator.
+ * 6. Sets a custom autocomplete path to filter autocomplete by create.
  *
- * @see
- *   http://drupal.org/node/1204230
- * @see
- *   http://drupal.org/node/1168710
- *
- * Perform several tasks:
- *   - Add validation for create grants.
- *   - For autocomplete fields, override handling to disable list grants.
- *   - For fields with options, disable options the user cannot create.
- *     This is done with jQuery because FAPI does not support attributes for
- *     individual form options.
+ * Some of the logic here is borrowed from taxonomy_autocomplete_validate().
+ */
+function taxonomy_access_field_widget_taxonomy_autocomplete_form_alter(&$element, &$form_state, $context) {
+
+  // Enforce that list grants do not filter the autocomplete.
+  taxonomy_access_disable_list();
+
+  // Collect a list of terms and filter out those disallowed by create.
+  $filtered = array();
+  foreach ($context['items'] as $item) {
+    $filtered[$item['tid']] = $item;
+  }
+  $disallowed_defaults = taxonomy_access_create_disallowed(array_keys($filtered));
+  foreach ($disallowed_defaults as $tid) {
+    unset($filtered[$tid]);
+  }
+
+  // Assemble a list of all vocabularies for the field.
+  $vids = array();
+  foreach ($context['field']['settings']['allowed_values'] as $tree) {
+    if ($vocab = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
+      $vids[] = $vocab->vid;
+    }
+  }
+
+  // Determine whether the user has create for any terms in the given vocabs.
+  $allowed_terms = FALSE;
+  foreach ($vids as $vid) {
+    $terms = taxonomy_access_user_create_terms_by_vocab($vid);
+    if (!empty($terms)) {
+      $allowed_terms = TRUE;
+      break;
+    }
+  }
+
+  // Filter the vids to vocabs in which the user may create new terms.
+  $allowed_vids = taxonomy_access_create_default_allowed($vids);
+
+  // If the field already has the maximum number of values, and all of these
+  // values are disallowed, deny access to the field.
+  if (sizeof($disallowed_defaults) >= $context['field']['cardinality']) {
+    $element['#access'] = FALSE;
+  }    
+
+  // If the user may not create any terms on this field, deny access.
+  if (empty($allowed_vids) && !$allowed_terms) {
+    $element['#access'] = FALSE;
+  }
+
+  // Set the default value from the filtered item list.
+  $element['#default_value'] =
+    taxonomy_access_autocomplete_default_value($filtered);
+
+  // Custom validation.  Set values for the validator indicating:
+  // 1. Whether the user can autocreate terms in this field (vocab. default).
+  // 2. Which tids were removed due to create restrictions.
+  $element['#allow_autocreate'] = empty($allowed_vids) ? FALSE : TRUE;
+  $element['#disallowed_defaults'] = $disallowed_defaults;
+  $element['#element_validate'] = 
+    array('taxonomy_access_autocomplete_validate');
+
+  // Use a custom autocomplete path to filter by create rather than list.
+  $element['#autocomplete_path'] =
+    'taxonomy_access/autocomplete/' . $context['field']['field_name'];
+
+  unset($context);
+
+  // Re-enable list grants.
+  taxonomy_access_enable_list();
+}
+
+/**
+ * Implements hook_field_widget_WIDGET_TYPE_form_alter().
  *
  * @see
  *   http://drupal.org/node/284917
@@ -379,162 +445,72 @@ function taxonomy_access_query_term_access_alter($query) {
  *   http://drupal.org/node/414562
  * @see
  *   http://drupal.org/node/12089
- *
- * @todo
- *   The structure of $form_state['build_info'] differs between entities.
- *   Find a way to make it entity-agnostic.
- * @todo
- *   Is our use of field_language() here correct?
- * @todo
- *   See if we can factor out some of the logic here.
- * @todo
- *   Provide more graceful degradation when JavaScript is disabled.
- * @todo
- *   Follow up when any of the above issues are fixed.
  */
-function taxonomy_access_form_alter(&$form, &$form_state, $form_id) {
-  // Do not handle empty or fieldless forms, nor non-entity forms.
-  if (!is_array($form_state)) {
-    return;
-  }
-  if (empty($form_state['field'])) {
-    return;
-  }
-  if (empty($form['#entity_type'])) {
+function taxonomy_access_field_widget_options_select_form_alter(&$element, &$form_state, $context) {
+  // Only act on taxonomy fields.
+  if ($context['field']['type'] != 'taxonomy_term_reference') {
     return;
   }
 
-  $ac_fields = array();
-  $o_fields = array();
-  $langcodes = array();
+  // Enforce that list grants do not filter our queries.
+  taxonomy_access_disable_list();
 
-  // Find taxonomy fields.
-  foreach ($form_state['field'] as $field_name => $el) {
-    foreach ($el as $langcode => $field) {
-      // Only take action if it is a taxonomy field.
-      if ($field['field']['type'] == 'taxonomy_term_reference') {
+  // Collect a list of terms and determine which are allowed
+  $tids = array_keys($element['#options']);
 
-        // Check for taxonomy autocomplete fields.
-        if ($field['instance']['widget']['type'] == 'taxonomy_autocomplete') {
-          $ac_fields[] = $field_name;
-        }
-        // Check for fields with options.
-        elseif (isset($form[$field_name][$langcode]['#options'])
-          && is_array($form[$field_name][$langcode]['#options'])) {
-          $o_fields[] = $field_name;
-        }
-      }
+  // Ignore the "none" option if present.
+  $key = array_search('_none', $tids);
+  if ($key !== FALSE) {
+    unset($tids[$key]);
+  }
+
+  $allowed_tids = taxonomy_access_create_allowed($tids);
+  $disallowed_tids = taxonomy_access_create_disallowed($tids);
+
+  // If no options are allowed, deny access to the field.
+  if (empty($allowed_tids)) {
+    $element['#access'] = FALSE;
+  }
+
+  // If the field already has the maximum number of values, and all of these
+  // values are disallowed, deny access to the field.
+  $disallowed_defaults = 
+    array_intersect($element['#default_value'], $disallowed_tids);
+  if ($context['field']['cardinality'] != -1) {
+    if (sizeof($disallowed_defaults) >= $context['field']['cardinality']) {
+      $element['#access'] = FALSE;
     }
-  }
-  unset($el);
-  unset($field);
+  }    
 
-  // Proceed only if there are taxonomy fields.
-  if (empty($ac_fields) && empty($o_fields)) {
-    return;
-  }
-
-  // Array for JS settings.
-  $settings = array();
-
-  // Determine the entity type and original entity, if any.
-  $entity_type = $form['#entity_type'];
-  $orig_entity = _taxonomy_access_form_extract_entity($form_state);
-
-  // Get active language codes.
-  $langcodes = array();
-  foreach (array_merge($ac_fields, $o_fields) as $field_name) {
-    $langcodes[$field_name] =
-      field_language($entity_type, $orig_entity, $field_name);
-  }
-
-  // Add our special handling prior to validation.
-  if ($form['#validate'][0] != '_taxonomy_access_pre_validate') {
-    $form['#validate'] = array_merge(
-      array('_taxonomy_access_pre_validate'),
-      $form['#validate']
-    );
-  }
-
-  // Add custom handling to make autocomplete fields work.
-  foreach ($ac_fields as $field_name) {
-    $langcode = $langcodes[$field_name];
-
-    // Override autocomplete handler.
-    $form[$field_name][$langcode]['#autocomplete_path']
-      = 'taxonomy_access/autocomplete/' . $field_name;
-
-    // Override autocomplete validator.
-    $form[$field_name][$langcode]['#element_validate']
-      = array('taxonomy_access_autocomplete_validate');
-
-    // Set default value.
-    if ($orig_entity && isset($orig_entity->{$field_name})) {
-
-      // This structure is used on node forms.
-      if (is_array($orig_entity->{$field_name})
-        && !empty($orig_entity->{$field_name}[$langcode])) {
-        $values = $orig_entity->{$field_name}[$langcode];
-      }
-
-      // This structure is used on user forms.
-      elseif (!empty($orig_entity->{$field_name})) {
-        $values = $orig_entity->{$field_name};
-      }
-
-      else {
-        $values = array();
-      }
-      $form[$field_name][$langcode]['#default_value']
-        = taxonomy_access_autocomplete_default_value($values);
-    }
-  }
-
-  // Disable options for which the user does not have create permissions.
-  foreach ($o_fields as $field_name) {
-    $langcode = $langcodes[$field_name];
-    $options = array_keys($form[$field_name][$langcode]['#options']);
-
-    // Ignore the "none" option if present.
-    if ($options[0] == '_none') {
-      unset($options[0]);
-    }
-
-    // Check for terms the user may not create.
-    $dis = taxonomy_access_create_disallowed($options);
-
-    // If there are disallowed, terms, add CSS and JS for jQuery.
-    // We use jQuery because FAPI does not currently support attributes
-    // for individual options.
+  // If there are disallowed, terms, add CSS and JS for jQuery.
+  // We use jQuery because FAPI does not currently support attributes
+  // for individual options.
+  if (!empty($disallowed_tids)) {
 
     // Add a css class to the field that we can use in jQuery.
-    if (!isset($form[$field_name][$langcode]['#attributes'])) {
-      $form[$field_name][$langcode]['#attributes'] = array();
-    }
-    if (!isset($form[$field_name][$langcode]['#attributes']['class'])) {
-      $form[$field_name][$langcode]['#attributes']['class'] = array();
-    }
-    $class_name = "tac-" . $field_name;
-    $form[$field_name][$langcode]['#attributes']['class'][] = $class_name;
+    $class_name = 'tac_' . $context['field']['field_name'];
+    $element['#attributes']['class'][] = $class_name;
 
-    // Add terms to disable for each field to JS settings.
+    // Add js for disabling create options.
     $settings[] = array(
       'field' => $class_name,
-      'dis' => $dis,
+      'dis' => $disallowed_tids,
     );
-  }
-
-  // Add js for disabling create options.
-  if (!empty($settings)) {
-    $form['#attached']['js'][] =
+    $element['#attached']['js'][] =
       drupal_get_path('module', 'taxonomy_access') . '/tac_create.js';
-    $form['#attached']['js'][] = array(
+    $element['#attached']['js'][] = array(
       'data' => array('taxonomy_access' => $settings),
       'type' => 'setting',
     );
   }
 
-  unset($orig_entity);
+  $element['#disallowed_defaults'] = $disallowed_defaults;
+  $element['#element_validate'] = array('taxonomy_access_options_validate');
+
+  unset($context);
+
+  // Re-enable list grants.
+  taxonomy_access_enable_list();
 }
 
 
@@ -795,10 +771,10 @@ function _taxonomy_access_get_descendants($tid) {
 
   if (!isset($descendants[$tid])) {
     // Preserve the original state of the list flag.
-    $flag_state = taxonomy_access_disable_list();
+    $flag_state = taxonomy_access_list_enabled();
 
     // Enforce that list grants do not filter the results.
-    taxonomy_access_disable_list(TRUE);
+    taxonomy_access_disable_list();
 
     $descendants[$tid] = array();
     $term = taxonomy_term_load($tid);
@@ -809,7 +785,9 @@ function _taxonomy_access_get_descendants($tid) {
     }
 
     // Restore list flag to previous state.
-    taxonomy_access_disable_list($flag_state);
+    if ($flag_state) {
+      taxonomy_access_enable_list();
+    }
 
     unset($term);
     unset($tree);
@@ -1311,16 +1289,44 @@ function _taxonomy_access_format_node_access_record(stdClass $record) {
  *   (optional) When passed, sets the the flag.  Pass either TRUE or FALSE.
  *   Defaults to NULL.
  */
-function taxonomy_access_disable_list($set_flag = NULL) {
-  static $flag = FALSE;
-
+function _taxonomy_access_list_state($set_flag = NULL) {
+  static $flag = TRUE;
   // If no flag was passed, return the current state of the flag.
   if (is_null($set_flag)) {
     return $flag;
   }
-
   // If we were passed anything but null, set the flag.
   $flag = $set_flag ? TRUE : FALSE;
+}
+
+/**
+ * Wrapper for taxonomy_access_list_state() to enable list grant filtering.
+ *
+ * @see
+ *   taxonomy_access_list_state()
+ */
+function taxonomy_access_enable_list() {
+  _taxonomy_access_list_state(TRUE);
+}
+
+/**
+ * Wrapper for taxonomy_access_list_state() to disable list grant filtering.
+ *
+ * @see
+ *   _taxonomy_access_list_state()
+ */
+function taxonomy_access_disable_list() {
+  _taxonomy_access_list_state(FALSE);
+}
+
+/**
+ * Wrapper for taxonomy_access_list_state() to check list grant filtering.
+ *
+ * @see
+ *   _taxonomy_access_list_state()
+ */
+function taxonomy_access_list_enabled() {
+  return _taxonomy_access_list_state();
 }
 
 /**
@@ -1595,66 +1601,6 @@ function _taxonomy_access_create_defaults($account = NULL) {
   return $vids;
 }
 
-/**
- * Form validation callback.  Disables list prior to all form validation and
- * handles term changes disallowed by create grants gracefully.
- *
- * We reset terms the user is not allowed to change instead of throwing errors,
- * for two reasons:
- * - Setting "disabled" on field items causes them to not be posted.
- * - We cannot anticipate what other widgets might do. However, we can prevent
- *   them from changing disallowed values or breaking submissions.
- */
-function _taxonomy_access_pre_validate(&$form, &$form_state) {
-  taxonomy_access_disable_list(TRUE);
-
-  // Determine the entity type and bundle.
-  $entity_type = $form['#entity_type'];
-  $bundle = $form['#bundle'];
-
-  // Fetch the original entity's taxonomy fields, if any.
-  $orig_entity = _taxonomy_access_form_extract_entity($form_state);
-  $old_fields =
-    $orig_entity
-    ? _taxonomy_access_entity_fields($entity_type, $orig_entity, $bundle)
-    : FALSE;
-
-  // Fetch the updated entity's taxonomy fields.
-  $new_fields =
-    _taxonomy_access_entity_fields($entity_type, $form_state['values'], $bundle);
-
-  // Identify any disallowed changes.
-  $changes = _taxonomy_access_compare_fields($new_fields, $old_fields);
-
-  // Check each field and langcode for disallowed changes, and fix them.
-  $set_values = array();
-  foreach ($changes as $field_name => $langcodes) {
-    foreach ($langcodes as $langcode => $disallowed) {
-      if ($disallowed) {
-        $submitted_values = $form_state['values'][$field_name][$langcode];
-        $new_values = array();
-
-        // Unset any added values.
-        foreach ($submitted_values as $delta => $value) {
-          if (!in_array($value['tid'], $disallowed['added'])) {
-            $new_values[] = $value;
-          }
-        }
-
-        // Add back removed values.
-        foreach ($disallowed['removed'] as $tid) {
-          $new_values[] = array('tid' => $tid);
-        }
-
-        // Group by langcode.
-        $set_values[$langcode] = $new_values;
-      }
-    }
-
-    // Set the field's values.
-    form_set_value($form[$field_name], $set_values, $form_state);
-  }
-}
 
 /**
  * Field options callback to generate options unfiltered by list grants.
@@ -1670,57 +1616,209 @@ function _taxonomy_access_pre_validate(&$form, &$form_state) {
  */
 function _taxonomy_access_term_options($field) {
   // Preserve the original state of the list flag.
-  $flag_state = taxonomy_access_disable_list();
+  $flag_state = taxonomy_access_list_enabled();
 
   // Enforce that list grants do not filter the options list.
-  taxonomy_access_disable_list(TRUE);
+  taxonomy_access_disable_list();
 
   // Use taxonomy.module to generate the list of options.
   $options = taxonomy_allowed_values($field);
 
   // Restore list flag to previous state.
-  taxonomy_access_disable_list($flag_state);
+  if ($flag_state) {
+    taxonomy_access_enable_list();
+  }
 
   return $options;
 }
 
 /**
- * Autocomplete menu callback to prevent filtering by list grants.
+ * Validation to process option sets, which may have some terms disabled.
  *
+ * We use a property set in hook_field_widget_form_alter():
+ *  - $element['#disallowed_defaults']
+ *
+ * @see
+ *   options_field_widget_validate()
+ */
+function taxonomy_access_options_validate($element, &$form_state) {
+  // Enforce that list grants do not filter this or subsequent validation.
+  taxonomy_access_disable_list();
+
+  if ($element['#required'] && $element['#value'] == '_none') {
+    form_error($element, t('!name field is required.', array('!name' => $element['#title'])));
+  }
+
+  // Clone the element and add in disallowed defaults.
+  $el = $element;
+  $value = array();
+  if (!empty($el['#value'])) {
+    $value = $el['#value'];
+  }
+  $el['#value'] = array_merge($value, $element['#disallowed_defaults']);
+
+  // Transpose selections from field => delta to delta => field, turning
+  // multiple selected options into multiple parent elements.
+  $items = _options_form_to_storage($el);
+
+  // Subsequent validation will be handled by hook_field_attach_validate().
+  // Set the value in the form.
+  form_set_value($element, $items, $form_state);
+}
+
+/**
+ * Autocomplete menu callback: filter allowed terms by create, not list.
+ *
+ * For now we essentially duplicate the code from taxonomy.module, because
+ * it calls drupal_json_output without providing the logic separately.
+ *
+ * @see
+ *   http://drupal.org/node/1169964
  * @see
  *   taxonomy_autocomplete()
  */
 function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
-  // Use taxonomy.module for the autocomplete.
-  module_load_include('inc', 'taxonomy', 'taxonomy.pages');
-  taxonomy_autocomplete($field_name, $tags_typed);
+  // Enforce that list grants do not filter the autocomplete.
+  taxonomy_access_disable_list();
+
+  $field = field_info_field($field_name);
+
+  // The user enters a comma-separated list of tags. We only autocomplete the last tag.
+  $tags_typed = drupal_explode_tags($tags_typed);
+  $tag_last = drupal_strtolower(array_pop($tags_typed));
+
+  $matches = array();
+  if ($tag_last != '') {
+
+    // Part of the criteria for the query come from the field's own settings.
+    $vids = array();
+    $vocabularies = taxonomy_vocabulary_get_names();
+    foreach ($field['settings']['allowed_values'] as $tree) {
+      $vids[] = $vocabularies[$tree['vocabulary']]->vid;
+    }
+
+    $query = db_select('taxonomy_term_data', 't');
+    $query->addTag('translatable');
+    $query->addTag('term_access');
+
+    // Do not select already entered terms.
+    if (!empty($tags_typed)) {
+      $query->condition('t.name', $tags_typed, 'NOT IN');
+    }
+    // Select rows that match by term name.
+    $tags_return = $query
+      ->fields('t', array('tid', 'name'))
+      ->condition('t.vid', $vids)
+      ->condition('t.name', '%' . db_like($tag_last) . '%', 'LIKE')
+      ->range(0, 10)
+      ->execute()
+      ->fetchAllKeyed();
+
+    // Unset suggestions disallowed by create grants.
+    $disallowed = taxonomy_access_create_disallowed(array_keys($tags_return));
+    foreach ($disallowed as $tid) {
+      unset($tags_return[$tid]);
+    }
+
+    $prefix = count($tags_typed) ? drupal_implode_tags($tags_typed) . ', ' : '';
+
+    $term_matches = array();
+    foreach ($tags_return as $tid => $name) {
+      $n = $name;
+      // Term names containing commas or quotes must be wrapped in quotes.
+      if (strpos($name, ',') !== FALSE || strpos($name, '"') !== FALSE) {
+        $n = '"' . str_replace('"', '""', $name) . '"';
+      }
+      $term_matches[$prefix . $n] = check_plain($name);
+    }
+  }
+
+  drupal_json_output($term_matches);
 }
 
 /**
- * Autocomplete validation callback to prevent filtering by list grants.
+ * Autocomplete validation to process typed values.
  *
+ * For now we essentially duplicate the code from taxonomy.module, because
+ * it calls form_set_value() without providing the logic separately.
+ *
+ * We use two properties set in hook_field_widget_form_alter():
+ *  - $element['#allow_autocreate']
+ *  - $element['#disallowed_defaults']
+ *
+ * @todo
+ *   Specify autocreate per vocabulary?
  * @see
  *   taxonomy_autocomplete_validate()
  */
 function taxonomy_access_autocomplete_validate($element, &$form_state) {
-  // Preserve the original state of the list flag.
-  $flag_state = taxonomy_access_disable_list();
+  // Enforce that list grants do not filter this or subsequent validation.
+  taxonomy_access_disable_list();
 
-  // Enforce that list grants do not filter the autocomplete.
-  taxonomy_access_disable_list(TRUE);
+  // Autocomplete widgets do not send their tids in the form, so we must detect
+  // them here and process them independently.
+  $value = array();
+  if ($tags = $element['#value']) {
+    // Collect candidate vocabularies.
+    $field = field_widget_field($element, $form_state);
+    $vocabularies = array();
+    foreach ($field['settings']['allowed_values'] as $tree) {
+      if ($vocabulary = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
+        $vocabularies[$vocabulary->vid] = $vocabulary;
+      }
+    }
 
-  // Use taxonomy.module for the validation.
-  taxonomy_autocomplete_validate($element, $form_state);
+    // Translate term names into actual terms.
+    $typed_terms = drupal_explode_tags($tags);
+    foreach ($typed_terms as $typed_term) {
+      // See if the term exists in the chosen vocabulary and return the tid;
+      // otherwise, create a new 'autocreate' term for insert/update.
+      if ($possibilities = taxonomy_term_load_multiple(array(), array('name' => trim($typed_term), 'vid' => array_keys($vocabularies)))) {
+        $term = array_pop($possibilities);
+      }
+      // Only autocreate if the user has create for the vocab. default.
+      elseif ($element['#allow_autocreate']) {
+        $vocabulary = reset($vocabularies);
+        $term = array(
+          'tid' => 'autocreate', 
+          'vid' => $vocabulary->vid, 
+          'name' => $typed_term, 
+          'vocabulary_machine_name' => $vocabulary->machine_name,
+        );
+      }
+      // If they cannot autocreate and this is a new term, set an error.
+      else {
+        form_error(
+          $element, 
+          t('You may not create new tags in %name.', 
+            array('%name' => t($element['#title']))
+           )
+        );
+      }
+      if ($term) {
+        $value[] = (array) $term;
+      }
+    }
+  }
 
-  // Restore list flag to previous state.
-  taxonomy_access_disable_list($flag_state);
+  // Add in the terms that were disallowed.
+  // taxonomy.module expects arrays, not objects.
+  $disallowed = taxonomy_term_load_multiple($element['#disallowed_defaults']);
+  foreach ($disallowed as $key => $term) {
+    $disallowed[$key] = (array) $term;
+  }
+  $value = array_merge($value, $disallowed);
+
+  // Subsequent validation will be handled by hook_field_attach_validate().
+  // Set the value in the form.
+  form_set_value($element, $value, $form_state);
 }
 
 /**
- * Default value re-generation to undo filtering by list grants.
+ * Default value re-generation for autocomplete fields.
  *
  * @param array $items
- *   An array of values from form build info.
+ *   An array of values from form build info, filtered by create grants.
  *
  * @return
  *   Field default value.
@@ -1730,52 +1828,26 @@ function taxonomy_access_autocomplete_validate($element, &$form_state) {
  */
 function taxonomy_access_autocomplete_default_value(array $items) {
   // Preserve the original state of the list flag.
-  $flag_state = taxonomy_access_disable_list();
+  $flag_state = taxonomy_access_list_enabled();
 
   // Enforce that list grants do not filter the options list.
-  taxonomy_access_disable_list(TRUE);
-
-  $tags = array();
-  $tids = array();
-  // Filter tags by current user's create permissions.
-  foreach ($items as $item) {
-    $tids[] = $item['tid'];
-  }
-  $tids = taxonomy_access_create_allowed($tids);
+  taxonomy_access_disable_list();
 
   // Assemble list of tags.
+  $tags = array();
   foreach ($items as $item) {
-    if (in_array($item['tid'], $tids)) {
-      $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
-    }
+    $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
   }
-
+  
   // Assemble the default value using taxonomy.module.
   $tags = taxonomy_implode_tags($tags);
 
   // Restore list flag to previous state.
-  taxonomy_access_disable_list($flag_state);
-
-  unset($tids);
-  return $tags;
-}
-
-/**
- * Helper function to extract entity from $form_state['build_info'].
- *
- * @param
- *   The $form_state from a form or form alter hook.
- *
- * @return
- *   The entity object, or FALSE if the entity is not present.
- */
-function _taxonomy_access_form_extract_entity($form_state) {
-  $orig_entity = $form_state['build_info']['args'][0];
-  if (empty($orig_entity) || !is_object($orig_entity)) {
-    $orig_entity = FALSE;
+  if ($flag_state) {
+    taxonomy_access_enable_list();
   }
 
-  return $orig_entity;
+  return $tags;
 }
 
 /**
