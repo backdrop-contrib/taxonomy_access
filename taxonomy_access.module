@@ -632,7 +632,7 @@ function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = F
 
     // Stop caching if there are more nodes than the limit.
     if (sizeof($nodes) >= TAXONOMY_ACCESS_MAX_UPDATE) {
-      node_access_needs_rebuild(TRUE);
+      _taxonomy_access_flag_rebuild();
       unset($nodes);
     }
   }
