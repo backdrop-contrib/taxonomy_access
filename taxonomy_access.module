@@ -564,7 +564,7 @@ function taxonomy_access_shutdown() {
  * Flags node access for rebuild with a message for administators.
  */
 function _taxonomy_access_flag_rebuild() {
-  drupal_set_message("Taxonomy Access Control is updating node access... If you see a message that content access permissions need to be rebuilt, you may wait until after you have completed your configuration changes.", 'status');
+  drupal_set_message(t("Taxonomy Access Control is updating node access... If you see a message that content access permissions need to be rebuilt, you may wait until after you have completed your configuration changes."), 'status');
   node_access_needs_rebuild(TRUE);
 }
 
