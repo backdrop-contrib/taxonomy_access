@@ -417,7 +417,6 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
 
         if (!empty($disable_tids)) {
           taxonomy_access_delete_term_grants($disable_tids, $values['rid']);
-          unset($affected_nodes);
           unset($disable_tids);
         }
       }
@@ -431,9 +430,7 @@ function taxonomy_access_admin_form_submit($form, &$form_state) {
         }
 
         if (!empty($disable_vids)) {
-          $affected_nodes =
           taxonomy_access_delete_default_grants($disable_vids, $values['rid']);
-          unset($affected_nodes);
           unset($disable_tids);
         }
       }
