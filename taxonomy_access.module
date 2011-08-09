@@ -628,7 +628,13 @@ function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = F
 
   // If we were passed a list of nodes, cache.
   if (isset($affected_nodes)) {
-    $nodes = array_merge($nodes, $affected_nodes);
+    $nodes = array_unique(array_merge($nodes, $affected_nodes));
+
+    // Stop caching if there are more nodes than the limit.
+    if (sizeof($nodes) >= TAXONOMY_ACCESS_MAX_UPDATE) {
+      node_access_needs_rebuild(TRUE);
+      unset($nodes);
+    }
   }
 
   // Otherwise, return the cached data.
