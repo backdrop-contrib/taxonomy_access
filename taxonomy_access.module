@@ -1225,7 +1225,7 @@ function _taxonomy_access_node_access_records($node_nid) {
   $grants = array();
   $records = $query->execute()->fetchAll();
   foreach ($records as $record) {
-    $grants[] = _taxonomy_access_format_grant_record($record);
+    $grants[] = _taxonomy_access_format_node_access_record($record);
   }
 
   unset($records);
@@ -1259,7 +1259,7 @@ function taxonomy_access_global_defaults() {
       )
       ->fetchAll();
     foreach ($records as $record) {
-      $global_grants[] = _taxonomy_access_format_grant_record($record);
+      $global_grants[] = _taxonomy_access_format_node_access_record($record);
     }
     unset($records);
     unset($record);
@@ -1279,7 +1279,7 @@ function taxonomy_access_global_defaults() {
  * @todo
  *   Make priority configurable?
  */
-function _taxonomy_access_format_grant_record(stdClass $record) {
+function _taxonomy_access_format_node_access_record(stdClass $record) {
 
   // Ignore => 0, Allow => 1, Deny => 2 ('10' in binary).
   // Only a value of 1 is considered an 'Allow';
