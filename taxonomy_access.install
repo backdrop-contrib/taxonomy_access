@@ -89,7 +89,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => 1,
       ),
     ),
     'primary key' => array('tid', 'rid'),
