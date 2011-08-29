@@ -405,7 +405,7 @@ function taxonomy_access_field_widget_taxonomy_autocomplete_form_alter(&$element
   // values are disallowed, deny access to the field.
   if (sizeof($disallowed_defaults) >= $context['field']['cardinality']) {
     $element['#access'] = FALSE;
-  }    
+  }
 
   // If the user may not create any terms on this field, deny access.
   if (empty($allowed_vids) && !$allowed_terms) {
@@ -421,7 +421,7 @@ function taxonomy_access_field_widget_taxonomy_autocomplete_form_alter(&$element
   // 2. Which tids were removed due to create restrictions.
   $element['#allow_autocreate'] = empty($allowed_vids) ? FALSE : TRUE;
   $element['#disallowed_defaults'] = $disallowed_defaults;
-  $element['#element_validate'] = 
+  $element['#element_validate'] =
     array('taxonomy_access_autocomplete_validate');
 
   // Use a custom autocomplete path to filter by create rather than list.
@@ -474,13 +474,13 @@ function taxonomy_access_field_widget_options_select_form_alter(&$element, &$for
 
   // If the field already has the maximum number of values, and all of these
   // values are disallowed, deny access to the field.
-  $disallowed_defaults = 
+  $disallowed_defaults =
     array_intersect($element['#default_value'], $disallowed_tids);
   if ($context['field']['cardinality'] != -1) {
     if (sizeof($disallowed_defaults) >= $context['field']['cardinality']) {
       $element['#access'] = FALSE;
     }
-  }    
+  }
 
   // If there are disallowed, terms, add CSS and JS for jQuery.
   // We use jQuery because FAPI does not currently support attributes
@@ -1780,17 +1780,17 @@ function taxonomy_access_autocomplete_validate($element, &$form_state) {
       elseif ($element['#allow_autocreate']) {
         $vocabulary = reset($vocabularies);
         $term = array(
-          'tid' => 'autocreate', 
-          'vid' => $vocabulary->vid, 
-          'name' => $typed_term, 
+          'tid' => 'autocreate',
+          'vid' => $vocabulary->vid,
+          'name' => $typed_term,
           'vocabulary_machine_name' => $vocabulary->machine_name,
         );
       }
       // If they cannot autocreate and this is a new term, set an error.
       else {
         form_error(
-          $element, 
-          t('You may not create new tags in %name.', 
+          $element,
+          t('You may not create new tags in %name.',
             array('%name' => t($element['#title']))
            )
         );
@@ -1838,7 +1838,7 @@ function taxonomy_access_autocomplete_default_value(array $items) {
   foreach ($items as $item) {
     $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
   }
-  
+
   // Assemble the default value using taxonomy.module.
   $tags = taxonomy_implode_tags($tags);
 
