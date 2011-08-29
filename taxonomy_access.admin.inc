@@ -112,49 +112,24 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
 }
 
 /**
- * Form callback to delete all access rules for a particular role.
+ * Submit handler for taxonomy_access_admin_delete_role.
  *
  * @param $rid
  *   The role id to disable.
+ *
+ * @see
+ *   taxonomy_access_admin_delete_role()
  */
 function taxonomy_access_admin_delete_role_submit($form, $form_state) {
   $rid = $form_state['values']['rid'];
-
   if (is_numeric($rid)
       && $rid != DRUPAL_ANONYMOUS_RID
       && $rid != DRUPAL_AUTHENTICATED_RID) {
-    $role_global_default = db_query(
-      'SELECT grant_view, grant_update, grant_delete
-       FROM {taxonomy_access_default}
-       WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
-      ->fetchAssoc();
-    if ($role_global_default) {
-      if ($form_state['values']['confirm']) {
-
-        // Compare this role's global default node access to auth user role.
-        $auth_global_default = db_query(
-          'SELECT grant_view, grant_update, grant_delete
-           FROM {taxonomy_access_default}
-           WHERE vid = 0 AND rid = :rid', array(':rid' => DRUPAL_AUTHENTICATED_RID))
-          ->fetchAssoc();
-
-        if ($role_global_default == $auth_global_default) {
-          $affected_nodes = _taxonomy_access_get_nodes_for_role($rid);
-        }
-        else {
-          // If the global default is different, this role's access changes on
-          // all uncontrolled nodes, so flag node access for rebuild.
-          _taxonomy_access_flag_rebuild();
-        }
-        taxonomy_access_delete_role_grants($rid);
-        if (!empty($affected_nodes)) {
-          taxonomy_access_affected_nodes($affected_nodes);
-        }
-
-        drupal_set_message(t('All term access rules deleted for role %rid.',
-            array('%rid' => $rid)));
-        drupal_goto(TAXONOMY_ACCESS_CONFIG);
-      }
+    if ($form_state['values']['confirm']) {
+      taxonomy_access_delete_role_grants($rid);
+      drupal_set_message(t('All term access rules deleted for role %rid.',
+          array('%rid' => $rid)));
+      drupal_goto(TAXONOMY_ACCESS_CONFIG);
     }
   }
 }
@@ -391,99 +366,197 @@ function theme_taxonomy_access_admin_form($variables) {
 
 /**
  * Submit handler for the administration form at TAXONOMY_ACCESS_CONFIG.
- *
- * @todo
- *     Refactor 'Save all' case to reduce queries?
  */
 function taxonomy_access_admin_form_submit($form, &$form_state) {
+  // Save some typing.
   $values = $form_state['values'];
 
   switch ($values['op']) {
 
     case t('Delete selected'):
-      if (isset($values['selected_terms']) && is_array($values['selected_terms'])) {
-        $disable_tids = array();
-        foreach ($values['selected_terms'] as $tid => $enabled) {
-          if ($enabled) {
-            $disable_tids[] = $tid;
-          }
-        }
-
-        if (!empty($disable_tids)) {
-          taxonomy_access_delete_term_grants($disable_tids, $values['rid']);
-          unset($disable_tids);
-        }
-      }
-
-      if (isset($values['selected_defaults']) && is_array($values['selected_defaults'])) {
-        $disable_vids = array();
-        foreach ($values['selected_defaults'] as $vid => $enabled) {
-          if ($enabled) {
-            $disable_vids[] = $vid;
-          }
-        }
-
-        if (!empty($disable_vids)) {
-          taxonomy_access_delete_default_grants($disable_vids, $values['rid']);
-          unset($disable_tids);
-        }
-      }
-
+      _taxonomy_access_admin_form_delete($values['rid'], $values);
       break;
 
     case t('Add'):
-      $new = $values['new'];
-      list($type, $id) = explode(' ', $new['item']);
-      if ($type == 'term') {
-        if ($new['recursive'] == 1) {
-          taxonomy_access_set_recursive_grants($id, $values['rid'], $new['grants']);
-        }
-        else {
-          taxonomy_access_set_term_grants($id, $values['rid'], $new['grants']);
-        }
-      }
-      elseif ($type == 'default') {
-        taxonomy_access_set_default_grants($id, $values['rid'], $new['grants']);
-      }
-
+      _taxonomy_access_admin_form_add($values['rid'], $values);
       break;
 
     case t('Save all'):
-      foreach ($values['grants'] as $vid => $rows) {
-        foreach ($rows as $tid => $grants) {
-
-          // Check the default values for this row.
-          $defaults = array();
-          foreach ($grants as $grant_name => $value) {
-            $defaults[$grant_name] =
-              $form['grants'][$vid][$tid][$grant_name]['#default_value'];
-          }
-
-          // Proceed if the user changed the row (values differ from defaults).
-          if ($defaults != $grants) {
-
-            // If the grants for node access match the defaults, then we
-            // can skip updating node access records for this row.
-            $skip_nodes = TRUE;
-            foreach (array('view', 'update', 'delete') as $op) {
-              if ($defaults[$op] != $grants[$op]) {
-                $skip_nodes = FALSE;
-              }
-            }
-            if ($tid == 0) {
-              taxonomy_access_set_default_grants($vid, $values['rid'], $grants, $skip_nodes);
-            }
-            else {
-              taxonomy_access_set_term_grants($tid, $values['rid'], $grants, $skip_nodes);
-            }
-          }
-        }
-      }
-
+      _taxonomy_access_admin_form_save_all($values['rid'], $values, $form);
       $form_state['redirect'] = TAXONOMY_ACCESS_CONFIG;
       break;
   }
 }
+
+/**
+ * Helper to process the "Delete selected" button on the administration form.
+ *
+ * @param $rid
+ *   The role id for the submission.
+ * @param $values
+ *   The $form_state['values'] from the form submission.
+ */
+function _taxonomy_access_admin_form_delete($rid, $values) {
+  if (isset($values['selected_terms']) && is_array($values['selected_terms'])) {
+    $disable_tids = array();
+    foreach ($values['selected_terms'] as $tid => $enabled) {
+      if ($enabled) {
+        $disable_tids[] = $tid;
+      }
+    }
+
+    if (!empty($disable_tids)) {
+      taxonomy_access_delete_term_grants($disable_tids, $rid);
+      unset($disable_tids);
+    }
+  }
+
+  if (isset($values['selected_defaults']) && is_array($values['selected_defaults'])) {
+    $disable_vids = array();
+    foreach ($values['selected_defaults'] as $vid => $enabled) {
+      if ($enabled) {
+        $disable_vids[] = $vid;
+      }
+    }
+
+    if (!empty($disable_vids)) {
+      taxonomy_access_delete_default_grants($disable_vids, $rid);
+      unset($disable_tids);
+    }
+  }
+}
+
+/**
+ * Helper to process the "Add" button on the administration form.
+ *
+ * @param $rid
+ *   The role id for the submission.
+ * @param $values
+ *   The $form_state['values'] from the form submission.
+ */
+function _taxonomy_access_admin_form_add($rid, $values) {
+  $new = $values['new'];
+  list($type, $id) = explode(' ', $new['item']);
+  $rows = array();
+
+  if ($type == 'term') {
+    $rows[$id] =
+      _taxonomy_access_format_grant_record($id, $rid, $new['grants']);
+
+    // If we are adding children recursively, add those as well.
+    if ($new['recursive'] == 1) {
+      $children = _taxonomy_access_get_descendants($id);
+      foreach ($children as $tid) {
+        $rows[$tid] =
+          _taxonomy_access_format_grant_record($id, $rid, $new['grants']);
+      }
+    }
+
+    // Set the grants for the row or rows.
+    taxonomy_access_set_term_grants($rows);
+  }
+
+  elseif ($type == 'default') {
+    $default[$id] =
+      _taxonomy_access_format_grant_record($id, $rid, $new['grants'], TRUE);
+
+    // For the vocabulary default, all terms in the vocabulary are children.
+    if ($new['recursive'] == 1) {
+      $children = _taxonomy_access_get_vocabulary_terms($id);
+      foreach ($children as $tid) {
+        $rows[$tid] =
+          _taxonomy_access_format_grant_record($tid, $rid, $new['grants']);
+      }
+    }
+
+    // Set the grants for the row or rows.
+    taxonomy_access_set_default_grants($default);
+    taxonomy_access_set_term_grants($rows);
+  }
+}
+
+/**
+ * Helper to process the "Save all" button on the administration form.
+ *
+ * @param $rid
+ *   The role id for the submission.
+ * @param $values
+ *   The $form_state['values'] from the form submission.
+ * @param $form
+ *   The $form array for the form.  Used to compare default values.
+ */
+function _taxonomy_access_admin_form_save_all($rid, $values, $form) {
+  // Create four lists of records to update.
+  $update_terms = array();
+  $skip_terms = array();
+  $update_defaults = array();
+  $skip_defaults = array();
+
+  foreach ($values['grants'] as $vid => $rows) {
+    foreach ($rows as $tid => $grants) {
+      // Check the default values for this row.
+      $defaults = array();
+      foreach ($grants as $grant_name => $value) {
+        $defaults[$grant_name] =
+          $form['grants'][$vid][$tid][$grant_name]['#default_value'];
+      }
+
+      // Proceed if the user changed the row (values differ from defaults).
+      if ($defaults != $grants) {
+        // If the grants for node access match the defaults, then we
+        // can skip updating node access records for this row.
+        $update_nodes = FALSE;
+        foreach (array('view', 'update', 'delete') as $op) {
+          if ($defaults[$op] != $grants[$op]) {
+            $update_nodes = TRUE;
+          }
+        }
+
+        // Add the row to one of the four arrays.
+        switch (TRUE) {
+          // Term record with node grant changes.
+          case ($tid && $update_nodes):
+            $update_terms[$tid] =
+              _taxonomy_access_format_grant_record($tid, $rid, $grants);
+            break;
+
+          // Term record and no node grant changes.
+          case ($tid && !$update_nodes):
+            $skip_terms[$tid] =
+              _taxonomy_access_format_grant_record($tid, $rid, $grants);
+            break;
+
+          // Vocab record with node grant changes.
+          case (!$tid && $update_nodes):
+            $update_defaults[$vid] =
+              _taxonomy_access_format_grant_record($vid, $rid, $grants, TRUE);
+            break;
+
+          // Vocab record and no node grant changes.
+          case (!$tid && !$update_nodes):
+            $skip_defaults[$vid] =
+              _taxonomy_access_format_grant_record($vid, $rid, $grants, TRUE);
+            break;
+        }
+      }
+    }
+  }
+
+  // Process each set.
+  if (!empty($update_terms)){
+    taxonomy_access_set_term_grants($update_terms);
+  }
+  if (!empty($skip_terms)){
+    taxonomy_access_set_term_grants($skip_terms, FALSE);
+  }
+  if (!empty($update_defaults)){
+    taxonomy_access_set_default_grants($update_defaults);
+  }
+  if (!empty($skip_defaults)){
+    taxonomy_access_set_default_grants($skip_defaults, FALSE);
+  }
+}
+
 
 /**
  * Generates HTML markup with form instructions for the admin form.
