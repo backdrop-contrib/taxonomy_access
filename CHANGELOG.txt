@@ -3,17 +3,33 @@ Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 For complete changelog, see:
 http://drupalcode.org/project/taxonomy_access.git/log/refs/heads/7.x-1.x
 
+o Field widgets are now automatically hidden if the user cannot add any terms.
+
+o The vocabulary default for the "Add tag" grant (create op) now controls
+  whether new terms can be created in the vocabulary in autocomplete fields.
+
+o Moved "Add tag" (create op) functionality from hook_form_alter() to
+  hook_field_widget_form_alter().
+
+o Optimized grant update functionality to reduce queries.
+
 o Renamed several API functions:
+
   - from: taxonomy_access_grant_update()
     to:   taxonomy_access_set_term_grants()
+
   - from: taxonomy_access_defaults_update()
     to:   taxonomy_access_set_default_grants()
+
   - form: taxonomy_access_recursive_grant_update()
     to:   taxonomy_access_set_recursive_grants()
+
   - from: taxonomy_access_delete_roles()
     to:   taxonomy_access_delete_role_grants()
+
   - from: taxonomy_access_delete_terms()
     to:   taxonomy_access_delete_term_grants()
+
   - from: taxonomy_access_delete_defaults()
     to:   taxonomy_access_delete_default_grants()
 
