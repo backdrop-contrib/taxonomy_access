@@ -12,40 +12,39 @@ NOTE: If you want to USE TWO OR MORE "ACCESS" MODULES AT THE SAME TIME, TEST
 TO UPDATE from previous versions of taxonomy_access: PLEASE READ UPDATE.TXT!
   WHEN UPDATING, ALWAYS disable the module first before uploading the new 
   module, on the page:
-  "Administer >> Site building >> Modules"
-  (Drupal path: admin/build/modules).
-
+  "Administration >> Modules"
+  (http://www.example.com/admin/modules).
 
 -----------------------
-INSTALLATION:
+INSTALLATION
 -----------------------
 
-1) COPY all files in the taxonomy_access directory to your Drupal 
+1. COPY the taxonomy_access directory to your Drupal 
    installation's module directory.
    (By default: sites/all/modules/taxonomy_access/ in your Drupal directory.)
 
-2) ENABLE THE MODULE on page: 
-   "Administer >> Site building >> Modules"
-   (Drupal path: admin/build/modules).
+2. ENABLE THE MODULE on page: 
+   "Administration >> Modules"
+   (http://www.example.com/admin/modules).
 
-3) REBUILD YOUR NODE ACCESS PERMISSIONS on page:
-   "Administer >> Content Management >> Post Settings".
-   (Drupal path: admin/content/post-settings/rebuild).
+3. REBUILD YOUR NODE ACCESS PERMISSIONS on page:
+   "Administration >> Reports >> Status report >> Node Access Permissions"
+   (http://www.example.com/admin/reports/status/rebuild).
 
-4) GRANT ADMINISTRATORS CONTROL of Taxonomy Access on page:
-   "Administer >> User Management >> Permissions"
-   (Drupal path: admin/user/permissions).
+4. GRANT ADMINISTRATORS CONTROL of Taxonomy Access on page:
+   "Administration >> People >> Permissions"
+   (http://www.example.com/admin/people/permissions).
 
    To administer Taxonomy Access, administrators must have "access 
    administration pages" checked (under "system module") and "administer 
    permissions" checked (under "user module"). 
 
-5) CONFIGURE ACCESS PERMISSIONS to the various categories at: 
-   "Administer >> User Management >> Taxonomy Access Permissions"
-   (Drupal path: admin/user/taxonomy_access).
+5. CONFIGURE ACCESS GRANTS to the various categories at: 
+   "Administration >> Configuration >> Taxonomy access control"
+   (http://www.example.com/admin/config/people/taxonomy_access).
 
-   Be sure to configure your authenticated user permissions, as all custom 
-   roles also have the authenticated user role.
+   Be sure to configure the authenticated role, as users with custom roles 
+   also have the authenticated user role.
 
 NOTE: DATABASE TABLES are automatically added to database. Module creates two 
    database tables: 'taxonomy_access_term' and 'taxonomy_access_default'.

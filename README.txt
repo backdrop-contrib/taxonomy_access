@@ -4,18 +4,19 @@ GENERAL DESCRIPTION
 This module allows you to set access permissions for various taxonomy 
 categories based on user role.  
 
-There are permissions to VIEW, UPDATE, 
-and DELETE nodes in each category, as well as permissions for whether a 
-user can CREATE new nodes in a certain category or see the category LISTED.
+There are permissions to VIEW, UPDATE, and DELETE nodes in each category.
+Additionally, the ADD TAG permission control whether the user can add a 
+taxonomy term to a node, and the VIEW TAG permission controls whether the user
+can see the taxonomy term listed on the node.
 
 
 -----------------------
 HELP PAGES
 -----------------------
 For more information about how to control access permissions with the Taxonomy
-Access Control module, see the module's help page at:
-"Administer >> Help >> Taxonomy Access Control"
-(Drupal path: admin/help/taxonomy_access).
+access control module (TAC), see the module's help page at:
+"Administration >> Help >> Taxonomy access control"
+(admin/help/taxonomy_access).
 
 Also see the help pages at drupal.org: http://drupal.org/node/31601
 
@@ -28,7 +29,7 @@ Module creates two tables in database: 'taxonomy_access_term' and
 
 
 -----------------------
-TROUBLESHOOTING:
+TROUBLESHOOTING
 -----------------------
 
 If users can view or edit pages that they do not have permission for:
@@ -38,8 +39,8 @@ If users can view or edit pages that they do not have permission for:
 
 2. Check whether the user role has "edit any [type] content" permissions 
    under "node module" on the page: 
-   "Administer >> User management >> Permissions"
-   (Drupal path: admin/user/permissions).
+   "Administration >> People >> Permissions"
+   (http://www.example.com/admin/people/permissions).
 
    Granting this permission overrides TAC's "Update" permissions for the given 
    content type, so you will not be able to deny the role edit access to any 
@@ -51,35 +52,32 @@ If users can view or edit pages that they do not have permission for:
    one role can override Deny from another.
 
 4. Review the configuration for the authenticated user role on page:
-   "Administer >> User Managemet >> Taxonomy Access Permissions"
-   (Drupal path: admin/user/taxonomy_access/edit/2).
+   "Administration >> People >> Permissions"
+   (http://www.example.com/admin/people/permissions).
 
-   Remember that all custom roles also have the authenticated role, so 
+   Remember that users with custom roles also have the authenticated role, so 
    they gain any permissions granted that role.
 
 5. Check whether you have ANY OTHER node access modules installed.
-   IMPORTANT: When using multiple access control modules, permissions are 
-   ALWAYS OR-ed together.  If one module grants permissions for a given 
-   user or role for a node, then user CAN view/edit/delete even if another 
-   module DENIES it.
+   Other modules can override TAC's grants.
 
 6. Do a General Database Housekeeping
   (Tables: 'node_access','taxonomy_access_term' and 'taxonomy_access_default'):
 
-  First DISABLE, then RE-ENABLE the Taxonomy Access module on page:
-  "Administer >> Site building >> Modules".
-  (Drupal path: admin/build/modules).
+   First DISABLE, then RE-ENABLE the Taxonomy access module on page:
+   "Administration >> Modules"
+   (http://www.example.com/admin/modules).
     
   This will force the complete rebuild of the 'node_access' table.
   
-7. For debugging, please install deve_node_access module (Devel module)
+7. For debugging, install devel_node_access module (Devel project).
    This can show you some information about node_access values in 
    the database when viewing a node page.
 
 8. Force rebuilding of the permissions cache (table 'node_access'):
-   "Rebuild permissions" button on page: 
-   "Administer >> Content Management >> Post settings"
-   (Drupal path: admin/content/post-settings/rebuild)
+   "Rebuild permissions" button on page:
+   "Administration >> Reports >> Status report >> Node Access Permissions"
+   (http://www.example.com/admin/reports/status/rebuild).
 
    If the site is experiencing problems with permissions to content, you may
    have to rebuild the permissions cache. Possible causes for permission
@@ -88,27 +86,21 @@ If users can view or edit pages that they do not have permission for:
    permissions based on the current modules and settings.
 
 -----------------------
-UNINSTALL
+UNINSTALLING
 -----------------------
 
-1. After disabling module, you can uninstall completely by choosing Taxonomy
+1. First DISABLE the Taxonomy access module on page:
+   "Administration >> Modules"
+   (http://www.example.com/admin/modules).
+
+2. After disabling, you can uninstall completely by choosing Taxonomy
    Access on page: 
-   "Administer >> Site building >> Modules >> Uninstall"
-   (Drupal path: admin/build/modules/uninstall).
+   "Administration >> Modules >> Uninstall"
+   (http://www.example.com/admin/modules/uninstall).
 
    This will remove all your settings of Taxonomy Access: variables and tables
    ('taxonomy_access_term' and 'taxonomy_access_default').
 
-2. After uninstall, if the site is experiencing problems with permissions to
+3. After uninstalling, if the site is experiencing problems with permissions to
    content, you can rebuild the permission cache.
    See "Troubleshooting" #8.
-
------------------------
-CONTACT
------------------------
-
-Please send bug reports, feature requests, or other comments about Taxonomy
-Access Control module: http://drupal.org/project/issues/taxonomy_access
-
-You can also contact me personally:
-Keve  ( http://drupal.org/user/13163/contact )
