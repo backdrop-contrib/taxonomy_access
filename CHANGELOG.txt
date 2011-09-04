@@ -3,6 +3,8 @@ Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 For complete changelog, see:
 http://drupalcode.org/project/taxonomy_access.git/log/refs/heads/7.x-1.x
 
+o Renamed grant realm from 'term_access' to 'taxonomy_access_role'.
+
 o Field widgets are now automatically hidden if the user cannot add any terms.
 
 o The vocabulary default for the "Add tag" grant (create op) now controls

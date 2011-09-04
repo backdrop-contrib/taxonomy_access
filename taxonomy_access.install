@@ -159,6 +159,15 @@ function taxonomy_access_schema() {
   return $schema;
 }
 
+/**
+ * Rename grant realm.
+ */
+function taxonomy_access_update_7001() {
+  db_query(
+    "UPDATE {node_access} SET realm = 'taxonomy_access_role'
+    WHERE realm = 'term_access'"
+  );
+}
 
 /**
  * Rename database tables to follow Drupal 7 standards.

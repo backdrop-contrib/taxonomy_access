@@ -195,7 +195,7 @@ function taxonomy_access_taxonomy_term_delete($term) {
  */
 function taxonomy_access_node_grants($user, $op) {
   $roles = is_array($user->roles) ? array_keys($user->roles) : -1;
-  return array('term_access' => $roles);
+  return array('taxonomy_access_role' => $roles);
 }
 
 /**
@@ -1352,7 +1352,7 @@ function _taxonomy_access_format_node_access_record(stdClass $record) {
   // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
   // If a 'Deny' is present, the value will then be 3 ('11' in binary).
   return array(
-    'realm' => 'term_access',
+    'realm' => 'taxonomy_access_role',
     'gid' => $record->rid,
     'grant_view' => ($record->grant_view == 1) ? 1 : 0,
     'grant_update' => ($record->grant_update == 1) ? 1 : 0,
