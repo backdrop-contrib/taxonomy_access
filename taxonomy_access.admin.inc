@@ -448,7 +448,7 @@ function _taxonomy_access_admin_form_add($rid, $values) {
       $children = _taxonomy_access_get_descendants($id);
       foreach ($children as $tid) {
         $rows[$tid] =
-          _taxonomy_access_format_grant_record($id, $rid, $new['grants']);
+          _taxonomy_access_format_grant_record($tid, $rid, $new['grants']);
       }
     }
 
