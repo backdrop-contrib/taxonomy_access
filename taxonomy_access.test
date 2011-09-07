@@ -726,7 +726,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   }
 
   /**
-   * Tests configuring vocabulary defaults:
+   * Tests configuring specific terms:
    * 1. Access is updated correctly when the term configuration is added.
    * 2. Access is updated correctly when there is a vocabulary default.
    * 3. Access is updated correctly when multiple configurations are changed.
@@ -860,6 +860,60 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     }
   }
 
+  /**
+   * Tests adding a term configuration with children.
+   */
+  public function testTermWithChildren() {
+    // Create some additional taxonomy terms in a hierarchy:
+    // v1
+    // - v1t1
+    // - - v1t1c1
+    // - - - v1t1c1g1
+    // - - - v1t1c1g2
+    // - - v1t1c2
+    // - - v1t2
+
+    $this->terms['v1t1c1'] = $this->createTerm(
+      'v1t1c1',
+      $this->vocabs['v1'],
+      $this->terms['v1t1']->tid
+    );
+    $this->terms['v1t1c2'] = $this->createTerm(
+      'v1t1c2',
+      $this->vocabs['v1'],
+      $this->terms['v1t1']->tid
+    );
+    $this->terms['v1t1c1g1'] = $this->createTerm(
+      'v1t1c1g1',
+      $this->vocabs['v1'],
+      $this->terms['v1t1c1']->tid
+    );
+    $this->terms['v1t1c1g2'] = $this->createTerm(
+      'v1t1c1g2',
+      $this->vocabs['v1'],
+      $this->terms['v1t1c1']->tid
+    );
+
+    // Add pages tagged with each.
+    foreach (array('v1t1c1', 'v1t1c2', 'v1t1c1g1', 'v1t1c1g2') as $name) {
+      $this->pages[$name] = $this->createPage(array($name));
+    }
+
+    // Log in as the administrator.
+    $this->drupalLogin($this->users['site_admin']);
+
+    // Use the admin form to give anonymous view allow for v1t1 and children.
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $edit = array();
+    $edit["new[recursive]"] = 1;
+    $this->addFormRow($edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, 1);
+    $this->drupalPost(NULL, $edit, 'Add');
+
+  }
+
+  /**
+   * Tests enabling and disabling TAC for a custom role.
+   */
   public function testRoleEnableDisable() {
     // Save some typing.
     $rid = $this->user_roles['regular_user']->rid;
