@@ -111,7 +111,6 @@ function taxonomy_access_init() {
   if (arg(0) == 'admin') {
     // Only include administrative callbacks and css on admin pages.
     $path = drupal_get_path('module', 'taxonomy_access');
-    include_once($path . '/taxonomy_access.admin.inc');
     drupal_add_css($path . '/admin.css');
   }
 }
@@ -127,7 +126,6 @@ function taxonomy_access_theme() {
     ),
   );
 }
-
 /**
  * Implements hook_menu().
  */
@@ -139,18 +137,21 @@ function taxonomy_access_menu() {
     'description' => 'Taxonomy-based access control for content',
     'page callback' => 'taxonomy_access_admin',
     'access arguments' => array('administer permissions'),
+    'file' => 'taxonomy_access.admin.inc',
   );
   $items[TAXONOMY_ACCESS_CONFIG . '/delete'] = array(
-    'type' => MENU_CALLBACK,
     'page callback' => 'drupal_get_form',
     'page arguments' => array('taxonomy_access_admin_delete_role'),
     'access arguments' => array('administer permissions'),
+    'file' => 'taxonomy_access.admin.inc',
+    'type' => MENU_CALLBACK,
   );
   $items[TAXONOMY_ACCESS_CONFIG . '/edit'] = array(
-    'type' => MENU_CALLBACK,
     'page callback' => 'drupal_get_form',
     'page arguments' => array('taxonomy_access_admin_form'),
     'access arguments' => array('administer permissions'),
+    'file' => 'taxonomy_access.admin.inc',
+    'type' => MENU_CALLBACK,
   );
   $items['taxonomy_access/autocomplete'] = array(
     'title' => 'Autocomplete taxonomy',
@@ -158,7 +159,6 @@ function taxonomy_access_menu() {
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
   );
-
 
   return $items;
 }
