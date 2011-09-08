@@ -97,6 +97,14 @@ function taxonomy_access_enable() {
 }
 
 /**
+ * Implements hook_boot().
+ */
+function taxonomy_access_boot() {
+  // Register our shutdown function.
+  drupal_register_shutdown_function('taxonomy_access_shutdown');
+}
+
+/**
  * Implements hook_init().
  */
 function taxonomy_access_init() {
@@ -106,9 +114,6 @@ function taxonomy_access_init() {
     include_once($path . '/taxonomy_access.admin.inc');
     drupal_add_css($path . '/admin.css');
   }
-
-  // Register our shutdown function.
-  drupal_register_shutdown_function('taxonomy_access_shutdown');
 }
 
 /**
