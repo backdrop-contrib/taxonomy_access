@@ -108,11 +108,8 @@ function taxonomy_access_boot() {
  * Implements hook_init().
  */
 function taxonomy_access_init() {
-  if (arg(0) == 'admin') {
-    // Only include administrative callbacks and css on admin pages.
-    $path = drupal_get_path('module', 'taxonomy_access');
-    drupal_add_css($path . '/admin.css');
-  }
+  $path = drupal_get_path('module', 'taxonomy_access');
+  drupal_add_css($path . '/taxonomy_access.css');
 }
 
 /**
