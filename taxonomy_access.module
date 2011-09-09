@@ -418,7 +418,7 @@ function taxonomy_access_query_term_access_alter($query) {
  * 1. Denies access if the user cannot alter the field values.
  * 2. Determines whether the user can autocreate new terms for the field.
  * 3. Removes default values disallowed by create.
- * 4. Adds #2 and #3 to the element so they are available to the validator.
+ * 4. Adds (2) and (3) to the element so they are available to the validator.
  * 5. Adds the custom validator.
  * 6. Sets a custom autocomplete path to filter autocomplete by create.
  *
@@ -498,82 +498,34 @@ function taxonomy_access_field_widget_taxonomy_autocomplete_form_alter(&$element
 /**
  * Implements hook_field_widget_WIDGET_TYPE_form_alter().
  *
+ * This implements the create grant for select widgets.
+ *
  * @see
- *   http://drupal.org/node/284917
- * @see
- *   http://drupal.org/node/342316
- * @see
- *   http://drupal.org/node/414562
- * @see
- *   http://drupal.org/node/12089
+ *   _taxonomy_access_configure_options_widget()
  */
 function taxonomy_access_field_widget_options_select_form_alter(&$element, &$form_state, $context) {
   // Only act on taxonomy fields.
   if ($context['field']['type'] != 'taxonomy_term_reference') {
     return;
   }
-
-  // Enforce that list grants do not filter our queries.
-  taxonomy_access_disable_list();
-
-  // Collect a list of terms and determine which are allowed
-  $tids = array_keys($element['#options']);
-
-  // Ignore the "none" option if present.
-  $key = array_search('_none', $tids);
-  if ($key !== FALSE) {
-    unset($tids[$key]);
-  }
-
-  $allowed_tids = taxonomy_access_create_allowed($tids);
-  $disallowed_tids = taxonomy_access_create_disallowed($tids);
-
-  // If no options are allowed, deny access to the field.
-  if (empty($allowed_tids)) {
-    $element['#access'] = FALSE;
-  }
-
-  // If the field already has the maximum number of values, and all of these
-  // values are disallowed, deny access to the field.
-  $disallowed_defaults =
-    array_intersect($element['#default_value'], $disallowed_tids);
-  if ($context['field']['cardinality'] != FIELD_CARDINALITY_UNLIMITED) {
-    if (sizeof($disallowed_defaults) >= $context['field']['cardinality']) {
-      $element['#access'] = FALSE;
-    }
-  }
-
-  // If there are disallowed, terms, add CSS and JS for jQuery.
-  // We use jQuery because FAPI does not currently support attributes
-  // for individual options.
-  if (!empty($disallowed_tids)) {
-
-    // Add a css class to the field that we can use in jQuery.
-    $class_name = 'tac_' . $context['field']['field_name'];
-    $element['#attributes']['class'][] = $class_name;
-
-    // Add js for disabling create options.
-    $settings[] = array(
-      'field' => $class_name,
-      'dis' => $disallowed_tids,
-    );
-    $element['#attached']['js'][] =
-      drupal_get_path('module', 'taxonomy_access') . '/tac_create.js';
-    $element['#attached']['js'][] = array(
-      'data' => array('taxonomy_access' => $settings),
-      'type' => 'setting',
-    );
-  }
-
-  $element['#disallowed_defaults'] = $disallowed_defaults;
-  $element['#element_validate'] = array('taxonomy_access_options_validate');
-
-  unset($context);
-
-  // Re-enable list grants.
-  taxonomy_access_enable_list();
+  _taxonomy_access_configure_options_widget($element, $context['field']['cardinality']);
 }
 
+/**
+ * Implements hook_field_widget_WIDGET_TYPE_form_alter().
+ *
+ * This implements the create grant for checkbox/radio widgets.
+ *
+ * @see
+ *   _taxonomy_access_configure_options_widget()
+ */
+function taxonomy_access_field_widget_options_buttons_form_alter(&$element, &$form_state, $context) {
+  // Only act on taxonomy fields.
+  if ($context['field']['type'] != 'taxonomy_term_reference') {
+    return;
+  }
+  _taxonomy_access_configure_options_widget($element, $context['field']['cardinality']);
+}
 
 
 
@@ -1737,7 +1689,6 @@ function _taxonomy_access_create_defaults($account = NULL) {
   return $vids;
 }
 
-
 /**
  * Field options callback to generate options unfiltered by list grants.
  *
@@ -1768,6 +1719,92 @@ function _taxonomy_access_term_options($field) {
   return $options;
 }
 
+
+/**
+ * Helper function for hook_field_widget_form_alter() on options widgets.
+ *
+ * This implements the create grant for options widgets:
+ * 1. Denies access if the user cannot alter the field values.
+ * 2. Attaches jQuery to disable values disallowed by create.
+ * 3. Adds the disallowed values from (2) to the element so they are available
+ *    to the custom validator.
+ * 4. Adds the custom validator.
+ *
+ * We use JQuery to disable the options because of FAPI limitations:
+ * @see
+ *   http://drupal.org/node/284917
+ * @see
+ *   http://drupal.org/node/342316
+ * @see
+ *   http://drupal.org/node/12089
+ */
+function _taxonomy_access_configure_options_widget(&$element, $field_size) {
+  // Enforce that list grants do not filter our queries.
+  taxonomy_access_disable_list();
+
+  // Collect a list of terms and determine which are allowed
+  $tids = array_keys($element['#options']);
+
+  // Ignore the "none" option if present.
+  $key = array_search('_none', $tids);
+  if ($key !== FALSE) {
+    unset($tids[$key]);
+  }
+
+  $allowed_tids = taxonomy_access_create_allowed($tids);
+  $disallowed_tids = taxonomy_access_create_disallowed($tids);
+
+  // If no options are allowed, deny access to the field.
+  if (empty($allowed_tids)) {
+    $element['#access'] = FALSE;
+  }
+
+  // If the field already has the maximum number of values, and all of these
+  // values are disallowed, deny access to the field.
+  $defaults =
+    is_array($element['#default_value'])
+    ? $element['#default_value']
+    : array($element['#default_value'])
+    ;
+
+  $disallowed_defaults =
+    array_intersect($defaults, $disallowed_tids);
+  if ($field_size != FIELD_CARDINALITY_UNLIMITED) {
+    if (sizeof($disallowed_defaults) >= $field_size) {
+      $element['#access'] = FALSE;
+    }
+  }
+
+  // If there are disallowed, terms, add CSS and JS for jQuery.
+  // We use jQuery because FAPI does not currently support attributes
+  // for individual options.
+  if (!empty($disallowed_tids)) {
+
+    // Add a css class to the field that we can use in jQuery.
+    $class_name = 'tac_' . $element['#field_name'];
+    $element['#attributes']['class'][] = $class_name;
+
+    // Add js for disabling create options.
+    $settings[] = array(
+      'field' => $class_name,
+      'disallowed_tids' => $disallowed_tids,
+    );
+    $element['#attached']['js'][] =
+      drupal_get_path('module', 'taxonomy_access') . '/tac_create.js';
+    $element['#attached']['js'][] = array(
+      'data' => array('taxonomy_access' => $settings),
+      'type' => 'setting',
+    );
+  }
+
+  $element['#disallowed_defaults'] = $disallowed_defaults;
+  $element['#element_validate'] = array('taxonomy_access_options_validate');
+
+  // Re-enable list grants.
+  taxonomy_access_enable_list();
+
+}
+
 /**
  * Validation to process option sets, which may have some terms disabled.
  *
@@ -1776,6 +1813,8 @@ function _taxonomy_access_term_options($field) {
  *
  * @see
  *   options_field_widget_validate()
+ * @see
+ *   _taxonomy_access_configure_options_widget()
  */
 function taxonomy_access_options_validate($element, &$form_state) {
   // Enforce that list grants do not filter this or subsequent validation.
