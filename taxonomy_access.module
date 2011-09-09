@@ -139,17 +139,28 @@ function taxonomy_access_menu() {
     'access arguments' => array('administer permissions'),
     'file' => 'taxonomy_access.admin.inc',
   );
-  $items[TAXONOMY_ACCESS_CONFIG . '/delete'] = array(
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('taxonomy_access_admin_delete_role'),
+  $items[TAXONOMY_ACCESS_CONFIG . '/role'] = array(
+    'title' => 'Configure role access rules',
+    'description' => 'Configure taxonomy access control',
+    'page callback' => 'taxonomy_access_admin',
     'access arguments' => array('administer permissions'),
     'file' => 'taxonomy_access.admin.inc',
-    'type' => MENU_CALLBACK,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
   );
-  $items[TAXONOMY_ACCESS_CONFIG . '/edit'] = array(
+  $items[TAXONOMY_ACCESS_CONFIG . '/role/%/edit'] = array(
+    'title callback' => 'taxonomy_access_role_edit_title',
+    'title arguments' => array(5),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('taxonomy_access_admin_form'),
-    'access arguments' => array('administer permissions'),
+    'page arguments' => array('taxonomy_access_admin_form', 5),
+    'access callback' => array('taxonomy_access_role_edit_access'),
+    'access arguments' => array(5),
+    'file' => 'taxonomy_access.admin.inc',
+  );
+  $items[TAXONOMY_ACCESS_CONFIG . '/role/%/delete'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_access_admin_delete_role', 5),
+    'access callback' => array('taxonomy_access_role_delete_access'),
+    'access arguments' => array(5),
     'file' => 'taxonomy_access.admin.inc',
     'type' => MENU_CALLBACK,
   );
@@ -164,12 +175,47 @@ function taxonomy_access_menu() {
 }
 
 /**
- * Implements hook_admin_paths().
+ * Title callback for role edit form.
  */
-function taxonomy_access_admin_paths() {
-  $paths = array(
-    'admin/config/system/taxonomy_access' => TRUE,
-  );
+function taxonomy_access_role_edit_title($rid) {
+  $roles = _taxonomy_access_user_roles();
+  return t('Access rules for @role', array('@role' => $roles[$rid]));
+}
+
+/**
+ * Access callback for role edit form.
+ */
+function taxonomy_access_role_edit_access($rid) {
+  if (!user_access('administer permissions')) {
+    return FALSE;
+  }
+
+  $roles = _taxonomy_access_user_roles();
+  if (empty($roles[$rid])) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+
+/**
+ * Access callback for role deletion form.
+ */
+function taxonomy_access_role_delete_access($rid) {
+  if (!user_access('administer permissions')) {
+    return FALSE;
+  }
+  if (($rid == DRUPAL_ANONYMOUS_RID) || ($rid == DRUPAL_AUTHENTICATED_RID)) {
+    return FALSE;
+  }
+
+  $roles = _taxonomy_access_user_roles();
+  if (empty($roles[$rid])) {
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 /**
@@ -2185,8 +2231,9 @@ function taxonomy_access_help($path, $arg) {
 the authenticated user</a> properly.',
           array("@url" => url(
               TAXONOMY_ACCESS_CONFIG
-              . "/edit/"
-              . DRUPAL_AUTHENTICATED_RID)))
+              . '/role/'
+              . DRUPAL_AUTHENTICATED_RID
+              . 'edit')))
         . "</li>\n"
         . '<li>'
         . "<p>" . t('The <em>Deny</em> directives are processed after the <em>Allow</em> directives. (<strong><em>Deny</em> overrides <em>Allow</em></strong>.)</em>  So, if a multicategory node is in Categories "A" and "B" and a user has <em>Allow</em> permissions for <em>View</em> in Category "A" and <em>Deny</em> permissions for <em>View</em> in Category "B", then the user will NOT be permitted to <em>View</em> the node.') . '</p>'

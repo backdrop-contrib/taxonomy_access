@@ -213,28 +213,28 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
    */
   function checkRoleEditEnable($rid, $enable = FALSE) {
     $this->assertLinkByHref(
-      TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid,
+      TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit",
       0,
       t('Edit link is available for role %rid.', array('%rid' => $rid))
     );
 
     if ($enable) {
       $this->assertRaw(
-        TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid . '">enable',
+        TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit\">enable",
         t('Link text is "enable" for role %rid.', array('%rid' => $rid))
       );
       $this->assertNoRaw(
-        TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid . '">edit',
+        TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit\">edit",
         t('Link text is not "edit" for role %rid.', array('%rid' => $rid))
       );
     }
     else {
       $this->assertRaw(
-        TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid . '">edit',
+        TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit\">edit",
         t('Link text is "edit" for role %rid.', array('%rid' => $rid))
       );
       $this->assertNoRaw(
-        TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid . '">enable',
+        TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit\">enable",
         t('Link text is not "enable" for role %rid.', array('%rid' => $rid))
       );
     }
@@ -252,22 +252,22 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   function checkRoleDisable($rid, $found = TRUE) {
     if ($found) {
       $this->assertLinkByHref(
-        TAXONOMY_ACCESS_CONFIG . '/delete/' . $rid,
+        TAXONOMY_ACCESS_CONFIG . "/role/$rid/delete",
         0,
         t('Disable link is available for role %rid.', array('%rid' => $rid))
       );
       $this->assertRaw(
-        TAXONOMY_ACCESS_CONFIG . '/delete/' . $rid . '">disable',
+        TAXONOMY_ACCESS_CONFIG . "/role/$rid/delete\">disable",
         t('Link text is "disable" for role %rid.', array('%rid' => $rid))
       );
     }
     else {
       $this->assertNoLinkByHref(
-        TAXONOMY_ACCESS_CONFIG . '/delete/' . $rid,
+        TAXONOMY_ACCESS_CONFIG . "/role/$rid/delete",
         t('Disable link is not available for role %rid.', array('%rid' => $rid))
       );
       $this->assertNoRaw(
-        TAXONOMY_ACCESS_CONFIG . '/delete/' . $rid . '">disable',
+        TAXONOMY_ACCESS_CONFIG . "/role/$rid/delete\">disable",
         t('There is no link text "disable" for role %rid.', array('%rid' => $rid))
       );
     }
@@ -511,7 +511,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the admin form to give anonymous view allow in the global default.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->configureFormRow($edit, 0, 0, 1);
     $this->drupalPost(NULL, $edit, 'Save all');
@@ -552,7 +552,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the admin form to give anonymous view deny in the global default.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->configureFormRow($edit, 0, 0, 2);
     $this->drupalPost(NULL, $edit, 'Save all');
@@ -599,7 +599,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the admin form to give anonymous view allow for the v1 default.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->addFormRow($edit, $this->vocabs['v1']->vid, 0, 1);
     $this->drupalPost(NULL, $edit, 'Add');
@@ -632,7 +632,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the admin form to give anonymous view deny for the v2 default.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->addFormRow($edit, $this->vocabs['v2']->vid, 0, 2);
     $this->drupalPost(NULL, $edit, 'Add');
@@ -666,7 +666,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the form to change the configuration: Allow for v2; Deny for v1.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->configureFormRow($edit, $this->vocabs['v2']->vid, 0, 1);
     $this->configureFormRow($edit, $this->vocabs['v1']->vid, 0, 2);
@@ -702,7 +702,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the form to delete the v1 default.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $edit["selected_defaults[{$this->vocabs['v1']->vid}]"] = 1;
     $this->drupalPost(NULL, $edit, 'Delete selected');
@@ -737,7 +737,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the admin form to give anonymous view allow for v1t1.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->addFormRow($edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, 1);
     $this->drupalPost(NULL, $edit, 'Add');
@@ -770,7 +770,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the admin form to give anonymous view deny for v2t1.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->addFormRow($edit, $this->vocabs['v2']->vid, $this->terms['v2t1']->tid, 2);
     $this->drupalPost(NULL, $edit, 'Add');
@@ -804,7 +804,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the form to change the configuration: Allow for v2t1; Deny for v1t1.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->configureFormRow(
       $edit, $this->vocabs['v2']->vid, $this->terms['v2t1']->tid, 1
@@ -843,7 +843,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the form to delete the v2t1 configuration.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $edit["selected_terms[{$this->terms['v2t1']->tid}]"] = 1;
     $this->drupalPost(NULL, $edit, 'Delete selected');
@@ -903,7 +903,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Use the admin form to give anonymous view allow for v1t1 and children.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . DRUPAL_ANONYMOUS_RID);
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $edit["new[recursive]"] = 1;
     $this->addFormRow($edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, 1);
@@ -924,8 +924,8 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalLogin($this->users['site_admin']);
 
     // Enable TAC for the regular_user role.
-    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/edit/' . $rid);
-    $this->assertRaw("<title>Grants for $name", t('Role configuration for regular_user (%name) enabled successfully.', array('%name' => $name)));
+    $this->drupalGet(TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit");
+    $this->assertRaw("<title>Access rules for $name", t('Role configuration for regular_user (%name) enabled successfully.', array('%name' => $name)));
 
     // Update the global default to allow view.
     $edit = array();
@@ -972,12 +972,12 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
     // Disable the role.
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG);
-    $this->clickLink('disable');
-    $this->assertText("Are you sure you want to delete all grant rules for role $rid", t('Disable form for role loaded.'));
+    $this->clickLink('disable access control');
+    $this->assertText("Are you sure you want to delete all taxonomy access rules for the role $name", t('Disable form for role loaded.'));
     $this->drupalPost(NULL, array(), 'Delete all');
 
     // Confirm that a confirmation message appears.
-    $this->assertText("All term access rules deleted for role $rid", t('Confirmation message found.'));
+    $this->assertText("All taxonomy access rules deleted for role $name", t('Confirmation message found.'));
 
     // Confirm edit/enable/disable links are in their original state.
     $this->checkConfigAnonAuthLinks();

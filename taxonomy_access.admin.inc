@@ -5,76 +5,49 @@
  */
 
 /**
- * Menu callback (for form at TAXONOMY_ACCESS_CONFIG path).
- * Renders the TAC permissions administration form.
- *
- * @param $op
- *   (optional) The operation to perform, if any.  Defaults to NULL.
- *   Options are 'edit' or 'delete' (access rules for the role).
- * @param $rid
- *   (optional) The role ID of the role to configure.  Defaults to NULL.
- * @param $arg
- *   (optional) Additional arguments.  Defaults to NULL.  (Not used.)
- *
+ * Renders the TAC permissions administration overview page.
  * @return
  *     Form to render.
  */
-function taxonomy_access_admin($op = NULL, $rid = NULL, $arg = NULL) {
+function taxonomy_access_admin() {
   $roles = _taxonomy_access_user_roles();
-  if (is_numeric($rid) AND isset($roles[$rid])) {
-    switch ($op) {
-    case 'edit':
-      return drupal_get_form('taxonomy_access_admin_form', $rid);
-    case 'delete':
-      return drupal_get_form('taxonomy_access_admin_delete_role', $rid);
-    }
-  }
-  elseif (!isset($op) AND !isset($rid)) {
-    return theme_taxonomy_access_admin();
-  }
-  /**
-   * @todo
-   *     Something odd happens here.
-   */
-  else return drupal_not_found();
-}
+  $active_rids = db_query('SELECT rid FROM {taxonomy_access_default} WHERE vid = 0')->fetchCol();
 
-/**
- * Renders the main administration page, with links to configure each role.
- *
- * @return
- *     Themed table with one row for each role.
- * @todo
- *     Can we move the configuration items into hook_menu?
- */
-function theme_taxonomy_access_admin() {
-  $roles = _taxonomy_access_user_roles();
-
-  // Render role/permission overview:
-  $header = array(t('Role'), array('data' => '&nbsp;'));
+  $header = array(t('Role'), array('data' => t('Operations'), 'colspan' => 2));
   $rows = array();
 
-  $active_role_ids = db_query('SELECT rid FROM {taxonomy_access_default} WHERE vid = 0')->fetchCol();
-  $active = array();
-  foreach ($active_role_ids as $rid) {
-    $active[$rid] = TRUE;
-  }
   foreach ($roles as $rid => $name) {
-    $ops = array();
-    if (!empty($active[$rid])) {
-      //only allow delete for "extra" roles
+    $row = array();
+    $row[] = $name;
+
+    if (in_array($rid, $active_rids)) {
+      // Add edit operation link for active roles.
+      $row[] = array('data' => l(t("edit access rules"), TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit"));
+
+      // Add disable operation link for custom roles.
       if ($rid != DRUPAL_ANONYMOUS_RID && $rid != DRUPAL_AUTHENTICATED_RID) {
-        $ops[] = l(t("disable"), TAXONOMY_ACCESS_CONFIG . "/delete/$rid");
+        $row[] = array('data' => l(t("disable access control"), TAXONOMY_ACCESS_CONFIG . "/role/$rid/delete"));
       }
-      $ops[] = l(t("edit"), TAXONOMY_ACCESS_CONFIG . "/edit/$rid");
+      else {
+        $row[] = array('data' => '');
+      }
     }
     else {
-      $ops = array(l(t("enable"), TAXONOMY_ACCESS_CONFIG . "/edit/$rid"));
+      // Add enable link for unconfigured roles.
+      $row[] = array('data' => '');
+      $row[] = array('data' => l(t("enable access control"), TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit"));
     }
-    $rows[] = array($name, array('data' => implode(' | ', $ops), 'align' => 'right'));
+
+    $rows[] = $row;
   }
 
-  return theme('table', array('header' => $header, 'rows' => $rows));
+  $build['role_table'] = array(
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $rows,
+  );
+
+  return $build;
 }
 
 /**
@@ -83,32 +56,27 @@ function theme_taxonomy_access_admin() {
  * @param $rid
  *   The role ID to disable.
  */
-function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
-  if (is_numeric($rid)
-      && $rid != DRUPAL_ANONYMOUS_RID
-      && $rid != DRUPAL_AUTHENTICATED_RID) {
-    $role_global_default = db_query(
-      'SELECT grant_view, grant_update, grant_delete
-       FROM {taxonomy_access_default}
-       WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
-      ->fetchAssoc();
-    if ($role_global_default) {
-      $form['rid'] = array(
-        '#type' => 'value',
-        '#value' => $rid,
-      );
+function taxonomy_access_admin_delete_role($form, &$form_state, $rid) {
+  $roles = _taxonomy_access_user_roles();
+  $role_global_default = db_query(
+    'SELECT grant_view, grant_update, grant_delete
+     FROM {taxonomy_access_default}
+     WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
+    ->fetchAssoc();
+  if ($role_global_default) {
+    $form['rid'] = array(
+      '#type' => 'value',
+      '#value' => $rid,
+    );
 
-      return confirm_form($form,
-        t('Are you sure you want to delete all grant rules for role %rid?',
-          array('%rid' => $rid)),
-        TAXONOMY_ACCESS_CONFIG,
-        t('This action cannot be undone.'),
-        t('Delete all'),
-        t('Cancel'));
-    }
+    return confirm_form($form,
+      t('Are you sure you want to delete all taxonomy access rules for the role %role?',
+        array('%role' => $roles[$rid])),
+      TAXONOMY_ACCESS_CONFIG,
+      t('This action cannot be undone.'),
+      t('Delete all'),
+      t('Cancel'));
   }
-
-  return drupal_not_found();
 }
 
 /**
@@ -120,16 +88,17 @@ function taxonomy_access_admin_delete_role($form, $form_state, $rid) {
  * @see
  *   taxonomy_access_admin_delete_role()
  */
-function taxonomy_access_admin_delete_role_submit($form, $form_state) {
+function taxonomy_access_admin_delete_role_submit($form, &$form_state) {
+  $roles = _taxonomy_access_user_roles();
   $rid = $form_state['values']['rid'];
   if (is_numeric($rid)
       && $rid != DRUPAL_ANONYMOUS_RID
       && $rid != DRUPAL_AUTHENTICATED_RID) {
     if ($form_state['values']['confirm']) {
+      $form_state['redirect'] = TAXONOMY_ACCESS_CONFIG;
       taxonomy_access_delete_role_grants($rid);
-      drupal_set_message(t('All term access rules deleted for role %rid.',
-          array('%rid' => $rid)));
-      drupal_goto(TAXONOMY_ACCESS_CONFIG);
+      drupal_set_message(t('All taxonomy access rules deleted for role %role.',
+          array('%role' => $roles[$rid])));
     }
   }
 }
@@ -141,7 +110,6 @@ function taxonomy_access_admin_delete_role_submit($form, $form_state) {
  *   (optional) An array of grants to use as form defaults.  Defaults to NULL.
  */
 function taxonomy_access_admin_build_row(array $grants = NULL) {
-  $form['#title'] = '';
   $form['#tree'] = TRUE;
   foreach (array('view', 'update', 'delete') as $grant) {
     $form[$grant] = array(
@@ -165,11 +133,13 @@ function taxonomy_access_admin_build_row(array $grants = NULL) {
  * Form for managing grants by role.
  *
  * @param $rid
- *   (optional) The role ID.  Defaults to NULL.
+ *   The role ID.
  */
-function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
+function taxonomy_access_admin_form($form, $form_state, $rid) {
   // Disable list filtering while preparing this form.
   taxonomy_access_disable_list();
+
+  $roles = _taxonomy_access_user_roles();
 
   // Fetch all default grants.
   $default_grants = db_query('SELECT * FROM {taxonomy_access_default} WHERE rid = :rid', array(':rid' => $rid))->fetchAllAssoc('vid', PDO::FETCH_ASSOC);
@@ -183,6 +153,9 @@ function taxonomy_access_admin_form($form, $form_state, $rid = NULL) {
 
     // Insert the row with defaults for all grants.
     drupal_write_record('taxonomy_access_default', $row);
+
+    drupal_set_message(t('Access control for role %role enabled.',
+      array('%role' => $roles[$rid])));
   }
 
   // Fetch all grants.
@@ -297,8 +270,6 @@ function theme_taxonomy_access_admin_form($variables) {
   $node_grant_types = array('view', 'update', 'delete');
 
   $radios = array('1' => t('Allow'), '0' => t('Ignore'), '2' => t('Deny'));
-
-  drupal_set_title(t('Grants for %role', array('%role' => $roles[$form['rid']['#value']])), PASS_THROUGH);
 
   $rows = array();
 
@@ -593,8 +564,9 @@ function _taxonomy_access_admin_instructions_html() {
       . t('<strong>Remember:</strong> This role <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure the authenticated user</a> properly.',
         array("@url" => url(
             TAXONOMY_ACCESS_CONFIG
-            . "/edit/"
-            .  DRUPAL_AUTHENTICATED_RID)))
+            . "/role/"
+            .  DRUPAL_AUTHENTICATED_RID
+            . '/edit')))
       . "</p>\n\n"
       ;
   }
