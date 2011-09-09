@@ -3,6 +3,8 @@ Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 For complete changelog, see:
 http://drupalcode.org/project/taxonomy_access.git/log/refs/heads/7.x-1.x
 
+o Administrative paths have changed.
+
 o Renamed grant realm from 'term_access' to 'taxonomy_access_role'.
 
 o Field widgets are now automatically hidden if the user cannot add any terms.
@@ -12,6 +14,12 @@ o The vocabulary default for the "Add tag" grant (create op) now controls
 
 o Moved "Add tag" (create op) functionality from hook_form_alter() to
   hook_field_widget_form_alter().
+
+o Terms disallowed by "Add tag" (create op) are disabled rather than removed.
+  This may be a configurable setting in the future.
+
+o "Add tag" (create op) now allows selection of allowed child terms when
+  the parent term is disabled.
 
 o Optimized grant update functionality to reduce queries.
 
