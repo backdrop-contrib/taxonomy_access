@@ -1788,6 +1788,7 @@ function _taxonomy_access_configure_options_widget(&$element, $field_size) {
     $settings[] = array(
       'field' => $class_name,
       'disallowed_tids' => $disallowed_tids,
+      'disallowed_defaults' => $disallowed_defaults,
     );
     $element['#attached']['js'][] =
       drupal_get_path('module', 'taxonomy_access') . '/tac_create.js';
