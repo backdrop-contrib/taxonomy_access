@@ -12,7 +12,9 @@ Drupal.behaviors.tac_create.attach = function(context, settings) {
     var fieldname = "." + field.field;
     $.each(field.disallowed_tids, function(j, tid) {
       selector = fieldname + " [value='" + tid + "']";
+      label_selector = fieldname + " [value='" + tid + "']" + " + label";
       $(selector).attr('disabled','disabled');
+      $(label_selector).attr('class','option disabled');
     });
   });
 }

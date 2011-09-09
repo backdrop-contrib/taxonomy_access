@@ -17,3 +17,8 @@ table.grant_help td p {
 table.grant_help em.perm {
   font-weight: bold;
 }
+
+label.disabled {
+  color: #999;
+  font-style: italic;
+}
