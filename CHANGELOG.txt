@@ -3,6 +3,8 @@ Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 For complete changelog, see:
 http://drupalcode.org/project/taxonomy_access.git/log/refs/heads/7.x-1.x
 
+Taxonomy Access 7.x-1.x-rc1, 2011-09-09
+---------------------------------------
 o Administrative paths have changed.
 
 o Renamed grant realm from 'term_access' to 'taxonomy_access_role'.
