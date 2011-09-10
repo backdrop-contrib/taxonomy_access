@@ -350,20 +350,6 @@ function taxonomy_access_field_info_alter(&$info) {
    }
  }
 
-
-/**
- * Implements hook_field_attach_delete().
- */
-function taxonomy_access_field_attach_delete($entity_type, $entity) {
-  if ($entity_type != 'taxonomy_term') {
-    return;
-  }
-
-  // Cache a list of impacted nodes prior to term deletion.
-  $affected_nodes = _taxonomy_access_get_nodes_for_terms($entity->tid);
-  taxonomy_access_affected_nodes($affected_nodes);
-}
-
 /**
  * Implements hook_query_TAG_alter() for 'term_access'.
  *
