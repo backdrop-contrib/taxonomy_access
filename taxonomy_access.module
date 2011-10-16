@@ -149,14 +149,14 @@ function taxonomy_access_menu() {
     'title arguments' => array(5),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('taxonomy_access_admin_form', 5),
-    'access callback' => array('taxonomy_access_role_edit_access'),
+    'access callback' => 'taxonomy_access_role_edit_access',
     'access arguments' => array(5),
     'file' => 'taxonomy_access.admin.inc',
   );
   $items[TAXONOMY_ACCESS_CONFIG . '/role/%/delete'] = array(
     'page callback' => 'drupal_get_form',
     'page arguments' => array('taxonomy_access_admin_delete_role', 5),
-    'access callback' => array('taxonomy_access_role_delete_access'),
+    'access callback' => 'taxonomy_access_role_delete_access',
     'access arguments' => array(5),
     'file' => 'taxonomy_access.admin.inc',
     'type' => MENU_CALLBACK,
