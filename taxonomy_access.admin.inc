@@ -113,16 +113,16 @@ function taxonomy_access_admin_build_row(array $grants = NULL) {
   $form['#tree'] = TRUE;
   foreach (array('view', 'update', 'delete') as $grant) {
     $form[$grant] = array(
-      '#type' => 'radios',
-      // 1: Allow, 0: Ignore, 2: Deny
-      '#options' => array('1' => '', '0' => '', '2' => ''),
+      '#type' => 'select',
+      '#options' => array('1' => 'Allow', '0' => 'Ignore', '2' => 'Deny'),
       '#default_value' => is_string($grants['grant_' . $grant]) ? $grants['grant_' . $grant] : '0',
       '#required' => TRUE,
     );
   }
   foreach (array('create', 'list') as $grant) {
     $form[$grant] = array(
-      '#type' => 'checkbox',
+      '#type' => 'select',
+      '#options' => array('1' => 'Allow', '0' => 'Deny'),
       '#default_value' => is_string($grants['grant_' . $grant]) ? $grants['grant_' . $grant] : '0',
     );
   }
@@ -252,48 +252,33 @@ function theme_taxonomy_access_admin_form($variables) {
 
   $roles = _taxonomy_access_user_roles();
   $header = array(
-    array( 'data' => t('Category'), 'colspan' => 3),
-    array( 'data' => t('View'), 'colspan' => 4),
-    array( 'data' => t('Update'), 'colspan' => 4),
-    array( 'data' => t('Delete'), 'colspan' => 4),
+    array( 'data' => t('Category'), 'colspan' => 2),
+    array( 'data' => t('View')),
+    array( 'data' => t('Update')),
+    array( 'data' => t('Delete')),
     array( 'data' => t('Add Tag')),
     array( 'data' => t('View Tag')),
   );
-  $sub_header = array(
-    '&nbsp;<strong>' . t('<acronym title="Allow">A</acronym>') . '</strong>',
-    '&nbsp;<strong>' . t('<acronym title="Ignore">I</acronym>') . '</strong>',
-    '&nbsp;<strong>' . t('<acronym title="Deny">D</acronym>') . '</strong>',
-    '&nbsp;',
-  );
-  $sub_header = array_merge(array('&nbsp;'), $sub_header, $sub_header, $sub_header);
-  $sub_header = array_pad($sub_header, 15, '&nbsp;');
-  $node_grant_types = array('view', 'update', 'delete');
-
-  $radios = array('1' => t('Allow'), '0' => t('Ignore'), '2' => t('Deny'));
+  $grant_types = array('view', 'update', 'delete', 'create', 'list');
 
   $rows = array();
 
   foreach (array_keys($form['vocabs']) as $vid) {
     if (is_numeric($vid) AND isset($form['grants'][$vid])) {
-      $row = $sub_header;
-      $row[0] = array('data' => '<h3>' . check_plain($form['vocabs'][$vid]['#title']) . '</h3>', 'colspan' => 3);
+      $row = array(array('data' => '<h3>' . check_plain($form['vocabs'][$vid]['#title']) . '</h3>', 'colspan' => 7));
       $rows[] = $row;
       foreach (array_keys($form['grants'][$vid]) as $tid) {
         if (is_numeric($tid)) {
           $select_key = $tid? 'selected_terms' : 'selected_defaults';
           $select_id = $tid? $tid : $vid;
           $row = array(
-            array('data' => drupal_render($form[$select_key][$select_id]), 'colspan' => 3),
+            array('data' => drupal_render($form[$select_key][$select_id]), 'colspan' => 2),
           );
-          foreach ($node_grant_types as $grant) {
-            foreach (array_keys($radios) as $key) {
-              // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
-              $row[] = array('data' => drupal_render($form['grants'][$vid][$tid][$grant][$key]));
-            }
-            $row[] = '&nbsp;';
-          }
-          foreach (array('create', 'list') as $grant) {
-            $row[] = array('data' => drupal_render($form['grants'][$vid][$tid][$grant]));
+          foreach ($grant_types as $grant) {
+            $row[] = array(
+              'data' => drupal_render($form['grants'][$vid][$tid][$grant]),
+              'class' => $grant . '-' . $form['grants'][$vid][$tid][$grant]['#default_value']
+            );
           }
           $rows[] = $row;
         }
@@ -301,27 +286,21 @@ function theme_taxonomy_access_admin_form($variables) {
     }
   }
   if (isset($form['new'])) {
-    $row = $sub_header;
-    $row[0] = array('data' => '<h3>' . t('New') . '</h3>', 'colspan' => 3);
+    $row = array(array('data' => '<h3>' . t('New') . '</h3>', 'colspan' => 7));
     $rows[] = $row;
 
     $row = array(
       array(
         'data' => drupal_render($form['new']['item'])
         . drupal_render($form['new']['recursive']),
-        'colspan' => '2',
       ),
       drupal_render($form['new']['add']),
     );
-    foreach ($node_grant_types as $grant) {
-      foreach (array_keys($radios) as $key) {
-        // I need this hack to display radio buttons horizontally (instead of standard form 'radios')
-        $row[] = array('data' => drupal_render($form['new']['grants'][$grant][$key]));
-      }
-      $row[] = '&nbsp;';
-    }
-    foreach (array('create', 'list') as $grant) {
-      $row[] = array('data' => drupal_render($form['new']['grants'][$grant]));
+    foreach ($grant_types as $grant) {
+      $row[] = array(
+        'data' => drupal_render($form['new']['grants'][$grant]),
+        'class' => $grant . '-' . $form['new']['grants'][$grant]['#default_value']
+      );
     }
     $rows[] = $row;
     $row = array();
