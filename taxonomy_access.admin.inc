@@ -13,7 +13,7 @@ function taxonomy_access_admin() {
   $roles = _taxonomy_access_user_roles();
   $active_rids = db_query('SELECT rid FROM {taxonomy_access_default} WHERE vid = 0')->fetchCol();
 
-  $header = array(t('Role'), array('data' => t('Operations'), 'colspan' => 2));
+  $header = array(t('Role'), t('Status'), array('data' => t('Operations'), 'colspan' => 2));
   $rows = array();
 
   foreach ($roles as $rid => $name) {
@@ -22,6 +22,7 @@ function taxonomy_access_admin() {
 
     if (in_array($rid, $active_rids)) {
       // Add edit operation link for active roles.
+      $row[] = array('data' => t('Enabled'));
       $row[] = array('data' => l(t("edit access rules"), TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit"));
 
       // Add disable operation link for custom roles.
@@ -34,6 +35,7 @@ function taxonomy_access_admin() {
     }
     else {
       // Add enable link for unconfigured roles.
+      $row[] = array('data' => t('Disabled'));
       $row[] = array('data' => '');
       $row[] = array('data' => l(t("enable access control"), TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit"));
     }
