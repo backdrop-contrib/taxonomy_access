@@ -1,4 +1,12 @@
 <?php
+/**
+ * @file
+ * Automated tests for the Taxonomy Access Control module.
+ */
+
+/**
+ * Provides a base test class and helper methods for automated tests.
+ */
 class TaxonomyAccessTestCase extends DrupalWebTestCase {
   // There are four types of users:
   // site admins, taxonomy admins, content editors, and regular users.
@@ -77,10 +85,10 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   /**
    * Creates a vocabulary with a certain name.
    *
-   * @param $machine_name
+   * @param string $machine_name
    *   A machine-safe name.
    *
-   * @return
+   * @return object
    *   The vocabulary object.
    */
   function createVocab($machine_name) {
@@ -97,12 +105,15 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   /**
    * Creates a new term in the specified vocabulary.
    *
-   * @param $machine_name
+   * @param string $machine_name
    *   A machine-safe name.
-   * @param $vocab
+   * @param object $vocab
    *   A vocabulary object.
-   * @param $parent
+   * @param int|null $parent
    *   (optional) The tid of the parent term, if any.  Defaults to NULL.
+   *
+   * @return object
+   *   The taxonomy term object.
    */
   function createTerm($machine_name, $vocab, $parent = NULL) {
     $term = new stdClass();
@@ -123,12 +134,15 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   /**
    * Creates a taxonomy field and adds it to the page content type.
    *
-   * @param $machine_name
+   * @param string $machine_name
    *   The machine name of the vocabulary to use.
-   * @param $widget
+   * @param string $widget
    *   (optional) The name of the widget to use.  Defaults to 'options_select'.
-   * @param $count
+   * @param int $count
    *   (optional) The allowed number of values.  Defaults to unlimited.
+   *
+   * @return array
+   *   Array of instance data.
    */
   function createField($machine_name, $widget = 'options_select', $count = FIELD_CARDINALITY_UNLIMITED) {
     $field = array(
@@ -166,12 +180,12 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
  /**
    * Creates an article with the specified terms.
    *
-   * @param $autocreate
+   * @param array $autocreate
    *   (optional) An array of term names to autocreate. Defaults to array().
-   * @param $existing
+   * @param array $existing
    *   (optional) An array of existing term IDs to add.
    *
-   * @return
+   * @return object
    *   The node object.
    */
   function createArticle($autocreate = array(), $existing = array()) {
@@ -205,9 +219,9 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   /**
    * Asserts that an enable or edit link is found for the role.
    *
-   * @param $rid
+   * @param int $rid
    *   The role ID to check.
-   * @param $enable
+   * @param bool $enable
    *   (optional) Whether the text should be 'edit' (TRUE) or 'enable' (FALSE).
    *   Defaults to FALSE.
    */
@@ -243,11 +257,10 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   /**
    * Asserts that a disable link is or is not found for the role.
    *
-   * @param $rid
+   * @param int $rid
    *   The role ID to check.
-   * @param $found
+   * @param bool $found
    *   (optional) Whether the link should be found, or not.  Defaults to TRUE.
-   *   Defaults to FALSE.
    */
   function checkRoleDisable($rid, $found = TRUE) {
     if ($found) {
@@ -276,21 +289,21 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   /**
    * Adds a row on the TAC configuration form.
    *
-   * @param &$edit
+   * @param array &$edit
    *   The form data to post.
-   * @param $vid
+   * @param int $vid
    *   (optional) The vocabulary ID.  Defaults to 0 (global default).
-   * @param $tid
+   * @param $int tid
    *   (optional) The term ID.  Defaults to 0 (vocabulary default).
-   * @param $view
+   * @param int $view
    *   (optional) The view grant value (1, 0, or 2). Defaults to 0 (ignore).
-   * @param $update
+   * @param int $update
    *   (optional) The update grant value (1, 0, or 2). Defaults to 0 (ignore).
-   * @param $delete
+   * @param int $delete
    *   (optional) The delete grant value (1, 0, or 2). Defaults to 0 (ignore).
-   * @param $create
+   * @param int $create
    *   (optional) The create grant value (0 or 1). Defaults to 0 (unchecked).
-   * @param $list
+   * @param int $list
    *   (optional) The list grant value  (0 or 1). Defaults to 0 (unchecked).
    */
   function addFormRow(&$edit,  $vid = 0, $tid = 0, $view = 0, $update = 0, $delete = 0, $create = 0, $list = 0) {
@@ -306,21 +319,21 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   /**
    * Configures a row on the TAC configuration form.
    *
-   * @param &$edit
+   * @param array &$edit
    *   The form data to post.
-   * @param $vid
+   * @param int $vid
    *   (optional) The vocabulary ID.  Defaults to 0 (global default).
-   * @param $tid
+   * @param int $tid
    *   (optional) The term ID.  Defaults to 0 (vocabulary default).
-   * @param $view
+   * @param int $view
    *   (optional) The view grant value (1, 0, or 2). Defaults to 0 (ignore).
-   * @param $update
+   * @param int $update
    *   (optional) The update grant value (1, 0, or 2). Defaults to 0 (ignore).
-   * @param $delete
+   * @param int $delete
    *   (optional) The delete grant value (1, 0, or 2). Defaults to 0 (ignore).
-   * @param $create
+   * @param int $create
    *   (optional) The create grant value (0 or 1). Defaults to 0 (unchecked).
-   * @param $list
+   * @param int $list
    *   (optional) The list grant value  (0 or 1). Defaults to 0 (unchecked).
    */
   function configureFormRow(&$edit,  $vid = 0, $tid = 0, $view = 0, $update = 0, $delete = 0, $create = 0, $list = 0) {
@@ -332,6 +345,9 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
   }
 }
 
+/**
+ * Tests the module's response to changes from other modules.
+ */
 class TaxonomyAccessExternalChanges extends TaxonomyAccessTestCase {
   public static function getInfo() {
     return array(
@@ -356,6 +372,9 @@ class TaxonomyAccessExternalChanges extends TaxonomyAccessTestCase {
   */
 }
 
+/**
+ * Tests the module's configuration forms.
+ */
 class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   protected $articles = array();
   protected $pages = array();
@@ -403,10 +422,10 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   /**
    * Creates a page with the specified terms.
    *
-   * @param $terms
+   * @param array $terms
    *   (optional) An array of term names to tag the page.  Defaults to array().
    *
-   * @return
+   * @return object
    *   The node object.
    */
   function createPage($tags = array()) {
@@ -438,6 +457,9 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     return $this->drupalCreateNode($settings);
   }
 
+  /**
+   * Checks for the proper display of admin links for anon. and auth. roles.
+   */
   function checkConfigAnonAuthLinks() {
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG);
     $this->checkRoleEditEnable(DRUPAL_ANONYMOUS_RID);
@@ -446,6 +468,9 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->checkRoleDisable(DRUPAL_AUTHENTICATED_RID, FALSE);
   }
 
+  /**
+   * Checks for the proper display of admin links for custom roles.
+   */
   function checkConfigCustomRoleLinks() {
     foreach ($this->user_roles as $role) {
       $this->checkRoleEditEnable($role->rid, TRUE);
@@ -462,7 +487,9 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
  */
 
   /**
-   * Tests the initial state of the test environment:
+   * Tests the initial state of the test environment.
+   *
+   * Verifies that:
    * 1. Access to all nodes is denied for anonymous users.
    * 2. The main admin page provides the correct configuration links.
    */
@@ -501,7 +528,9 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   }
 
   /**
-   * Tests configuring a global default:
+   * Tests configuring a global default.
+   *
+   * Verifies that:
    * 1. Access is updated for all nodes when there are no other configurations.
    * 2. Access is updated for the correct nodes when there are specific term
    *    and vocabulary configurations.
@@ -587,7 +616,9 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   }
 
   /**
-   * Tests configuring vocabulary defaults:
+   * Tests configuring vocabulary defaults.
+   *
+   * Verifies that:
    * 1. Access is updated correctly when the vocabulary default is added.
    * 2. Access is updated correctly when there is a specific term configuration
    *    in the vocabulary.
@@ -726,7 +757,9 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   }
 
   /**
-   * Tests configuring specific terms:
+   * Tests configuring specific terms.
+   *
+   * Verifies that:
    * 1. Access is updated correctly when the term configuration is added.
    * 2. Access is updated correctly when there is a vocabulary default.
    * 3. Access is updated correctly when multiple configurations are changed.
@@ -1009,7 +1042,9 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
   }
 }
 
-
+/**
+ * Tests node access for all possible grant combinations.
+ */
 class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
 
   // There are three roles for node access testing:
@@ -1171,6 +1206,9 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
     taxonomy_access_set_term_grants($term_rows);
   }
 
+  /**
+   * Verifies that all grants were properly stored during setup.
+   */
   public function testSetUpCheck() {
     // Check that all records were properly stored.
     foreach ($this->setUpAssertions as $assertion) {
@@ -1194,15 +1232,15 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
   // Confirm node access updated.
 
   /*
-1. delete a term
-2. change a grant config
-3. delete a grant config
-4. change a vocab default
-5. delete a voacb default
-6. disable a role
-7. delete a role
-8. delete a field attachment
-9. delete a vocabulary
+     1. delete a term
+     2. change a grant config
+     3. delete a grant config
+     4. change a vocab default
+     5. delete a voacb default
+     6. disable a role
+     7. delete a role
+     8. delete a field attachment
+     9. delete a vocabulary
   */
 
 }

@@ -5,9 +5,16 @@
  */
 
 /**
- * Renders the TAC permissions administration overview page.
+ * Page callback: Renders the TAC permissions administration overview page.
+ *
+ * Paths:
+ * - TAXONOMY_ACCESS_CONFIG
+ * - TAXONOMY_ACCESS_CONFIG . /role
+ *
  * @return
- *     Form to render.
+ *   Form to render.
+ *
+ * @see taxonomy_access_menu()
  */
 function taxonomy_access_admin() {
   $roles = _taxonomy_access_user_roles();
@@ -53,10 +60,15 @@ function taxonomy_access_admin() {
 }
 
 /**
- * Form callback to delete all access rules for a particular role.
+ * Form constructor for a form to to delete access rules for a particular role.
  *
- * @param $rid
+ * Path: TAXONOMY_ACCESS_CONFIG . /role/%/delete
+ *
+ * @param int $rid
  *   The role ID to disable.
+ *
+ * @see taxonomy_access_admin_delete_role_submit()
+ * @see taxonomy_access_menu()
  */
 function taxonomy_access_admin_delete_role($form, &$form_state, $rid) {
   $roles = _taxonomy_access_user_roles();
@@ -82,13 +94,12 @@ function taxonomy_access_admin_delete_role($form, &$form_state, $rid) {
 }
 
 /**
- * Submit handler for taxonomy_access_admin_delete_role.
+ * Form submission handler for taxonomy_access_admin_delete_role.
  *
- * @param $rid
- *   The role id to disable.
+ * @param int $rid
+ *   The role ID to disable.
  *
- * @see
- *   taxonomy_access_admin_delete_role()
+ * @see taxonomy_access_admin_delete_role()
  */
 function taxonomy_access_admin_delete_role_submit($form, &$form_state) {
   $roles = _taxonomy_access_user_roles();
@@ -108,7 +119,7 @@ function taxonomy_access_admin_delete_role_submit($form, &$form_state) {
 /**
  * Assembles a row of grant options for a term or default on the admin form.
  *
- * @param (array) $grants
+ * @param array $grants
  *   (optional) An array of grants to use as form defaults.  Defaults to NULL.
  */
 function taxonomy_access_admin_build_row(array $grants = NULL) {
@@ -132,10 +143,15 @@ function taxonomy_access_admin_build_row(array $grants = NULL) {
 }
 
 /**
- * Form for managing grants by role.
+ * Form constructor for a form to manage grants by role.
  *
- * @param $rid
+ * Path: TAXONOMY_ACCESS_CONFIG . /role/%/edit
+ *
+ * @param int $rid
  *   The role ID.
+ *
+ * @see taxonomy_access_admin_form_submit()
+ * @see taxonomy_access_menu()
  */
 function taxonomy_access_admin_form($form, $form_state, $rid) {
   // Disable list filtering while preparing this form.
@@ -246,8 +262,8 @@ function taxonomy_access_admin_form($form, $form_state, $rid) {
 /**
  * Renders the permission matrix user form for a given user role.
  *
- * @return
- *     String containing rendered HTML form in table.
+ * @return string
+ *   String containing rendered HTML form in table.
  */
 function theme_taxonomy_access_admin_form($variables) {
   $form = $variables['form'];
@@ -317,7 +333,7 @@ function theme_taxonomy_access_admin_form($variables) {
 }
 
 /**
- * Submit handler for the administration form at TAXONOMY_ACCESS_CONFIG.
+ * Form submission handler for taxonomy_access_admin_form().
  */
 function taxonomy_access_admin_form_submit($form, &$form_state) {
   // Save some typing.
@@ -430,11 +446,11 @@ function _taxonomy_access_admin_form_add($rid, $values) {
 /**
  * Helper to process the "Save all" button on the administration form.
  *
- * @param $rid
+ * @param int $rid
  *   The role id for the submission.
- * @param $values
+ * @param array $values
  *   The $form_state['values'] from the form submission.
- * @param $form
+ * @param array $form
  *   The $form array for the form.  Used to compare default values.
  */
 function _taxonomy_access_admin_form_save_all($rid, $values, $form) {
@@ -495,16 +511,16 @@ function _taxonomy_access_admin_form_save_all($rid, $values, $form) {
   }
 
   // Process each set.
-  if (!empty($update_terms)){
+  if (!empty($update_terms)) {
     taxonomy_access_set_term_grants($update_terms);
   }
-  if (!empty($skip_terms)){
+  if (!empty($skip_terms)) {
     taxonomy_access_set_term_grants($skip_terms, FALSE);
   }
-  if (!empty($update_defaults)){
+  if (!empty($update_defaults)) {
     taxonomy_access_set_default_grants($update_defaults);
   }
-  if (!empty($skip_defaults)){
+  if (!empty($skip_defaults)) {
     taxonomy_access_set_default_grants($skip_defaults, FALSE);
   }
 }
@@ -514,7 +530,7 @@ function _taxonomy_access_admin_form_save_all($rid, $values, $form) {
  * Generates HTML markup with form instructions for the admin form.
  *
  * @return
- *     Instructions HTML string.
+ *   Instructions HTML string.
  */
 function _taxonomy_access_admin_instructions_html() {
   $instructions = '';

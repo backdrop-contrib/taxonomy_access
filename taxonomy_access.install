@@ -15,6 +15,7 @@ function taxonomy_access_last_removed() {
 
 /**
  * Implements hook_install().
+ *
  * Adds tables to database: 'taxonomy_access_term', 'taxonomy_access_default'
  */
 function taxonomy_access_install() {
