@@ -332,9 +332,9 @@ function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) 
           $errors[$field_name][$langcode][$delta][] = array(
             'error' => 'taxonomy_access_disallowed_added',
             'message' => t($text, array(
-                         '%field' => $field_name,
-                         '%tids' => implode(', ', $disallowed['added']),
-                       )),
+              '%field' => $field_name,
+              '%tids' => implode(', ', $disallowed['added']),
+            )),
           );
         }
         if (!empty($disallowed['removed'])) {
@@ -342,9 +342,9 @@ function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) 
           $errors[$field_name][$langcode][$delta][] = array(
             'error' => 'taxonomy_access_disallowed_removed',
             'message' => t($text, array(
-                         '%field' => $field_name,
-                         '%tids' => implode(', ', $disallowed['removed']),
-                       )),
+              '%field' => $field_name,
+              '%tids' => implode(', ', $disallowed['removed']),
+            )),
           );
         }
       }
@@ -1244,8 +1244,7 @@ function taxonomy_access_set_term_grants(array $grant_rows, $update_nodes = TRUE
  *   (optional) A flag indicating whether to update node access.
  *   Defaults to TRUE.
  *
- * @see
- *   _taxonomy_access_format_grant_record()
+ * @see _taxonomy_access_format_grant_record()
  */
 function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = TRUE) {
   // Collect lists of term and role IDs in the list.
@@ -1966,7 +1965,7 @@ function taxonomy_access_autocomplete_validate($element, &$form_state) {
           $element,
           t('You may not create new tags in %name.',
             array('%name' => t($element['#title']))
-           )
+          )
         );
       }
       if ($term) {
