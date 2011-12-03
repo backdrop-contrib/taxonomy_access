@@ -1231,31 +1231,28 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
   // Confirm records deleted.
   // Confirm node access updated.
 
-  /*
-     1. delete a term
-     2. change a grant config
-     3. delete a grant config
-     4. change a vocab default
-     5. delete a voacb default
-     6. disable a role
-     7. delete a role
-     8. delete a field attachment
-     9. delete a vocabulary
-  */
-
+  // 1. delete a term
+  // 2. change a grant config
+  // 3. delete a grant config
+  // 4. change a vocab default
+  // 5. delete a voacb default
+  // 6. disable a role
+  // 7. delete a role
+  // 8. delete a field attachment
+  // 9. delete a vocabulary
 }
 
-/*
-Roles for term grants
-    'ctlt' => array(),
-    'ctlf' => array(),
-    'cflt' => array(),
-    'cflf' => array(),
 
-  // There are then four roles for term access testing:
-  // ctlt   Receives both "Create" and "List" in the global default.
-  // ctlf   Receives "Create" but not "List" in the global default.
-  // cflt   Receives "List" but not "Create" in the global default.
-  // cflf   Receives neither "Create" nor "List" in the global default.
-  // All roles receive the same permissions for terms and vocab defaults.
-*/
+//  Roles for term grants
+// 'ctlt' => array(),
+// 'ctlf' => array(),
+// 'cflt' => array(),
+// 'cflf' => array(),
+
+// There are then four roles for term access testing:
+// ctlt   Receives both "Create" and "List" in the global default.
+// ctlf   Receives "Create" but not "List" in the global default.
+// cflt   Receives "List" but not "Create" in the global default.
+// cflf   Receives neither "Create" nor "List" in the global default.
+// All roles receive the same permissions for terms and vocab defaults.
+
