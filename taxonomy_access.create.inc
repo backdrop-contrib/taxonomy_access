@@ -5,26 +5,27 @@
  * Implements the Add Tag (create) grant on editing forms.
  *
  * These functions need to be included in three circumstances:
- * 1. Form building for forms with taxonomy fields.
- *    - taxonomy_access_field_widget_form_alter()
- *    - taxonomy_access_field_widget_taxonomy_autocomplete_form_alter()
- * 2. Form validation for forms with taxonomy fields.
- *    - taxonomy_access_autocomplete_validate()
- *    - taxonomy_access_options_validate()
- *    - taxonomy_access_field_attach_validate()
- * 3. Taxonomy autocomplete AJAX requests.
- *    - taxonomy_access_autocomplete()
+ * - Form building for forms with taxonomy fields.
+ *   - taxonomy_access_field_widget_form_alter()
+ *   - taxonomy_access_field_widget_taxonomy_autocomplete_form_alter()
+ * - Form validation for forms with taxonomy fields.
+ *   - taxonomy_access_autocomplete_validate()
+ *   - taxonomy_access_options_validate()
+ *   - taxonomy_access_field_attach_validate()
+ * - Taxonomy autocomplete AJAX requests.
+ *   - taxonomy_access_autocomplete()
  */
 
 /**
  * Implements the create grant for autocomplete fields.
  *
- * 1. Denies access if the user cannot alter the field values.
- * 2. Determines whether the user can autocreate new terms for the field.
- * 3. Removes default values disallowed by create.
- * 4. Adds (2) and (3) to the element so they are available to the validator.
- * 5. Adds the custom validator.
- * 6. Sets a custom autocomplete path to filter autocomplete by create.
+ * - Denies access if the user cannot alter the field values.
+ * - Determines whether the user can autocreate new terms for the field.
+ * - Removes default values disallowed by create.
+ * - Adds information on autocreate and disallowed defaults to the element so
+ *   it is available to the validator.
+ * - Adds the custom validator.
+ * - Sets a custom autocomplete path to filter autocomplete by create.
  *
  * Some of the logic here is borrowed from taxonomy_autocomplete_validate().
  *
@@ -99,11 +100,11 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
 /**
  * Implements the create grant for options widgets.
  *
- * 1. Denies access if the user cannot alter the field values.
- * 2. Attaches jQuery to disable values disallowed by create.
- * 3. Adds the disallowed values from (2) to the element so they are available
- *    to the custom validator.
- * 4. Adds the custom validator.
+ * - Denies access if the user cannot alter the field values.
+ * - Attaches jQuery to disable values disallowed by create.
+ * - Adds the disallowed values from the element so they are available to the
+ *   custom validator.
+ * - Adds the custom validator.
  *
  * We use jQuery to disable the options because of FAPI limitations:
  * @see http://drupal.org/node/284917
