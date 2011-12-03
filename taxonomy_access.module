@@ -1255,7 +1255,7 @@ function _taxonomy_access_list_state($set_flag = NULL) {
 /**
  * Wrapper for taxonomy_access_list_state() to enable list grant filtering.
  *
- * @see taxonomy_access_list_state()
+ * @see _taxonomy_access_list_state()
  */
 function taxonomy_access_enable_list() {
   _taxonomy_access_list_state(TRUE);
@@ -1308,7 +1308,7 @@ function taxonomy_access_user_list_terms() {
  *   (optional) The account for which to retrieve grants.  If no account is
  *   passed, the current user will be used.  Defaults to NULL.
  *
- * @return
+ * @return array|true
  *   An array of term IDs, or TRUE if the user has the grant for all terms.
  */
 function _taxonomy_access_user_term_grants($create = FALSE, array $vids = array(), $account = NULL) {
@@ -1404,6 +1404,7 @@ function _taxonomy_access_term_options($field) {
  * Form element validation handler for taxonomy autocomplete fields.
  *
  * @see taxonomy_access_autocomplete()
+ * @see taxonomy_access_field_widget_taxonomy_autocomplete_form_alter()
  */
 function taxonomy_access_autocomplete_validate($element, &$form_state) {
   // Enforce that list grants do not filter this or subsequent validation.
@@ -1418,7 +1419,7 @@ function taxonomy_access_autocomplete_validate($element, &$form_state) {
 /**
  * Form element validation handler for taxonomy options fields.
  *
- * @see taxonomy_access_autocomplete()
+ * @see taxonomy_access_field_widget_form_alter()
  */
 function taxonomy_access_options_validate($element, &$form_state) {
   // Enforce that list grants do not filter this or subsequent validation.

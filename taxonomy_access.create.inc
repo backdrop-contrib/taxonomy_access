@@ -2,7 +2,18 @@
 
 /**
  * @file
- * Implements the Add Tag (create) grant on editing forms
+ * Implements the Add Tag (create) grant on editing forms.
+ *
+ * These functions need to be included in three circumstances:
+ * 1. Form building for forms with taxonomy fields.
+ *    - taxonomy_access_field_widget_form_alter()
+ *    - taxonomy_access_field_widget_taxonomy_autocomplete_form_alter()
+ * 2. Form validation for forms with taxonomy fields.
+ *    - taxonomy_access_autocomplete_validate()
+ *    - taxonomy_access_options_validate()
+ *    - taxonomy_access_field_attach_validate()
+ * 3. Taxonomy autocomplete AJAX requests.
+ *    - taxonomy_access_autocomplete()
  */
 
 /**
@@ -447,7 +458,10 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
  *
  * @todo
  *   Specify autocreate per vocabulary?
+ *
  * @see taxonomy_autocomplete_validate()
+ * @see taxonomy_access_autocomplete()
+ * @see taxonomy_access_field_widget_taxonomy_autocomplete_form_alter()
  */
 function _taxonomy_access_autocomplete_validate($element, &$form_state) {
   // Autocomplete widgets do not send their tids in the form, so we must detect
@@ -511,13 +525,13 @@ function _taxonomy_access_autocomplete_validate($element, &$form_state) {
 
 
 /**
- * Form element validation handler for taxonomy option sets.
+ * Form element validation handler for taxonomy option fields.
  *
  * We use a property set in hook_field_widget_form_alter():
  *  - $element['#disallowed_defaults']
  *
  * @see options_field_widget_validate()
- * @see _taxonomy_access_configure_options_widget()
+ * @see taxonomy_access_field_widget_form_alter()
  */
 function _taxonomy_access_options_validate($element, &$form_state) {
   if ($element['#required'] && $element['#value'] == '_none') {
