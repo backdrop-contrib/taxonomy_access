@@ -215,8 +215,8 @@ function taxonomy_access_admin_form($form, $form_state, $rid) {
         if (isset($grants[$term->tid])) {
           $form['grants'][$vid][$term->tid] = taxonomy_access_admin_build_row($grants[$term->tid]);
           $form['selected_terms'][$term->tid] = array(
-             '#type' => 'checkbox',
-             '#title' => str_repeat('&nbsp;&nbsp;', $term->depth) . check_plain($term->name),
+            '#type' => 'checkbox',
+            '#title' => str_repeat('&nbsp;&nbsp;', $term->depth) . check_plain($term->name),
           );
         }
         else {
