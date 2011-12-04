@@ -376,7 +376,44 @@ function taxonomy_access_field_widget_form_alter(&$element, &$form_state, $conte
   taxonomy_access_enable_list();
 }
 
+/**
+ * Enables access control for a given role.
+ *
+ * @param int $rid
+ *   The role ID.
+ */
+function taxonomy_access_enable_role($rid) {
+  $rid = intval($rid);
 
+  // If we are adding a role, no global default is set yet, so insert it now.
+  // All valid role IDs are > 0.
+  if ($rid && !taxonomy_access_role_enabled($rid)) {
+    // Assemble a $row object for Schema API.
+    $row = new stdClass();
+    $row->vid = 0;
+    $row->rid = $rid;
+
+    // Insert the row with defaults for all grants.
+    drupal_write_record('taxonomy_access_default', $row);
+  }
+}
+
+/**
+ * Indicates whether access control is enabled for a given role.
+ *
+ * @param int $rid
+ *   The role ID.
+ *
+ * @return bool
+ *   TRUE if access control is enabled for the role, or FALSE otherwise.
+ */
+function taxonmy_access_role_enabled($rid) {
+  $role_status = &drupal_static(__FUNCTION__, array());
+  if (!isset($role_status[$rid])) {
+    $role_status[$rid] = (bool) db_query('SELECT 1 FROM {taxonomy_access_default} WHERE rid = :rid AND vid = :vid', array(':rid' => $rid, ':vid' => '0'))->fetchField();
+  }
+  return $role_status[$rid];
+}
 
 /*****************************************************************************/
 /*********************** NODE ACCESS UPDATE MECHANISM ************************/
