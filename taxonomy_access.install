@@ -21,8 +21,8 @@ function taxonomy_access_last_removed() {
 function taxonomy_access_install() {
 
  // Default global perms for roles 1 (anonymous) and 2 (authenticated).
-  db_query('INSERT INTO {taxonomy_access_default} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 0, 1)');
-  db_query('INSERT INTO {taxonomy_access_default} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 0, 1)');
+  db_query('INSERT INTO {taxonomy_access_default} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 1, 1)');
+  db_query('INSERT INTO {taxonomy_access_default} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 1, 1)');
 
   // Weight taxonomy_access below most modules, but above the very last ones.
   db_query("UPDATE {system} SET weight = 9 WHERE name = 'taxonomy_access'");

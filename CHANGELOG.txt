@@ -5,6 +5,10 @@ Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
 o Drupal core 7.8 is now explicitly required.
 
+o The "Add tag" (create) grant now defaults to "Allow" for anonymous and
+  authenticated users upon installation. (Existing installations will not be
+  affected.)
+
 Taxonomy Access 7.x-1.x-rc1, 2011-09-09
 ---------------------------------------
 o Administrative paths have changed.
