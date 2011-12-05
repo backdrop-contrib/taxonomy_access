@@ -407,7 +407,7 @@ function taxonomy_access_enable_role($rid) {
  * @return bool
  *   TRUE if access control is enabled for the role, or FALSE otherwise.
  */
-function taxonmy_access_role_enabled($rid) {
+function taxonomy_access_role_enabled($rid) {
   $role_status = &drupal_static(__FUNCTION__, array());
   if (!isset($role_status[$rid])) {
     $role_status[$rid] = (bool) db_query('SELECT 1 FROM {taxonomy_access_default} WHERE rid = :rid AND vid = :vid', array(':rid' => $rid, ':vid' => '0'))->fetchField();
