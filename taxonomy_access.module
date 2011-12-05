@@ -410,10 +410,17 @@ function taxonomy_access_enable_role($rid) {
 function taxonomy_access_role_enabled($rid) {
   $role_status = &drupal_static(__FUNCTION__, array());
   if (!isset($role_status[$rid])) {
-    $role_status[$rid] = (bool) db_query('SELECT 1 FROM {taxonomy_access_default} WHERE rid = :rid AND vid = :vid', array(':rid' => $rid, ':vid' => '0'))->fetchField();
+    $role_status[$rid] =
+      db_query(
+        'SELECT 1
+         FROM {taxonomy_access_default}
+         WHERE rid = :rid AND vid = :vid',
+        array(':rid' => $rid, ':vid' => '0'))
+      ->fetchField();
   }
-  return $role_status[$rid];
+  return (bool) $role_status[$rid];
 }
+
 
 /*****************************************************************************/
 /*********************** NODE ACCESS UPDATE MECHANISM ************************/
