@@ -167,7 +167,7 @@ function taxonomy_access_menu() {
 }
 
 /**
- * Title callback for role edit form.
+ * Title callback: Returns the title for the role edit form.
  */
 function taxonomy_access_role_edit_title($rid) {
   $roles = _taxonomy_access_user_roles();
@@ -175,18 +175,23 @@ function taxonomy_access_role_edit_title($rid) {
 }
 
 /**
- * Access callback for role edit form.
+ * Access callback: Determines whether the admin form can be accessed.
+ *
+ * Path: TAXONOMY_ACCESS_CONFIG . role/%/edit
  */
 function taxonomy_access_role_edit_access($rid) {
+  // Allow access only if the user may administer permissions.
   if (!user_access('administer permissions')) {
     return FALSE;
   }
 
+  // Do not render the form for invalid role IDs.
   $roles = _taxonomy_access_user_roles();
   if (empty($roles[$rid])) {
     return FALSE;
   }
 
+  // If the conditions above are met, grant access.
   return TRUE;
 }
 
@@ -428,7 +433,7 @@ function taxonomy_access_role_enabled($rid) {
 
 
 /**
- * Registered shutdown function: perform any needed node access updates.
+ * Shutdown function: Performs any needed node access updates.
  *
  * @see taxonomy_access_init()
  */
@@ -486,7 +491,7 @@ function _taxonomy_access_node_access_update(array $nids) {
 }
 
 /**
- * Cache and retrieve nodes affected by a taxonomy change.
+ * Caches and retrieves nodes affected by a taxonomy change.
  *
  * @param array $affected_nodes
  *   (optional) If we are caching, the list of nids to cache.
@@ -726,7 +731,7 @@ function _taxonomy_access_get_nodes_for_terms($term_ids) {
 }
 
 /**
- * Get term IDs for all descendants of the given term.
+ * Gets term IDs for all descendants of the given term.
  *
  * @param int $tid
  *    The term ID for which to fetch children.
