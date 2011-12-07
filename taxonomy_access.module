@@ -386,21 +386,29 @@ function taxonomy_access_field_widget_form_alter(&$element, &$form_state, $conte
  *
  * @param int $rid
  *   The role ID.
+ *
+ * @return bool
+ *   TRUE on success, or FALSE on failure.
+ *
+ * @todo
+ *   Should we default to the authenticated user global default?
  */
 function taxonomy_access_enable_role($rid) {
   $rid = intval($rid);
 
-  // If we are adding a role, no global default is set yet, so insert it now.
-  // All valid role IDs are > 0.
-  if ($rid && !taxonomy_access_role_enabled($rid)) {
-    // Assemble a $row object for Schema API.
-    $row = new stdClass();
-    $row->vid = 0;
-    $row->rid = $rid;
-
-    // Insert the row with defaults for all grants.
-    drupal_write_record('taxonomy_access_default', $row);
+  // Take no action if the role is already enabled. All valid role IDs are > 0.
+  if (!$rid || taxonomy_access_role_enabled($rid)) {
+    return FALSE;
   }
+
+  // If we are adding a role, no global default is set yet, so insert it now.
+  // Assemble a $row object for Schema API.
+  $row = new stdClass();
+  $row->vid = 0;
+  $row->rid = $rid;
+
+  // Insert the row with defaults for all grants.
+  return drupal_write_record('taxonomy_access_default', $row);
 }
 
 /**
@@ -823,6 +831,9 @@ function _taxonomy_access_get_vocabulary_terms($vocab_id) {
  * @param bool $update_nodes
  *   (optional) A flag to determine whether nodes should be queued for update.
  *   Defaults to TRUE.
+ *
+ * @return bool
+ *   TRUE on success, or FALSE on failure.
  */
 function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
   if (empty($rid)) {
@@ -896,6 +907,8 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
   db_delete('taxonomy_access_default')
     ->condition('rid', $rid)
     ->execute();
+
+  return TRUE;
 }
 
 /**
@@ -908,6 +921,9 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
  * @param bool $update_nodes
  *   (optional) A flag to determine whether nodes should be queued for update.
  *   Defaults to TRUE.
+ *
+ * @return bool
+ *   TRUE on success, or FALSE on failure.
  */
 function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_nodes = TRUE) {
   // Accept either a single vocabulary ID or an array thereof.
@@ -933,8 +949,8 @@ function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_
   }
 
   $query->execute();
-
   unset($query);
+  return TRUE;
 }
 
 /**
@@ -947,6 +963,9 @@ function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_
  * @param bool $update_nodes
  *   (optional) A flag to determine whether nodes should be queued for update.
  *   Defaults to TRUE.
+ *
+ * @return bool
+ *   TRUE on success, or FALSE on failure.
  */
 function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_nodes = TRUE) {
   // Accept either a single term ID or an array thereof.
@@ -975,9 +994,9 @@ function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_node
   }
 
   $query->execute();
-
   unset($term_ids);
   unset($query);
+  return TRUE;
 }
 
 
