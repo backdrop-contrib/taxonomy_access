@@ -40,58 +40,6 @@ function _taxonomy_access_user_roles($permission = NULL) {
 }
 
 /**
- * Implements hook_enable().
- *
- * Housekeeping: while we were away, did you delete any terms/vocabs/roles?
- * 1: Delete ta, tad rows for missing roles.
- * 2: Delete ta rows for missing terms.
- * 3: Delete tad rows for missing vocabs.
- */
-function taxonomy_access_enable() {
-  // Delete any records for roles not in {roles}.
-  $roles = _taxonomy_access_user_roles();
-  $config_roles =
-    db_query("SELECT DISTINCT rid FROM {taxonomy_access_default}")
-    ->fetchCol();
-  $missing_roles = array_diff($config_roles, array_keys($roles));
-
-  // Core flags node access for rebuild on enable, so skip node updates.
-  foreach ($missing_roles as $rid) {
-    taxonomy_access_delete_role_grants($rid, FALSE);
-  }
-
-  // Delete any term configurations not in {taxonomy_term_data}.
-  $term_ids =
-    db_query(
-      "SELECT ta.tid
-      FROM {taxonomy_access_term} ta
-      LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid
-      WHERE ta.tid <> 0 AND td.tid IS NULL"
-    )
-    ->fetchCol()
-    ;
-
-  // Core flags node access for rebuild on enable, so skip node updates.
-  taxonomy_access_delete_term_grants($term_ids, NULL, FALSE);
-  unset($term_ids);
-
-  // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
-  $vocab_ids =
-    db_query(
-      "SELECT tad.vid
-      FROM {taxonomy_access_default} tad
-      LEFT JOIN {taxonomy_vocabulary} tv ON tad.vid = tv.vid
-      WHERE tad.vid <> 0 AND tv.vid IS NULL"
-    )
-    ->fetchCol()
-    ;
-
-  // Core flags node access for rebuild on enable, so skip node updates.
-  taxonomy_access_delete_default_grants($vocab_ids, FALSE);
-  unset($vocab_ids);
-}
-
-/**
  * Implements hook_boot().
  */
 function taxonomy_access_boot() {
