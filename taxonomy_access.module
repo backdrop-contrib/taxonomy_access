@@ -383,6 +383,92 @@ function taxonomy_access_role_enabled($rid) {
   return (bool) $role_status[$rid];
 }
 
+/**
+ * Enables a vocabulary for the given role.
+ *
+ * @param int $vid
+ *   The vocabulary ID to enable.
+ * @param int $rid
+ *   The role ID.
+ *
+ * @return bool
+ *   TRUE on success, or FALSE on failure.
+ *
+ * @see taxnomomy_access_enable_role()
+ */
+function taxonomy_access_enable_vocab($vid, $rid) {
+  $rid = intval($rid);
+  $vid = intval($vid);
+
+  // All valid role IDs are > 0, and we do not enable the global default here.
+  if (!$rid || !$vid) {
+    return FALSE;
+  }
+  // Take no action if the vocabulary is already enabled for the role.
+  $vocab_status =
+    db_query(
+      'SELECT 1
+       FROM {taxonomy_access_default}
+       WHERE rid = :rid AND vid = :vid',
+      array(':rid' => $rid, ':vid' => $vid))
+    ->fetchField();
+  if ($vocab_status) {
+    return FALSE;
+  }
+  // Otherwise, initialize the vocabulary default with the global default.
+  // Use our API functions so that node access gets updated as needed.
+  $global_default =
+    db_query(
+      'SELECT grant_view, grant_update, grant_delete, grant_create, grant_list
+       FROM {taxonomy_access_default}
+       WHERE vid = 0 AND rid = :rid',
+      array(':rid' => $rid))
+    ->fetchAssoc();
+  $record = _taxonomy_access_format_grant_record($vid, $rid, $global_default, TRUE);
+  return taxonomy_access_set_default_grants(array($vid => $record));
+}
+
+/**
+ * Disables a vocabulary for the given role.
+ *
+ * @param int $vid
+ *   The vocabulary ID to enable.
+ * @param int $rid
+ *   The role ID.
+ *
+ * @return bool
+ *   TRUE on success, or FALSE on failure.
+ *
+ * @see taxonomy_access_delete_role_grants()
+ */
+function taxonomy_access_disable_vocab($vid, $rid) {
+  $rid = intval($rid);
+  $vid = intval($vid);
+
+  // Do not allow the global default to be deleted this way.
+  // Deleting the global default would disable the role.
+  if (!$vid || !$rid) {
+    return FALSE;
+  }
+
+  // Delete the vocabulary default.
+  taxonomy_access_delete_default_grants($vid, $rid);
+
+  // Delete the role's term access rules for the vocabulary.
+  // First check which term records are enabled so we can update node access.
+  $tids =
+    db_query(
+      "SELECT ta.tid
+       FROM {taxonomy_access_term} ta
+       INNER JOIN {taxonomy_term_data} td ON ta.tid = td.tid
+       WHERE td.tid = :vid AND ta.rid = :rid",
+      array(':vid' => $vid, ':rid' => $rid))
+    ->fetchCol();
+  taxonomy_access_delete_term_grants($tids, $rid);
+
+  return TRUE;
+}
+
 
 /*****************************************************************************/
 /*********************** NODE ACCESS UPDATE MECHANISM ************************/
