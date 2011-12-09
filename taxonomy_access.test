@@ -351,8 +351,8 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
 class TaxonomyAccessExternalChanges extends TaxonomyAccessTestCase {
   public static function getInfo() {
     return array(
-      'name' => 'TAC External Change Tests',
-      'description' => "Test TAC's response to changes from other modules.",
+      'name' => 'External changes',
+      'description' => "Test the module's response to changes from other modules.",
       'group' => 'Taxonomy Access Control',
     );
   }
@@ -383,8 +383,8 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
   public static function getInfo() {
     return array(
-      'name' => 'TAC Configuration Tests',
-      'description' => 'Test TAC configuration forms.',
+      'name' => 'Configuration forms',
+      'description' => 'Test module configuration forms.',
       'group' => 'Taxonomy Access Control',
     );
   }
@@ -1063,7 +1063,7 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
 
   public static function getInfo() {
     return array(
-      'name' => 'TAC Node Access Tests',
+      'name' => 'Node access',
       'description' => 'Test node access for various grant configurations.',
       'group' => 'Taxonomy Access Control',
     );
@@ -1267,7 +1267,7 @@ class TaxonomyAccessTermGrantTest extends TaxonomyAccessTestCase {
 
   public static function getInfo() {
     return array(
-      'name' => 'TAC term grant tests',
+      'name' => 'Term grants',
       'description' => 'Test node access for View tag (create) and Add tag (list) grants.',
       'group' => 'Taxonomy Access Control',
     );
