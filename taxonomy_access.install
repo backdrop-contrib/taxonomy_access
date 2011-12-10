@@ -94,7 +94,7 @@ function taxonomy_access_schema() {
   );
 
   $schema['taxonomy_access_default'] = array(
-    'description' => 'Sets vocabulary defaults which roles may view, update, delete, create, and list nodes with a given term. Overridden by {taxonomy_access_term}/',
+    'description' => 'Sets vocabulary defaults which roles may view, update, delete, create, and list nodes with a given term. Overridden by {taxonomy_access_term}.',
     'fields' => array(
       'vid' => array(
         'description' => 'The vocabulary.vid for which this row sets defaults.',
