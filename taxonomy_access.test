@@ -497,11 +497,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Visit all nodes as anonymous and verify that access is denied.
     foreach ($this->articles as $key => $article) {
       $this->drupalGet('node/' . $article->nid);
-      $this->assertResponse(403, t("Access to %name article (nid %nid) is denied.", array('%name' => $key, '%nid' => $article->nid)));
+      $this->assertResponse(403, t("Access to %name article (nid %nid) is denied for anonymous users.", array('%name' => $key, '%nid' => $article->nid)));
     }
     foreach ($this->pages as $key => $page) {
       $this->drupalGet('node/' . $page->nid);
-      $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+      $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users.", array('%name' => $key, '%nid' => $page->nid)));
     }
 
     // Log in as the regular_user.
@@ -510,11 +510,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Visit all nodes and verify that access is denied.
     foreach ($this->articles as $key => $article) {
       $this->drupalGet('node/' . $article->nid);
-      $this->assertResponse(403, t("Access to %name article (nid %nid) is denied.", array('%name' => $key, '%nid' => $article->nid)));
+      $this->assertResponse(403, t("Access to %name article (nid %nid) is denied for a regular user.", array('%name' => $key, '%nid' => $article->nid)));
     }
     foreach ($this->pages as $key => $page) {
       $this->drupalGet('node/' . $page->nid);
-      $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+      $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for a regular user.", array('%name' => $key, '%nid' => $page->nid)));
     }
 
     // Log in as the administrator.
@@ -551,11 +551,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Visit each node and verify that access is allowed.
     foreach ($this->articles as $key => $article) {
       $this->drupalGet('node/' . $article->nid);
-      $this->assertResponse(200, t("Access to %name article (nid %nid) is allowed.", array('%name' => $key, '%nid' => $article->nid)));
+      $this->assertResponse(200, t("Access to %name article (nid %nid) is allowed for anonymous when the global default is allow.", array('%name' => $key, '%nid' => $article->nid)));
     }
     foreach ($this->pages as $key => $page) {
       $this->drupalGet('node/' . $page->nid);
-      $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+      $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous when the global default is allow.", array('%name' => $key, '%nid' => $page->nid)));
     }
 
     // Add some specific configurations programmatically.
@@ -592,7 +592,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Visit each artile and verify that access is denied.
     foreach ($this->articles as $key => $article) {
       $this->drupalGet('node/' . $article->nid);
-      $this->assertResponse(403, t("Access to %name article (nid %nid) is denied.", array('%name' => $key, '%nid' => $article->nid)));
+      $this->assertResponse(403, t("Access to %name article (nid %nid) is denied for anonymous after granting access to some terms and setting the global default to deny.", array('%name' => $key, '%nid' => $article->nid)));
     }
 
     // Visit each page.
@@ -604,12 +604,12 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
         case ($key == 'no_tags'):
         // If the page is tagged with v2t2, access should be denied.
         case (strpos($key, 'v2t2') !== FALSE):
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous after granting access to some terms and setting the global default to deny.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Otherwise, access should be allowed.
         default:
-          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous after granting access to some terms and setting the global default to deny.", array('%name' => $key, '%nid' => $page->nid)));
           break;
       }
     }
@@ -644,11 +644,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
       // If the page is tagged with a v1 term, access should be allowed.
       if (strpos($key, 'v1') !== FALSE) {
-        $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+        $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous users after setting the v1 default to allow.", array('%name' => $key, '%nid' => $page->nid)));
       }
       // Otherwise, access should be denied.
       else {
-        $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+        $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after setting the v1 default to allow.", array('%name' => $key, '%nid' => $page->nid)));
       }
     }
 
@@ -678,17 +678,17 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
       switch (TRUE) {
         // If the page is tagged with v2t2, the v2 default is inherited: Deny.
         case (strpos($key, 'v2t2') !== FALSE):
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after setting the v2 default to deny.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Otherwise, if the page is tagged with v1, it's allowed.
         case (strpos($key, 'v1') !== FALSE):
-          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous users after setting the v2 default to deny.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Access should be denied by default.
         default:
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after setting the v2 default to deny.", array('%name' => $key, '%nid' => $page->nid)));
           break;
       }
     }
@@ -713,18 +713,18 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
       switch (TRUE) {
         // If the page is tagged with a v1 term, access should be denied.
         case (strpos($key, 'v1') !== FALSE):
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after changing the default configuration for v1 and v2.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Otherwise, if the page is tagged with v2t2, the default is
         // inherited and access should be allowed.
         case (strpos($key, 'v2t2') !== FALSE):
-          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous users after changing the default configuration for v1 and v2.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Access should be denied by default.
         default:
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after changing the default configuration for v1 and v2.", array('%name' => $key, '%nid' => $page->nid)));
           break;
       }
     }
@@ -747,11 +747,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
       // If the page is tagged with v2t2, access should be allowed.
       if (strpos($key, 'v2t2') !== FALSE) {
-        $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+        $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous users after deleting the v1 default.", array('%name' => $key, '%nid' => $page->nid)));
       }
       // Otherwise, access should be denied.
       else {
-        $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+        $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after deleting the v1 default.", array('%name' => $key, '%nid' => $page->nid)));
       }
     }
   }
@@ -784,11 +784,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
       // If the page is tagged with v1t1, access should be allowed.
       if (strpos($key, 'v1t1') !== FALSE) {
-        $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+        $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous users after granting allow for v1t1.", array('%name' => $key, '%nid' => $page->nid)));
       }
       // Otherwise, access should be denied.
       else {
-        $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+        $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after granting allow for v1t1.", array('%name' => $key, '%nid' => $page->nid)));
       }
     }
 
@@ -818,17 +818,17 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
       switch (TRUE) {
         // If the page is tagged with v2t1, access should be denied.
         case (strpos($key, 'v2t1') !== FALSE):
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after configuring v2t1 for deny.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Otherwise, if the page is tagged with v1t1, it's allowed.
         case (strpos($key, 'v1t1') !== FALSE):
-          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous users after configuring v2t1 for deny.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Access should be denied by default.
         default:
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after configuring v2t1 for deny.", array('%name' => $key, '%nid' => $page->nid)));
           break;
       }
     }
@@ -857,17 +857,17 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
       switch (TRUE) {
         // If the page is tagged with v1t1, access should be denied.
         case (strpos($key, 'v1t1') !== FALSE):
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after reconfiguring v1t1 and v2t1.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Otherwise, if the page is tagged with v2t1, it's allowed.
         case (strpos($key, 'v2t1') !== FALSE):
-          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for anonymous users after reconfiguring v1t1 and v2t1.", array('%name' => $key, '%nid' => $page->nid)));
           break;
 
         // Access should be denied by default.
         default:
-          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+          $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after reconfiguring v1t1 and v2t1.", array('%name' => $key, '%nid' => $page->nid)));
           break;
       }
     }
@@ -889,7 +889,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
       $this->drupalGet('node/' . $page->nid);
 
       // Access to all pages should be denied.
-      $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+      $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for anonymous users after deleting all term configurations.", array('%name' => $key, '%nid' => $page->nid)));
     }
   }
 
@@ -992,11 +992,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Visit each node and verify that access is allowed.
     foreach ($this->articles as $key => $article) {
       $this->drupalGet('node/' . $article->nid);
-      $this->assertResponse(200, t("Access to %name article (nid %nid) is allowed.", array('%name' => $key, '%nid' => $article->nid)));
+      $this->assertResponse(200, t("Access to %name article (nid %nid) is allowed for a regular user after granting allow in the global default.", array('%name' => $key, '%nid' => $article->nid)));
     }
     foreach ($this->pages as $key => $page) {
       $this->drupalGet('node/' . $page->nid);
-      $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed.", array('%name' => $key, '%nid' => $page->nid)));
+      $this->assertResponse(200, t("Access to %name page (nid %nid) is allowed for a regular user after granting allow in the global default.", array('%name' => $key, '%nid' => $page->nid)));
     }
 
     // Log in as the administrator.
@@ -1033,11 +1033,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Visit all nodes and verify that access is again denied.
     foreach ($this->articles as $key => $article) {
       $this->drupalGet('node/' . $article->nid);
-      $this->assertResponse(403, t("Access to %name article (nid %nid) is denied.", array('%name' => $key, '%nid' => $article->nid)));
+      $this->assertResponse(403, t("Access to %name article (nid %nid) is denied for a regular user after disabling the role.", array('%name' => $key, '%nid' => $article->nid)));
     }
     foreach ($this->pages as $key => $page) {
       $this->drupalGet('node/' . $page->nid);
-      $this->assertResponse(403, t("Access to %name page (nid %nid) is denied.", array('%name' => $key, '%nid' => $page->nid)));
+      $this->assertResponse(403, t("Access to %name page (nid %nid) is denied for a regular user after disabling the role.", array('%name' => $key, '%nid' => $page->nid)));
     }
   }
 }
