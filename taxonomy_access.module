@@ -467,7 +467,7 @@ function taxonomy_access_disable_vocab($vid, $rid) {
       "SELECT ta.tid
        FROM {taxonomy_access_term} ta
        INNER JOIN {taxonomy_term_data} td ON ta.tid = td.tid
-       WHERE td.tid = :vid AND ta.rid = :rid",
+       WHERE td.vid = :vid AND ta.rid = :rid",
       array(':vid' => $vid, ':rid' => $rid))
     ->fetchCol();
   taxonomy_access_delete_term_grants($tids, $rid);
