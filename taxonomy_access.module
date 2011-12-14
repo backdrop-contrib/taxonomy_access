@@ -419,11 +419,13 @@ function taxonomy_access_enable_vocab($vid, $rid) {
   // Use our API functions so that node access gets updated as needed.
   $global_default =
     db_query(
-      'SELECT grant_view, grant_update, grant_delete, grant_create, grant_list
+      'SELECT grant_view as view, grant_update as update,
+         grant_delete as delete, grant_create as create, grant_list as list
        FROM {taxonomy_access_default}
        WHERE vid = 0 AND rid = :rid',
       array(':rid' => $rid))
     ->fetchAssoc();
+  dpm($global_default);
   $record = _taxonomy_access_format_grant_record($vid, $rid, $global_default, TRUE);
   return taxonomy_access_set_default_grants(array($vid => $record));
 }
