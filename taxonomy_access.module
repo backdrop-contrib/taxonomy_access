@@ -630,7 +630,7 @@ function _taxonomy_access_get_nodes_for_global_default($rid) {
     $query->condition(
       db_or()
       ->condition('ti.tid', $tids, 'NOT IN')
-      ->condition('ti.tid', NULL)
+      ->isNull('ti.tid')
     );
   }
 
