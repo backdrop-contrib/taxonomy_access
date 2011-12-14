@@ -215,7 +215,7 @@ function _taxonomy_access_options_alter(&$element, &$form_state, $context) {
  */
 function taxonomy_access_user_create_terms() {
   // Cache the terms the current user can create.
-  static $terms = NULL;
+  $terms = &drupal_static(__FUNCTION__, NULL);
   if (is_null($terms)) {
     $terms = _taxonomy_access_user_term_grants(TRUE);
   }

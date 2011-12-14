@@ -32,7 +32,7 @@ define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
  *   Replace this function once http://drupal.org/node/6463 is backported.
  */
 function _taxonomy_access_user_roles($permission = NULL) {
-  static $roles = array();
+  $roles = &drupal_static(__FUNCTION__, array());
   if (!isset($roles[$permission])) {
     $roles[$permission] = user_roles(FALSE, $permission);
   }
@@ -267,7 +267,7 @@ function taxonomy_access_query_term_access_alter($query) {
   }
 
   // Fetch a list of all terms the user may list.
-  $tids = taxonomy_access_user_list_terms();
+  $tids = &drupal_static(__FUNCTION__, taxonomy_access_user_list_terms());
 
   // If exactly TRUE was returned, the user can list all terms.
   if ($tids === TRUE) {
@@ -789,7 +789,7 @@ function _taxonomy_access_get_nodes_for_terms($term_ids) {
  *    An array of the IDs of the term's descendants.
  */
 function _taxonomy_access_get_descendants($tid) {
-  static $descendants = array();
+  $descendants = &drupal_static(__FUNCTION__, array());
 
   if (!isset($descendants[$tid])) {
     // Preserve the original state of the list flag.
@@ -892,7 +892,7 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
 
     // If any global defaults are more permissive, we need to update all nodes.
     // Fetch global defaults.
-    $global_defaults = taxonomy_access_global_defaults();
+    $global_defaults = &drupal_static(__FUNCTION__, taxonomy_access_global_defaults());
 
     // Find the ones we need.
     foreach ($global_defaults as $gd) {
