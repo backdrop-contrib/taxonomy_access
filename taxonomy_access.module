@@ -1096,6 +1096,9 @@ function _taxonomy_access_format_grant_record($id, $rid, array $grants, $default
  *   (optional) A flag indicating whether to update node access.
  *   Defaults to TRUE.
  *
+ * @return bool
+ *   TRUE on success, or FALSE on failure.
+ *
  * @see _taxonomy_access_format_grant_record()
  */
 function taxonomy_access_set_term_grants(array $grant_rows, $update_nodes = TRUE) {
@@ -1115,6 +1118,9 @@ function taxonomy_access_set_term_grants(array $grant_rows, $update_nodes = TRUE
   foreach ($grant_rows as $row) {
     drupal_write_record('taxonomy_access_term', $row);
   }
+
+  // Later we will refactor; for now return TRUE when this is called.
+  return TRUE;
 }
 
 /**
@@ -1127,6 +1133,9 @@ function taxonomy_access_set_term_grants(array $grant_rows, $update_nodes = TRUE
  * @param $update_nodes
  *   (optional) A flag indicating whether to update node access.
  *   Defaults to TRUE.
+ *
+ * @return bool
+ *   TRUE on success, or FALSE on failure.
  *
  * @see _taxonomy_access_format_grant_record()
  */
@@ -1147,6 +1156,9 @@ function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = T
   foreach ($grant_rows as $row) {
     drupal_write_record('taxonomy_access_default', $row);
   }
+
+  // Later we will refactor; for now return TRUE when this is called.
+  return TRUE;
 }
 
 /**
