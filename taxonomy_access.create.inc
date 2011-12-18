@@ -17,6 +17,12 @@
  */
 
 /**
+ * @defgroup tac_create Taxonomy Access Control: Add tag (create) permission
+ * @{
+ * Implement access control for taxonomy terms on node editing forms.
+ */
+
+/**
  * Implements the create grant for autocomplete fields.
  *
  * - Denies access if the user cannot alter the field values.
@@ -524,7 +530,6 @@ function _taxonomy_access_autocomplete_validate($element, &$form_state) {
   form_set_value($element, $value, $form_state);
 }
 
-
 /**
  * Form element validation handler for taxonomy option fields.
  *
@@ -857,3 +862,7 @@ function _taxonomy_access_disallowed_changes(array $new_field, array $old_field)
   return FALSE;
 }
 
+/**
+ * End of "defgroup tac_create".
+ * @}
+ */

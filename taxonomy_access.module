@@ -198,6 +198,8 @@ function taxonomy_access_node_grants($user, $op) {
 
 /**
  * Implements hook_node_access_records().
+ *
+ * @ingroup tac_node_access
  */
 function taxonomy_access_node_access_records($node) {
   // Only write grants for published nodes.
@@ -246,6 +248,8 @@ function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) 
  *
  * @todo
  *   Fix create permission filtering for autocomplete paths.
+ *
+ * @ingroup tac_list
  */
 function taxonomy_access_query_term_access_alter($query) {
 
@@ -476,9 +480,11 @@ function taxonomy_access_disable_vocab($vid, $rid) {
 }
 
 
-/*****************************************************************************/
-/*********************** NODE ACCESS UPDATE MECHANISM ************************/
-/*****************************************************************************/
+/**
+ * @defgroup tac_affected_nodes Taxonomy Access Control: Node access update mechanism
+ * @{
+ * Update node access on shutdown in response to other changes.
+ */
 
 
 /**
@@ -856,12 +862,17 @@ function _taxonomy_access_get_vocabulary_terms($vocab_id) {
   return $descendants[$vocab_id];
 }
 
+/**
+ * End of "defgroup tac_affected_nodes".
+ * @}
+ */
 
 
-
-/*****************************************************************************/
-/******************************* DELETION API ********************************/
-/*****************************************************************************/
+/**
+ * @defgroup tac_grant_api Taxonomy Access Control: Grant record API
+ * @{
+ * Store, retrieve, and delete module access rules for terms and vocabularies.
+ */
 
 
 /**
@@ -1040,14 +1051,6 @@ function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_node
   return TRUE;
 }
 
-
-
-
-/*****************************************************************************/
-/******************************** UPDATE API *********************************/
-/*****************************************************************************/
-
-
 /**
  * Formats a record to be written to the module's configuration tables.
  *
@@ -1146,11 +1149,16 @@ function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = T
   }
 }
 
+/**
+ * End of "defgroup tac_grant_api".
+ * @}
+ */
 
-
-/*****************************************************************************/
-/******************************* NODE ACCESS *********************************/
-/*****************************************************************************/
+/**
+ * @defgroup tac_node_access Taxonomy Access Control: Node access implementation
+ * @{
+ * Functions to set node access based on configured access rules.
+ */
 
 /**
  * Builds a base query object for the specified TAC grants.
@@ -1239,6 +1247,8 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
  *
  * @return
  *    Array formatted for hook_node_access_records().
+ *
+ * @ingroup tac_node_access
  */
 function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
 
@@ -1335,13 +1345,17 @@ function _taxonomy_access_format_node_access_record(stdClass $record) {
   );
 }
 
+/**
+ * End of "defgroup tac_node_access".
+ * @}
+ */
 
 
-
-
-/*****************************************************************************/
-/******************************* TERM ACCESS *********************************/
-/*****************************************************************************/
+/**
+ * @defgroup tac_list Taxonomy Access Control: View tag (list) permission
+ * @{
+ * Alter queries to control the display of taxonomy terms on nodes and listings.
+ */
 
 
 /**
@@ -1508,6 +1522,11 @@ function _taxonomy_access_term_options($field) {
 
   return $options;
 }
+
+/**
+ * End of "defgroup tac_list".
+ * @}
+ */
 
 /**
  * Form element validation handler for taxonomy autocomplete fields.
