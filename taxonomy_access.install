@@ -20,10 +20,31 @@ function taxonomy_access_last_removed() {
  */
 function taxonomy_access_install() {
 
- // Default global perms for roles 1 (anonymous) and 2 (authenticated).
-  db_query('INSERT INTO {taxonomy_access_default} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 1, 1, 0, 0, 1, 1)');
-  db_query('INSERT INTO {taxonomy_access_default} (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list) VALUES(0, 2, 1, 0, 0, 1, 1)');
-
+  // Default global perms for roles 1 (anonymous) and 2 (authenticated).
+  db_query(
+    'INSERT INTO {taxonomy_access_default}
+    (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list)
+    VALUES
+    (:vid, :rid, :node_allow, :ignore, :ignore, :term_allow, :term_allow)',
+    array(
+      ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT,
+      ':rid' => DRUPAL_ANONYMOUS_RID,
+      ':node_allow' => TAXONOMY_ACCESS_NODE_ALLOW,
+      ':ignore' => TAXONOMY_ACCESS_NODE_IGNORE,
+      ':term_allow' => TAXONOMY_ACCESS_TERM_ALLOW)
+  );
+  db_query(
+    'INSERT INTO {taxonomy_access_default}
+    (vid, rid, grant_view, grant_update, grant_delete, grant_create, grant_list)
+    VALUES
+    (:vid, :rid, :node_allow, :ignore, :ignore, :term_allow, :term_allow)',
+    array(
+      ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT,
+      ':rid' => DRUPAL_AUTHENTICATED_RID,
+      ':node_allow' => TAXONOMY_ACCESS_NODE_ALLOW,
+      ':ignore' => TAXONOMY_ACCESS_NODE_IGNORE,
+      ':term_allow' => TAXONOMY_ACCESS_TERM_ALLOW)
+  );
 }
 
 /**
@@ -40,7 +61,7 @@ function taxonomy_access_schema() {
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_VOCABULARY_DEFAULT,
       ),
       'rid' => array(
         'description' => "The role.rid a user must possess to gain this row's privileges on nodes for this term.",
@@ -55,7 +76,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_NODE_IGNORE,
       ),
       'grant_update' => array(
         'description' => 'Whether this role can edit nodes with this term. 0=>Ignore, 1=>Allow, 2=>Deny.',
@@ -63,7 +84,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_NODE_IGNORE,
       ),
       'grant_delete' => array(
         'description' => 'Whether this role can delete nodes with this term. 0=>Ignore, 1=>Allow, 2=>Deny.',
@@ -71,7 +92,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_NODE_IGNORE,
       ),
       'grant_create' => array(
         'description' => 'Whether this role can set this term when adding or editing a node. 0=>No, 1=>Yes.',
@@ -79,7 +100,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_TERM_DENY,
       ),
       'grant_list' => array(
         'description' => 'Whether this role can view the name of this term on a node or in category lists. 0=>No, 1=>Yes.',
@@ -87,7 +108,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 1,
+        'default' => TAXONOMY_ACCESS_TERM_ALLOW,
       ),
     ),
     'primary key' => array('tid', 'rid'),
@@ -101,7 +122,7 @@ function taxonomy_access_schema() {
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_VOCABULARY_DEFAULT,
       ),
       'rid' => array(
         'description' => "The role.rid a user must possess to gain this row's privileges on nodes for terms in this vocabulary.",
@@ -116,7 +137,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_NODE_IGNORE,
       ),
       'grant_update' => array(
         'description' => 'Whether this role can edit nodes with terms in this vocabulary. 0=>Ignore, 1=>Allow, 2=>Deny.',
@@ -124,7 +145,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_NODE_IGNORE,
       ),
       'grant_delete' => array(
         'description' => 'Whether this role can delete nodes with terms in this vocabulary. 0=>Ignore, 1=>Allow, 2=>Deny.',
@@ -132,7 +153,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_NODE_IGNORE,
       ),
       'grant_create' => array(
         'description' => 'Whether this role can set terms in this vocabulary when adding or editing a node. 0=>No, 1=>Yes.',
@@ -140,7 +161,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_TERM_DENY,
       ),
       'grant_list' => array(
         'description' => 'Whether this role can view the name of terms in this vocabulary on a node or in category lists. 0=>No, 1=>Yes.',
@@ -148,7 +169,7 @@ function taxonomy_access_schema() {
         'unsigned' => TRUE,
         'size' => 'tiny',
         'not null' => TRUE,
-        'default' => 0,
+        'default' => TAXONOMY_ACCESS_TERM_DENY,
       ),
     ),
     'primary key' => array('vid', 'rid'),
@@ -218,8 +239,8 @@ function taxonomy_access_enable() {
       "SELECT ta.tid
       FROM {taxonomy_access_term} ta
       LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid
-      WHERE ta.tid <> 0 AND td.tid IS NULL"
-    )
+      WHERE ta.tid <> :tid AND td.tid IS NULL",
+      array(':tid' => TAXONOMY_ACCESS_VOCABULARY_DEFAULT))
     ->fetchCol()
     ;
 
@@ -233,8 +254,8 @@ function taxonomy_access_enable() {
       "SELECT tad.vid
       FROM {taxonomy_access_default} tad
       LEFT JOIN {taxonomy_vocabulary} tv ON tad.vid = tv.vid
-      WHERE tad.vid <> 0 AND tv.vid IS NULL"
-    )
+      WHERE tad.vid <> :vid AND tv.vid IS NULL",
+      array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
     ->fetchCol()
     ;
 

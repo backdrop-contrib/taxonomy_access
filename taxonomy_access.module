@@ -19,6 +19,41 @@ define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
 define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
 
 /**
+ * Global default.
+ */
+define('TAXONOMY_ACCESS_GLOBAL_DEFAULT', 0);
+
+/**
+ * Vocabulary default.
+ */
+define('TAXONOMY_ACCESS_VOCABULARY_DEFAULT', 0);
+
+/**
+ * 'Allow' grant value for nodes.
+ */
+define('TAXONOMY_ACCESS_NODE_ALLOW', 1);
+
+/**
+ * 'Ignore' grant value for nodes.
+ */
+define('TAXONOMY_ACCESS_NODE_IGNORE', 0);
+
+/**
+ * 'Deny' grant value for nodes.
+ */
+define('TAXONOMY_ACCESS_NODE_DENY', 2);
+
+/**
+ * 'Allow' grant value for terms.
+ */
+define('TAXONOMY_ACCESS_TERM_ALLOW', 1);
+
+/**
+ * 'Deny' grant value for terms.
+ */
+define('TAXONOMY_ACCESS_TERM_DENY', 0);
+
+/**
  * Caches a list of all roles.
  *
  * @param string|null $permission
@@ -352,7 +387,7 @@ function taxonomy_access_enable_role($rid) {
   // If we are adding a role, no global default is set yet, so insert it now.
   // Assemble a $row object for Schema API.
   $row = new stdClass();
-  $row->vid = 0;
+  $row->vid = TAXONOMY_ACCESS_GLOBAL_DEFAULT;
   $row->rid = $rid;
 
   // Insert the row with defaults for all grants.
@@ -376,7 +411,7 @@ function taxonomy_access_role_enabled($rid) {
         'SELECT 1
          FROM {taxonomy_access_default}
          WHERE rid = :rid AND vid = :vid',
-        array(':rid' => $rid, ':vid' => '0'))
+        array(':rid' => $rid, ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
       ->fetchField();
   }
   return (bool) $role_status[$rid];
@@ -420,8 +455,8 @@ function taxonomy_access_enable_vocab($vid, $rid) {
     db_query(
       'SELECT grant_view, grant_update, grant_delete, grant_create, grant_list
        FROM {taxonomy_access_default}
-       WHERE vid = 0 AND rid = :rid',
-      array(':rid' => $rid))
+       WHERE vid = :vid AND rid = :rid',
+       array(':rid' => $rid, ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
     ->fetchAssoc();
   // Rename the keys; we can't do so in the query because they are SQL reserved
   // words.
@@ -693,7 +728,7 @@ function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
   unset($query);
 
   // If the global default is in the list, fetch those nodes as well.
-  if (in_array(0, $vocab_ids)) {
+  if (in_array(TAXONOMY_ACCESS_GLOBAL_DEFAULT, $vocab_ids)) {
     $nids =
       array_merge($nids, _taxonomy_access_get_nodes_for_global_default($rid));
   }
@@ -919,15 +954,15 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
       switch ($auth_gd[$op]) {
         // If the authenticated user has a Deny grant, then either Allow or
         // Ignore for the role is more permissive.
-        case 2:
-          if ($role_gd[$op] < 2) {
+        case TAXONOMY_ACCESS_NODE_DENY:
+          if (($role_gd[$op] == TAXONOMY_ACCESS_NODE_IGNORE) || ($role_gd[$op] == TAXONOMY_ACCESS_NODE_ALLOW)){
             $all_nodes = TRUE;
           }
           break 2;
 
         // If the authenticated user has Ignore, Allow is more permissive.
-        case 0:
-          if ($role_gd[$op] == 1) {
+        case TAXONOMY_ACCESS_NODE_IGNORE:
+          if ($role_gd[$op] == TAXONOMY_ACCESS_NODE_ALLOW) {
             $all_nodes = TRUE;
           }
           break 2;
@@ -976,7 +1011,7 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
  */
 function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_nodes = TRUE) {
   // Accept either a single vocabulary ID or an array thereof.
-  if ($vocab_ids !== 0 && empty($vocab_ids)) {
+  if ($vocab_ids !== TAXONOMY_ACCESS_GLOBAL_DEFAULT && empty($vocab_ids)) {
     return FALSE;
   }
 
@@ -1197,7 +1232,8 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
 
   $query->join(
     'taxonomy_access_default', 'tadg',
-    'tadg.vid = 0'
+    'tadg.vid = :vid',
+    array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT)
   );
   $query->leftJoin(
     'taxonomy_access_default', 'tad',
@@ -1314,8 +1350,8 @@ function taxonomy_access_global_defaults($reset = FALSE) {
       db_query(
         'SELECT rid, grant_view, grant_update, grant_delete
          FROM {taxonomy_access_default}
-         WHERE vid = 0'
-      )
+         WHERE vid = :vid',
+         array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
       ->fetchAll();
     foreach ($records as $record) {
       $global_grants[] = _taxonomy_access_format_node_access_record($record);
@@ -1340,10 +1376,11 @@ function taxonomy_access_global_defaults($reset = FALSE) {
  */
 function _taxonomy_access_format_node_access_record(stdClass $record) {
 
-  // Ignore => 0, Allow => 1, Deny => 2 ('10' in binary).
-  // Only a value of 1 is considered an 'Allow';
-  // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
-  // If a 'Deny' is present, the value will then be 3 ('11' in binary).
+   // TAXONOMY_ACCESS_NODE_IGNORE => 0, TAXONOMY_ACCESS_NODE_ALLOW => 1,
+   // TAXONOMY_ACCESS_NODE_DENY => 2 ('10' in binary).
+   // Only a value of 1 is considered an 'Allow';
+   // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
+   // If a 'Deny' is present, the value will then be 3 ('11' in binary).
   return array(
     'realm' => 'taxonomy_access_role',
     'gid' => $record->rid,

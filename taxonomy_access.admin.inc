@@ -19,7 +19,10 @@
  */
 function taxonomy_access_admin() {
   $roles = _taxonomy_access_user_roles();
-  $active_rids = db_query('SELECT rid FROM {taxonomy_access_default} WHERE vid = 0')->fetchCol();
+  $active_rids = db_query(
+    'SELECT rid FROM {taxonomy_access_default} WHERE vid = :vid',
+    array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
+    ->fetchCol();
 
   $header = array(t('Role'), t('Status'), array('data' => t('Operations'), 'colspan' => 2));
   $rows = array();
@@ -76,7 +79,7 @@ function taxonomy_access_admin_delete_role($form, &$form_state, $rid) {
   $role_global_default = db_query(
     'SELECT grant_view, grant_update, grant_delete
      FROM {taxonomy_access_default}
-     WHERE vid = 0 AND rid = :rid', array(':rid' => $rid))
+     WHERE vid = :vid AND rid = :rid', array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT, ':rid' => $rid))
     ->fetchAssoc();
   if ($role_global_default) {
     $form['rid'] = array(
@@ -128,16 +131,19 @@ function taxonomy_access_admin_build_row(array $grants = NULL) {
   foreach (array('view', 'update', 'delete') as $grant) {
     $form[$grant] = array(
       '#type' => 'select',
-      '#options' => array('1' => 'Allow', '0' => 'Ignore', '2' => 'Deny'),
-      '#default_value' => is_string($grants['grant_' . $grant]) ? $grants['grant_' . $grant] : '0',
+      '#options' => array(
+        TAXONOMY_ACCESS_NODE_ALLOW => 'Allow',
+        TAXONOMY_ACCESS_NODE_IGNORE => 'Ignore',
+        TAXONOMY_ACCESS_NODE_DENY => 'Deny'),
+      '#default_value' => is_string($grants['grant_' . $grant]) ? $grants['grant_' . $grant] : TAXONOMY_ACCESS_NODE_IGNORE,
       '#required' => TRUE,
     );
   }
   foreach (array('create', 'list') as $grant) {
     $form[$grant] = array(
       '#type' => 'select',
-      '#options' => array('1' => 'Allow', '0' => 'Deny'),
-      '#default_value' => is_string($grants['grant_' . $grant]) ? $grants['grant_' . $grant] : '0',
+      '#options' => array(TAXONOMY_ACCESS_TERM_ALLOW => 'Allow', TAXONOMY_ACCESS_TERM_DENY => 'Deny'),
+      '#default_value' => is_string($grants['grant_' . $grant]) ? $grants['grant_' . $grant] : TAXONOMY_ACCESS_TERM_DENY,
     );
   }
   return $form;
@@ -167,7 +173,7 @@ function taxonomy_access_admin_form($form, $form_state, $rid) {
   if (empty($default_grants[0]) && isset($rid)) {
     // Assemble a $row object for Schema API.
     $row = new stdClass();
-    $row->vid = 0;
+    $row->vid = TAXONOMY_ACCESS_GLOBAL_DEFAULT;
     $row->rid = $rid;
 
     // Insert the row with defaults for all grants.

@@ -62,11 +62,11 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
     $rows = array();
     foreach (array(DRUPAL_ANONYMOUS_RID, DRUPAL_AUTHENTICATED_RID) as $rid) {
       $ignore = array(
-        'view' => 0,
-        'update' => 0,
-        'delete' => 0,
+        'view' => TAXONOMY_ACCESS_NODE_IGNORE,
+        'update' => TAXONOMY_ACCESS_NODE_IGNORE,
+        'delete' => TAXONOMY_ACCESS_NODE_IGNORE,
       );
-      $rows[] = _taxonomy_access_format_grant_record(0, $rid, $ignore, TRUE);
+      $rows[] = _taxonomy_access_format_grant_record(TAXONOMY_ACCESS_NODE_IGNORE, $rid, $ignore, TRUE);
     }
     taxonomy_access_set_default_grants($rows);
 
@@ -74,11 +74,12 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
       $r =
         db_query(
           'SELECT grant_view FROM {taxonomy_access_default}
-           WHERE vid = 0 AND rid = :rid',
-          array(':rid' => $rid)
+          WHERE vid = :vid AND rid = :rid',
+          array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT, ':rid' => $rid)
         )
         ->fetchField();
-      $this->assertTrue(is_numeric($r) && $r == 0, t("Set global default for role %rid to <em>Ignore</em>", array('%rid' => $rid)));
+      $this->assertTrue(is_numeric($r) && $r == TAXONOMY_ACCESS_NODE_IGNORE,
+        t("Set global default for role %rid to <em>Ignore</em>", array('%rid' => $rid)));
     }
   }
 
@@ -292,21 +293,21 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
    * @param array &$edit
    *   The form data to post.
    * @param int $vid
-   *   (optional) The vocabulary ID.  Defaults to 0 (global default).
-   * @param $int tid
-   *   (optional) The term ID.  Defaults to 0 (vocabulary default).
+   *   (optional) The vocabulary ID.  Defaults to global default.
+   * @param int $tid
+   *   (optional) The term ID.  Defaults to vocabulary default.
    * @param int $view
-   *   (optional) The view grant value (1, 0, or 2). Defaults to 0 (ignore).
+   *   (optional) The view grant value. Defaults to ignore.
    * @param int $update
-   *   (optional) The update grant value (1, 0, or 2). Defaults to 0 (ignore).
+   *   (optional) The update grant value. Defaults to ignore.
    * @param int $delete
-   *   (optional) The delete grant value (1, 0, or 2). Defaults to 0 (ignore).
+   *   (optional) The delete grant value. Defaults to ignore.
    * @param int $create
-   *   (optional) The create grant value (0 or 1). Defaults to 0 (unchecked).
+   *   (optional) The create grant value. Defaults to deny (unchecked).
    * @param int $list
-   *   (optional) The list grant value  (0 or 1). Defaults to 0 (unchecked).
+   *   (optional) The list grant value. Defaults to deny (unchecked).
    */
-  function addFormRow(&$edit,  $vid = 0, $tid = 0, $view = 0, $update = 0, $delete = 0, $create = 0, $list = 0) {
+  function addFormRow(&$edit, $vid = TAXONOMY_ACCESS_GLOBAL_DEFAULT, $tid = TAXONOMY_ACCESS_VOCABULARY_DEFAULT, $view = TAXONOMY_ACCESS_NODE_IGNORE, $update = TAXONOMY_ACCESS_NODE_IGNORE, $delete = TAXONOMY_ACCESS_NODE_IGNORE, $create = TAXONOMY_ACCESS_TERM_DENY, $list = TAXONOMY_ACCESS_TERM_DENY) {
     $new_value = $tid ? "term $tid" : "default $vid";
     $edit["new[item]"] = $new_value;
     $edit["new[grants][view]"] = $view;
@@ -322,21 +323,21 @@ class TaxonomyAccessTestCase extends DrupalWebTestCase {
    * @param array &$edit
    *   The form data to post.
    * @param int $vid
-   *   (optional) The vocabulary ID.  Defaults to 0 (global default).
+   *   (optional) The vocabulary ID. Defaults to TAXONOMY_ACCESS_GLOBAL_DEFAULT.
    * @param int $tid
-   *   (optional) The term ID.  Defaults to 0 (vocabulary default).
+   *   (optional) The term ID. Defaults to TAXONOMY_ACCESS_VOCABULARY_DEFAULT.
    * @param int $view
-   *   (optional) The view grant value (1, 0, or 2). Defaults to 0 (ignore).
+   *   (optional) The view grant value. Defaults to ignore.
    * @param int $update
-   *   (optional) The update grant value (1, 0, or 2). Defaults to 0 (ignore).
+   *   (optional) The update grant value. Defaults to ignore.
    * @param int $delete
-   *   (optional) The delete grant value (1, 0, or 2). Defaults to 0 (ignore).
+   *   (optional) The delete grant value. Defaults to ignore.
    * @param int $create
-   *   (optional) The create grant value (0 or 1). Defaults to 0 (unchecked).
+   *   (optional) The create grant value. Defaults to deny (unchecked).
    * @param int $list
-   *   (optional) The list grant value  (0 or 1). Defaults to 0 (unchecked).
+   *   (optional) The list grant value. Defaults to deny (unchecked).
    */
-  function configureFormRow(&$edit,  $vid = 0, $tid = 0, $view = 0, $update = 0, $delete = 0, $create = 0, $list = 0) {
+  function configureFormRow(&$edit, $vid = TAXONOMY_ACCESS_GLOBAL_DEFAULT, $tid = TAXONOMY_ACCESS_VOCABULARY_DEFAULT, $view = TAXONOMY_ACCESS_NODE_IGNORE, $update = TAXONOMY_ACCESS_NODE_IGNORE, $delete = TAXONOMY_ACCESS_NODE_IGNORE, $create = TAXONOMY_ACCESS_TERM_DENY, $list = TAXONOMY_ACCESS_TERM_DENY) {
     $edit["grants[$vid][$tid][view]"] = $view;
     $edit["grants[$vid][$tid][update]"] = $update;
     $edit["grants[$vid][$tid][delete]"] = $delete;
@@ -542,7 +543,8 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Use the admin form to give anonymous view allow in the global default.
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
-    $this->configureFormRow($edit, 0, 0, 1);
+    $this->configureFormRow($edit, TAXONOMY_ACCESS_GLOBAL_DEFAULT,
+      TAXONOMY_ACCESS_VOCABULARY_DEFAULT, TAXONOMY_ACCESS_NODE_ALLOW);
     $this->drupalPost(NULL, $edit, 'Save all');
 
     // Log out.
@@ -562,7 +564,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
     // Set the v1 default to view allow.
     $default_config = _taxonomy_access_format_grant_record(
-      $this->vocabs['v1']->vid, DRUPAL_ANONYMOUS_RID, array('view' => 1), TRUE
+      $this->vocabs['v1']->vid, DRUPAL_ANONYMOUS_RID, array('view' => TAXONOMY_ACCESS_NODE_ALLOW), TRUE
     );
     taxonomy_access_set_default_grants(array($default_config));
 
@@ -570,7 +572,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $term_configs = array();
     foreach (array('v1t1', 'v2t1') as $name) {
       $term_configs[] = _taxonomy_access_format_grant_record(
-        $this->terms[$name]->vid, DRUPAL_ANONYMOUS_RID, array('view' => 1)
+        $this->terms[$name]->vid, DRUPAL_ANONYMOUS_RID, array('view' => TAXONOMY_ACCESS_NODE_ALLOW)
       );
     }
     taxonomy_access_set_term_grants($term_configs);
@@ -583,7 +585,8 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Use the admin form to give anonymous view deny in the global default.
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
-    $this->configureFormRow($edit, 0, 0, 2);
+    $this->configureFormRow($edit, TAXONOMY_ACCESS_GLOBAL_DEFAULT,
+      TAXONOMY_ACCESS_VOCABULARY_DEFAULT, TAXONOMY_ACCESS_NODE_DENY);
     $this->drupalPost(NULL, $edit, 'Save all');
 
     // Log out.
@@ -632,7 +635,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Use the admin form to give anonymous view allow for the v1 default.
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
-    $this->addFormRow($edit, $this->vocabs['v1']->vid, 0, 1);
+    $this->addFormRow($edit, $this->vocabs['v1']->vid, TAXONOMY_ACCESS_VOCABULARY_DEFAULT, TAXONOMY_ACCESS_NODE_ALLOW);
     $this->drupalPost(NULL, $edit, 'Add');
 
     // Log out.
@@ -654,7 +657,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
     // Add a specific configuration for v2t1 programmatically.
     $term_config = _taxonomy_access_format_grant_record(
-      $this->terms['v2t1']->tid, DRUPAL_ANONYMOUS_RID, array('view' => 0)
+      $this->terms['v2t1']->tid, DRUPAL_ANONYMOUS_RID, array('view' => TAXONOMY_ACCESS_NODE_IGNORE)
     );
 
     taxonomy_access_set_term_grants(array($term_config));
@@ -665,7 +668,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Use the admin form to give anonymous view deny for the v2 default.
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
-    $this->addFormRow($edit, $this->vocabs['v2']->vid, 0, 2);
+    $this->addFormRow($edit, $this->vocabs['v2']->vid, TAXONOMY_ACCESS_VOCABULARY_DEFAULT, TAXONOMY_ACCESS_NODE_DENY);
     $this->drupalPost(NULL, $edit, 'Add');
 
     // Log out.
@@ -699,8 +702,8 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Use the form to change the configuration: Allow for v2; Deny for v1.
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
-    $this->configureFormRow($edit, $this->vocabs['v2']->vid, 0, 1);
-    $this->configureFormRow($edit, $this->vocabs['v1']->vid, 0, 2);
+    $this->configureFormRow($edit, $this->vocabs['v2']->vid, TAXONOMY_ACCESS_VOCABULARY_DEFAULT, TAXONOMY_ACCESS_NODE_ALLOW);
+    $this->configureFormRow($edit, $this->vocabs['v1']->vid, TAXONOMY_ACCESS_VOCABULARY_DEFAULT, TAXONOMY_ACCESS_NODE_DENY);
     $this->drupalPost(NULL, $edit, 'Save all');
 
     // Log out.
@@ -772,7 +775,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Use the admin form to give anonymous view allow for v1t1.
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
-    $this->addFormRow($edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, 1);
+    $this->addFormRow($edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, TAXONOMY_ACCESS_NODE_ALLOW);
     $this->drupalPost(NULL, $edit, 'Add');
 
     // Log out.
@@ -794,7 +797,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
     // Add a vocabulary default for v2 programmatically.
     $default_config = _taxonomy_access_format_grant_record(
-      $this->vocabs['v2']->vid, DRUPAL_ANONYMOUS_RID, array('view' => 0), TRUE
+      $this->vocabs['v2']->vid, DRUPAL_ANONYMOUS_RID, array('view' => TAXONOMY_ACCESS_NODE_IGNORE), TRUE
     );
 
     taxonomy_access_set_default_grants(array($default_config));
@@ -805,7 +808,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     // Use the admin form to give anonymous view deny for v2t1.
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
-    $this->addFormRow($edit, $this->vocabs['v2']->vid, $this->terms['v2t1']->tid, 2);
+    $this->addFormRow($edit, $this->vocabs['v2']->vid, $this->terms['v2t1']->tid, TAXONOMY_ACCESS_NODE_DENY);
     $this->drupalPost(NULL, $edit, 'Add');
 
     // Log out.
@@ -840,10 +843,10 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $this->configureFormRow(
-      $edit, $this->vocabs['v2']->vid, $this->terms['v2t1']->tid, 1
+      $edit, $this->vocabs['v2']->vid, $this->terms['v2t1']->tid, TAXONOMY_ACCESS_NODE_ALLOW
     );
     $this->configureFormRow(
-      $edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, 2
+      $edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, TAXONOMY_ACCESS_NODE_DENY
     );
     $this->drupalPost(NULL, $edit, 'Save all');
 
@@ -939,7 +942,7 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $this->drupalGet(TAXONOMY_ACCESS_CONFIG . '/role/' . DRUPAL_ANONYMOUS_RID . '/edit');
     $edit = array();
     $edit["new[recursive]"] = 1;
-    $this->addFormRow($edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, 1);
+    $this->addFormRow($edit, $this->vocabs['v1']->vid, $this->terms['v1t1']->tid, TAXONOMY_ACCESS_NODE_ALLOW);
     $this->drupalPost(NULL, $edit, 'Add');
 
   }
@@ -962,7 +965,8 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
 
     // Update the global default to allow view.
     $edit = array();
-    $this->configureFormRow($edit, 0, 0, 1);
+    $this->configureFormRow($edit, TAXONOMY_ACCESS_GLOBAL_DEFAULT,
+      TAXONOMY_ACCESS_VOCABULARY_DEFAULT, TAXONOMY_ACCESS_NODE_ALLOW);
     $this->drupalPost(NULL, $edit, 'Save all');
 
     // Confirm that the edit and disable links appear.
@@ -979,11 +983,11 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $r =
       db_query(
         'SELECT grant_view FROM {taxonomy_access_default}
-         WHERE vid = 0 AND rid = :rid',
-        array(':rid' => $rid)
+         WHERE vid = :vid AND rid = :rid',
+        array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT, ':rid' => $rid)
       )
       ->fetchField();
-    $this->assertTrue($r == 1, t('Used form to grant the role %role view in the global default.', array('%role' => $name)));
+    $this->assertTrue($r == TAXONOMY_ACCESS_NODE_ALLOW, t('Used form to grant the role %role view in the global default.', array('%role' => $name)));
 
     // Log in as the regular_user.
     $this->drupalLogout();
@@ -1020,8 +1024,8 @@ class TaxonomyAccessConfigTest extends TaxonomyAccessTestCase {
     $r =
       db_query(
         'SELECT grant_view FROM {taxonomy_access_default}
-         WHERE vid = 0 AND rid = :rid',
-        array(':rid' => $rid)
+         WHERE vid = :vid AND rid = :rid',
+        array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT, ':rid' => $rid)
       )
       ->fetchField();
     $this->assertTrue(empty($r), t('All records removed for role %role.', array('%role' => $name)));
@@ -1094,9 +1098,9 @@ class TaxonomyAccessNodeGrantTest extends TaxonomyAccessTestCase {
 
     // View alone can be used to test V/U/D because the logic is identical.
     foreach ($node_grants as $grant) {
-      $grant_types['a'][$grant] = 1;
-      $grant_types['i'][$grant] = 0;
-      $grant_types['d'][$grant] = 2;
+      $grant_types['a'][$grant] = TAXONOMY_ACCESS_NODE_ALLOW;
+      $grant_types['i'][$grant] = TAXONOMY_ACCESS_NODE_IGNORE;
+      $grant_types['d'][$grant] = TAXONOMY_ACCESS_NODE_DENY;
     }
 
     // Each vocabulary will have four parent terms in the same fashion:
@@ -1289,17 +1293,17 @@ class TaxonomyAccessTermGrantTest extends TaxonomyAccessTestCase {
     // vcflt   Receives "List" but not "Create" in the vocabulary default.
     // vcflf   Receives neither "Create" nor "List" in the vocabulary default.
     $grant_combos = array(
-      'ctlt' => array('create' => 1, 'list' => 1),
-      'ctlf' => array('create' => 1, 'list' => 0),
-      'cflt' => array('create' => 0, 'list' => 1),
-      'cflf' => array('create' => 0, 'list' => 0),
+      'ctlt' => array('create' => TAXONOMY_ACCESS_TERM_ALLOW, 'list' => TAXONOMY_ACCESS_TERM_ALLOW),
+      'ctlf' => array('create' => TAXONOMY_ACCESS_TERM_ALLOW, 'list' => TAXONOMY_ACCESS_TERM_DENY),
+      'cflt' => array('create' => TAXONOMY_ACCESS_TERM_DENY, 'list' => TAXONOMY_ACCESS_TERM_ALLOW),
+      'cflf' => array('create' => TAXONOMY_ACCESS_TERM_DENY, 'list' => TAXONOMY_ACCESS_TERM_DENY),
     );
 
     // Grant all rows view, update, and delete.
     foreach ($grant_combos as $combo) {
-      $combo['view'] = 1;
-      $combo['update'] = 1;
-      $combo['delete'] = 1;
+      $combo['view'] = TAXONOMY_ACCESS_TERM_ALLOW;
+      $combo['update'] = TAXONOMY_ACCESS_TERM_ALLOW;
+      $combo['delete'] = TAXONOMY_ACCESS_TERM_ALLOW;
     }
 
     // Each vocabulary will have four parent terms in the same fashion:
