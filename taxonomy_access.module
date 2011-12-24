@@ -80,6 +80,9 @@ function _taxonomy_access_user_roles($permission = NULL) {
 function taxonomy_access_init() {
   $path = drupal_get_path('module', 'taxonomy_access');
   drupal_add_css($path . '/taxonomy_access.css');
+
+  // Register our shutdown function.
+  drupal_register_shutdown_function('taxonomy_access_shutdown');
 }
 
 /**
@@ -234,9 +237,6 @@ function taxonomy_access_node_access_records($node) {
     // Make sure to reset caches for accurate grant values.
     return _taxonomy_access_node_access_records($node->nid, TRUE);
   }
-
-  // Register our shutdown function.
-  drupal_register_shutdown_function('taxonomy_access_shutdown');
 }
 
 /**
