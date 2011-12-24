@@ -556,9 +556,11 @@ function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = F
   static $nodes = array();
 
   // If node_access_needs_rebuild or $reset are set, reset list and return.
-  if (node_access_needs_rebuild() || $reset) {
-    $nodes = array();
-    return;
+  if (!empty($nodes)) {
+    if (node_access_needs_rebuild() || $reset) {
+      $nodes = array();
+      return;
+    }
   }
 
   // If we were passed a list of nodes, cache.
