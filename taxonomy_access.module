@@ -1339,7 +1339,7 @@ function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
  *   (optional) Whether to recalculate the cached values.  Defaults to FALSE.
  *
  * @return array
- *   Global default grants, formatted for hook_node_access_records().
+ *   An array of global defaults for each role.
  */
 function taxonomy_access_global_defaults($reset = FALSE) {
   $global_grants = &drupal_static(__FUNCTION__, array());
