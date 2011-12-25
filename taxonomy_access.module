@@ -935,10 +935,14 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
 
     // If any global defaults are more permissive, we need to update all nodes.
     // Fetch global defaults.
-    $global_defaults = &drupal_static(__FUNCTION__, taxonomy_access_global_defaults());
+    $global_defaults = taxonomy_access_global_defaults();
+    $gd_records = array();
+    foreach ($global_defaults as $row) {
+      $gd_records[] = _taxonomy_access_format_node_access_record($row);
+    }
 
     // Find the ones we need.
-    foreach ($global_defaults as $gd) {
+    foreach ($gd_records as $gd) {
       if ($gd['gid'] == DRUPAL_AUTHENTICATED_RID) {
         $auth_gd = $gd;
       }
@@ -1316,18 +1320,13 @@ function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
   // Fetch and format all grant records for the node.
   $grants = array();
   $records = $query->execute()->fetchAll();
-  foreach ($records as $record) {
-    $grants[] = _taxonomy_access_format_node_access_record($record);
-  }
-
-  unset($records);
-  unset($record);
-  unset($query);
-
   // The node grant query returns no rows if the node has no tags.
   // In that scenario, use the global default.
-  if (sizeof($grants) == 0) {
-    $grants = taxonomy_access_global_defaults($reset);
+  if (sizeof($records) == 0) {
+    $records = taxonomy_access_global_defaults($reset);
+  }
+  foreach ($records as $record) {
+    $grants[] = _taxonomy_access_format_node_access_record($record);
   }
 
   return $grants;
@@ -1343,21 +1342,16 @@ function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
  *   Global default grants, formatted for hook_node_access_records().
  */
 function taxonomy_access_global_defaults($reset = FALSE) {
-  static $global_grants;
+  $global_grants = &drupal_static(__FUNCTION__, array());
   if (empty($global_grants) || $reset) {
-    $global_grants = array();
-    $records =
+    $global_grants =
       db_query(
-        'SELECT rid, grant_view, grant_update, grant_delete
+        'SELECT rid, grant_view, grant_update, grant_delete, grant_create,
+           grant_list
          FROM {taxonomy_access_default}
          WHERE vid = :vid',
          array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
       ->fetchAll();
-    foreach ($records as $record) {
-      $global_grants[] = _taxonomy_access_format_node_access_record($record);
-    }
-    unset($records);
-    unset($record);
   }
   return $global_grants;
 }
