@@ -1729,3 +1729,20 @@ function _taxonomy_access_grant_help_table() {
 
   return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('grant_help'))));
 }
+
+/**
+ * Implements hook_disable().
+ *
+ * Removes all options_list callbacks during disabling of the module which were
+ * set in taxonomy_access_field_info_alter().
+ */
+function taxonomy_access_disable() {
+  foreach (field_read_fields() as $field_name => $field) {
+    if ($field['type'] == 'taxonomy_term_reference') {
+      if ($field['settings']['options_list_callback'] == '_taxonomy_access_term_options') {
+        $field['settings']['options_list_callback'] = '';
+        field_update_field($field);
+      }
+    }
+  }
+}
