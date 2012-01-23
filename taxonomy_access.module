@@ -1351,7 +1351,7 @@ function taxonomy_access_global_defaults($reset = FALSE) {
          FROM {taxonomy_access_default}
          WHERE vid = :vid',
          array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
-      ->fetchAll();
+      ->fetchAllAssoc('rid');
   }
   return $global_grants;
 }
