@@ -451,19 +451,13 @@ function taxonomy_access_enable_vocab($vid, $rid) {
   }
   // Otherwise, initialize the vocabulary default with the global default.
   // Use our API functions so that node access gets updated as needed.
-  $row =
+  $global_default =
     db_query(
       'SELECT grant_view, grant_update, grant_delete, grant_create, grant_list
        FROM {taxonomy_access_default}
        WHERE vid = :vid AND rid = :rid',
        array(':rid' => $rid, ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
     ->fetchAssoc();
-  // Rename the keys; we can't do so in the query because they are SQL reserved
-  // words.
-  $global_default = array();
-  foreach ($row as $key => $value) {
-    $global_default[substr($key, 6)] = $value;
-  }
   $record = _taxonomy_access_format_grant_record($vid, $rid, $global_default, TRUE);
   return taxonomy_access_set_default_grants(array($vid => $record));
 }
@@ -1096,7 +1090,12 @@ function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_node
  *   The role ID.
  * @param array $grants
  *   An array of grants to write, in the format grant_name => value.
- *   Allowed keys: 'view', 'update', 'delete', 'create', 'list'
+ *   Allowed keys:
+ *   - 'view' or 'grant_view'
+ *   - 'update' or 'grant_update'
+ *   - 'delete' or 'grant_delete'
+ *   - 'create' or 'grant_create'
+ *   - 'list' or 'grant_list'
  * @param bool $default
  *   (optional) Whether this is a term record (FALSE) or default record (TRUE).
  *   Defaults to FALSE.
@@ -1115,7 +1114,7 @@ function _taxonomy_access_format_grant_record($id, $rid, array $grants, $default
   $row->rid = $rid;
   foreach ($grants as $op => $value) {
     if (is_numeric($value)) {
-      $grant_name = "grant_$op";
+      $grant_name = strpos($op, 'grant_') ? $op : "grant_$op";
       $row->$grant_name = $value;
     }
   }
