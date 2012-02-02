@@ -1738,7 +1738,7 @@ function _taxonomy_access_grant_help_table() {
 function taxonomy_access_disable() {
   foreach (field_read_fields() as $field_name => $field) {
     if ($field['type'] == 'taxonomy_term_reference') {
-      if ($field['settings']['options_list_callback'] == '_taxonomy_access_term_options') {
+      if (!empty($field['settings']['options_list_callback']) && $field['settings']['options_list_callback'] == '_taxonomy_access_term_options') {
         $field['settings']['options_list_callback'] = '';
         field_update_field($field);
       }
