@@ -8,10 +8,6 @@
 /**
  * Page callback: Renders the TAC permissions administration overview page.
  *
- * Paths:
- * - TAXONOMY_ACCESS_CONFIG
- * - TAXONOMY_ACCESS_CONFIG . /role
- *
  * @return
  *   Form to render.
  *
@@ -58,8 +54,6 @@ function taxonomy_access_admin() {
 
 /**
  * Form constructor for a form to to delete access rules for a particular role.
- *
- * Path: TAXONOMY_ACCESS_CONFIG . /role/%/delete
  *
  * @param int $rid
  *   The role ID to disable.
@@ -157,8 +151,6 @@ function taxonomy_access_enable_role_validate($rid) {
 
 /**
  * Form constructor for a form to manage grants by role.
- *
- * Path: TAXONOMY_ACCESS_CONFIG . /role/%/edit
  *
  * @param int $rid
  *   The role ID.

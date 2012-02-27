@@ -185,8 +185,6 @@ function taxonomy_access_role_edit_title($rid) {
 
 /**
  * Access callback: Determines whether the admin form can be accessed.
- *
- * Path: TAXONOMY_ACCESS_CONFIG . role/%/edit
  */
 function taxonomy_access_role_edit_access($rid) {
   // Allow access only if the user may administer permissions.
