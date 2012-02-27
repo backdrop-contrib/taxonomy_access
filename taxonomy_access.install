@@ -179,6 +179,37 @@ function taxonomy_access_schema() {
 }
 
 /**
+ * Add vocabulary defaults for all configured vocabularies.
+ */
+function taxonomy_access_update_7002() {
+  // Get a list of all vocabularies with any term configurations for each role.
+  $ta_configs = db_query(
+    "SELECT td.vid, ta.rid
+     FROM {taxonomy_access_term} ta
+     INNER JOIN {taxonomy_term_data} td ON ta.tid = td.tid
+     GROUP BY td.vid, ta.rid"
+  )->fetchAll();
+
+  // Get a list of all configured vocabularies.
+  $td_configs = db_query(
+    "SELECT vid, rid
+     FROM {taxonomy_access_default}"
+  )->fetchAll();
+
+  $records = array();
+  $global_defaults = taxonomy_access_global_defaults();
+
+  foreach ($ta_configs as $config) {
+    if (!in_array($config, $td_configs)) {
+      $record = (array) $global_defaults[$config->rid];
+      $records[] = _taxonomy_access_format_grant_record($config->vid, $config->rid, $record, TRUE);
+    }
+  }
+
+  return taxonomy_access_set_default_grants($records);
+}
+
+/**
  * Rename grant realm.
  */
 function taxonomy_access_update_7001() {

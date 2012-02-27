@@ -94,8 +94,25 @@ function taxonomy_access_theme() {
       'render element' => 'form',
       'file' => 'taxonomy_access.admin.inc',
     ),
+    'taxonomy_access_grant_table' => array(
+      'render element' => 'elements',
+      'file' => 'taxonomy_access.admin.inc',
+    ),
   );
 }
+
+/**
+ * Implements hook_element_info().
+ */
+function taxonomy_access_element_info() {
+  return array(
+    'taxonomy_access_grant_table' => array(
+      '#theme' => 'taxonomy_access_grant_table',
+      '#regions' => array('' => array()),
+    ),
+  );
+}
+
 /**
  * Implements hook_menu().
  */
@@ -121,16 +138,29 @@ function taxonomy_access_menu() {
     'title callback' => 'taxonomy_access_role_edit_title',
     'title arguments' => array(5),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('taxonomy_access_admin_form', 5),
+    'page arguments' => array('taxonomy_access_admin_role', 5),
     'access callback' => 'taxonomy_access_role_edit_access',
     'access arguments' => array(5),
     'file' => 'taxonomy_access.admin.inc',
   );
+  $items[TAXONOMY_ACCESS_CONFIG . '/role/%/enable'] = array(
+    'page callback' => 'taxonomy_access_enable_role_validate',
+    'page arguments' => array(5),
+    'access arguments' => array('administer permissions'),
+    'file' => 'taxonomy_access.admin.inc',
+  );
   $items[TAXONOMY_ACCESS_CONFIG . '/role/%/delete'] = array(
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('taxonomy_access_admin_delete_role', 5),
+    'page arguments' => array('taxonomy_access_role_delete_confirm', 5),
     'access callback' => 'taxonomy_access_role_delete_access',
     'access arguments' => array(5),
+    'file' => 'taxonomy_access.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items[TAXONOMY_ACCESS_CONFIG . '/role/%/disable/%taxonomy_vocabulary'] = array(
+    'page callback' => 'taxonomy_access_disable_vocab_confirm_page',
+    'page arguments' => array(5, 7),
+    'access arguments' => array('administer permissions'),
     'file' => 'taxonomy_access.admin.inc',
     'type' => MENU_CALLBACK,
   );
