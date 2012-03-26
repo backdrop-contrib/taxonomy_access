@@ -616,10 +616,15 @@ function _taxonomy_access_field_validate($entity_type, $entity, &$errors) {
   $old_fields = FALSE;
 
   // The entity is actually a "pseudo-entity," and the user profile form
-  // neglects to include the uid.  So, load it.
+  // neglects to include the uid. So, we need to load it manually.
   if ($entity_type == 'user') {
-    if ($account = user_load_by_name($entity->name)) {
-      $entity->uid = $account->uid;
+    // Some modules which extend the user profile form cause additional
+    // validation to happen with "pseudo-entities" that do not include the
+    // name. So, check if it exists.
+    if (isset($entity->name)) {
+      if ($account = user_load_by_name($entity->name)) {
+        $entity->uid = $account->uid;
+      }
     }
   }
 
