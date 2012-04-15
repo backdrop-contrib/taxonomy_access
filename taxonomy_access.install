@@ -206,7 +206,12 @@ function taxonomy_access_update_7002() {
     }
   }
 
-  return taxonomy_access_set_default_grants($records);
+  if (taxonomy_access_set_default_grants($records)) {
+    return t('Update completed successfully.');
+  }
+  else {
+    return t('Update failed.');
+  }
 }
 
 /**
