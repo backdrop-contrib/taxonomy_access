@@ -3,6 +3,9 @@ http://drupalcode.org/project/taxonomy_access.git/log/refs/heads/7.x-1.x
 
 Taxonomy Access 7.x-1.x-dev, xxxx-xx-xx
 ---------------------------------------
+
+Taxonomy Access 7.x-1.0, 2015-09-18
+---------------------------------------
 o The return value of taxonomy_access_global_defaults() has changed. Callers
   may use _taxonomy_access_format_grant_record() to format each element of the
   return array for hook_node_access_records().
