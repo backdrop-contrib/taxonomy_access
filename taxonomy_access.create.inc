@@ -50,25 +50,25 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   }
 
   // Assemble a list of all vocabularies for the field.
-  $vids = array();
+  $vocabularies = array();
   foreach ($context['field']['settings']['allowed_values'] as $tree) {
     if ($vocab = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
-      $vids[] = $vocab->vid;
+      $vocabularies[] = $vocab->vocabulary;
     }
   }
 
   // Determine whether the user has create for any terms in the given vocabs.
   $allowed_terms = FALSE;
-  foreach ($vids as $vid) {
-    $terms = taxonomy_access_user_create_terms_by_vocab($vid);
+  foreach ($vocabularies as $vocabulary) {
+    $terms = taxonomy_access_user_create_terms_by_vocab($vocabulary);
     if (!empty($terms)) {
       $allowed_terms = TRUE;
       break;
     }
   }
 
-  // Filter the vids to vocabs in which the user may create new terms.
-  $allowed_vids = taxonomy_access_create_default_allowed($vids);
+  // Filter the vocabularies to vocabs in which the user may create new terms.
+  $allowed_vocabularies = taxonomy_access_create_default_allowed($vocabularies);
 
   // If the field already has the maximum number of values, and all of these
   // values are disallowed, deny access to the field.
@@ -79,7 +79,7 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   }
 
   // If the user may not create any terms on this field, deny access.
-  if (empty($allowed_vids) && !$allowed_terms) {
+  if (empty($allowed_vocabularies) && !$allowed_terms) {
     $element['#access'] = FALSE;
   }
 
@@ -90,7 +90,7 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   // Custom validation.  Set values for the validator indicating:
   // 1. Whether the user can autocreate terms in this field (vocab. default).
   // 2. Which tids were removed due to create restrictions.
-  $element['#allow_autocreate'] = empty($allowed_vids) ? FALSE : TRUE;
+  $element['#allow_autocreate'] = empty($allowed_vocabularies) ? FALSE : TRUE;
   $element['#disallowed_defaults'] = $disallowed_defaults;
   $element['#element_validate'] =
     array('taxonomy_access_autocomplete_validate');
@@ -199,7 +199,7 @@ function _taxonomy_access_options_alter(&$element, &$form_state, $context) {
       'disallowed_defaults' => $disallowed_defaults,
     );
     $element['#attached']['js'][] =
-      backdrop_get_path('module', 'taxonomy_access') . '/tac_create.js';
+      backdrop_get_path('module', 'taxonomy_access') . '/js/tac_create.js';
     $element['#attached']['js'][] = array(
       'data' => array('taxonomy_access' => $settings),
       'type' => 'setting',
@@ -231,8 +231,8 @@ function taxonomy_access_user_create_terms() {
 /**
  * Retrieve terms that the current user may create in specific vocabularies.
  *
- * @param int $vid
- *   A vid to use as a filter.
+ * @param int $vocabulary
+ *   A vocabulary to use as a filter.
  *
  * @return array|true
  *   An array of term IDs, or TRUE if the user may create all terms.
@@ -240,13 +240,13 @@ function taxonomy_access_user_create_terms() {
  * @see taxonomy_access_user_create_terms()
  * @see _taxonomy_access_user_term_grants()
  */
-function taxonomy_access_user_create_terms_by_vocab($vid) {
+function taxonomy_access_user_create_terms_by_vocab($vocabulary) {
   // Cache the terms the current user can create per vocabulary.
   static $terms = array();
-  if (!isset($terms[$vid])) {
-    $terms[$vid] = _taxonomy_access_user_term_grants(TRUE, array($vid));
+  if (!isset($terms[$vocabulary])) {
+    $terms[$vocabulary] = _taxonomy_access_user_term_grants(TRUE, array($vocabulary));
   }
-  return $terms[$vid];
+  return $terms[$vocabulary];
 }
 
 /**
@@ -259,11 +259,11 @@ function taxonomy_access_user_create_terms_by_vocab($vid) {
  */
 function taxonomy_access_user_create_defaults() {
   // Cache the terms the current user can create.
-  static $vids = NULL;
-  if (is_null($vids)) {
-    $vids = _taxonomy_access_create_defaults();
+  static $vocabularies = NULL;
+  if (is_null($vocabularies)) {
+    $vocabularies = _taxonomy_access_create_defaults();
   }
-  return $vids;
+  return $vocabularies;
 }
 
 /**
@@ -309,21 +309,21 @@ function taxonomy_access_create_allowed(array $tids) {
 /**
  * Filter a list of vocab IDs to those in which the user may create by default.
  *
- * @param array $vids
+ * @param array $vocabularies
  *   The array of vocabulary IDs.
  *
  * @return array
  *   An array of disallowed vocabulary IDs.
  */
-function taxonomy_access_create_default_allowed(array $vids) {
+function taxonomy_access_create_default_allowed(array $vocabularies) {
   $all_allowed = taxonomy_access_user_create_defaults();
 
   // If the user's create grant info is exactly TRUE, all terms are allowed.
   if ($all_allowed === TRUE) {
-    return $vids;
+    return $vocabularies;
   }
 
-  return array_intersect($vids, $all_allowed);
+  return array_intersect($vocabularies, $all_allowed);
 }
 
 
@@ -353,14 +353,14 @@ function _taxonomy_access_create_defaults($account = NULL) {
     $account = $user;
   }
   $query
-    ->fields('td', array('vid'))
-    ->groupBy('td.vid')
-    ->condition('tadg.rid', array_keys($account->roles), 'IN')
+    ->fields('td', array('vocabulary'))
+    ->groupBy('td.vocabulary')
+    ->condition('tadg.role', array_keys($account->roles), 'IN')
     ;
 
   // Fetch term IDs.
   $r = $query->execute()->fetchAll();
-  $vids = array();
+  $vocabularies = array();
 
   // If there are results, initialize a flag to test whether the user
   // has the grant for all terms.
@@ -369,7 +369,7 @@ function _taxonomy_access_create_defaults($account = NULL) {
   foreach ($r as $record) {
     // If the user has the grant, add the term to the array.
     if ($record->grant_create) {
-      $vids[] = $record->vid;
+      $vocabularies[] = $record->vocabulary;
     }
     // Otherwise, flag that the user does not have the grant for all terms.
     else {
@@ -382,7 +382,7 @@ function _taxonomy_access_create_defaults($account = NULL) {
     return TRUE;
   }
 
-  return $vids;
+  return $vocabularies;
 }
 
 /**
@@ -408,10 +408,10 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
   if ($tag_last != '') {
 
     // Part of the criteria for the query come from the field's own settings.
-    $vids = array();
+    $vocabularies = array();
     $vocabularies = taxonomy_vocabulary_get_names();
     foreach ($field['settings']['allowed_values'] as $tree) {
-      $vids[] = $vocabularies[$tree['vocabulary']]->vid;
+      $vocabularies[] = $vocabularies[$tree['vocabulary']]->vocabulary;
     }
 
     $query = db_select('taxonomy_term_data', 't');
@@ -425,7 +425,7 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
     // Select rows that match by term name.
     $tags_return = $query
       ->fields('t', array('tid', 'name'))
-      ->condition('t.vid', $vids)
+      ->condition('t.vocabulary', $vocabularies)
       ->condition('t.name', '%' . db_like($tag_last) . '%', 'LIKE')
       ->range(0, 10)
       ->execute()
@@ -480,7 +480,7 @@ function _taxonomy_access_autocomplete_validate($element, &$form_state) {
     $vocabularies = array();
     foreach ($field['settings']['allowed_values'] as $tree) {
       if ($vocabulary = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
-        $vocabularies[$vocabulary->vid] = $vocabulary;
+        $vocabularies[$vocabulary->vocabulary] = $vocabulary;
       }
     }
 
@@ -489,7 +489,7 @@ function _taxonomy_access_autocomplete_validate($element, &$form_state) {
     foreach ($typed_terms as $typed_term) {
       // See if the term exists in the chosen vocabulary and return the tid;
       // otherwise, create a new 'autocreate' term for insert/update.
-      if ($possibilities = taxonomy_term_load_multiple(array(), array('name' => trim($typed_term), 'vid' => array_keys($vocabularies)))) {
+      if ($possibilities = taxonomy_term_load_multiple(array(), array('name' => trim($typed_term), 'vocabulary' => array_keys($vocabularies)))) {
         $term = array_pop($possibilities);
       }
       // Only autocreate if the user has create for the vocab. default.
@@ -497,7 +497,7 @@ function _taxonomy_access_autocomplete_validate($element, &$form_state) {
         $vocabulary = reset($vocabularies);
         $term = array(
           'tid' => 'autocreate',
-          'vid' => $vocabulary->vid,
+          'vocabulary' => $vocabulary->vocabulary,
           'name' => $typed_term,
           'vocabulary_machine_name' => $vocabulary->machine_name,
         );

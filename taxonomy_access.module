@@ -21,10 +21,10 @@ define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
 /**
  * Global default.
  */
-define('TAXONOMY_ACCESS_GLOBAL_DEFAULT', 0);
+define('TAXONOMY_ACCESS_GLOBAL_DEFAULT', 'taxonomy_access_global_default');
 
 /**
- * Vocabulary default.
+ * Vocabulary term ID default.
  */
 define('TAXONOMY_ACCESS_VOCABULARY_DEFAULT', 0);
 
@@ -79,7 +79,7 @@ function _taxonomy_access_user_roles($permission = NULL) {
  */
 function taxonomy_access_init() {
   $path = backdrop_get_path('module', 'taxonomy_access');
-  backdrop_add_css($path . '/taxonomy_access.css');
+  backdrop_add_css($path . '/css/taxonomy_access.css');
 
   // Register our shutdown function.
   backdrop_register_shutdown_function('taxonomy_access_shutdown');
@@ -178,15 +178,15 @@ function taxonomy_access_menu() {
 /**
  * Title callback: Returns the title for the role edit form.
  */
-function taxonomy_access_role_edit_title($rid) {
+function taxonomy_access_role_edit_title($role) {
   $roles = _taxonomy_access_user_roles();
-  return t('Access rules for @role', array('@role' => $roles[$rid]));
+  return t('Access rules for @role', array('@role' => $roles[$role]));
 }
 
 /**
  * Access callback: Determines whether the admin form can be accessed.
  */
-function taxonomy_access_role_edit_access($rid) {
+function taxonomy_access_role_edit_access($role) {
   // Allow access only if the user may administer permissions.
   if (!user_access('administer permissions')) {
     return FALSE;
@@ -194,7 +194,7 @@ function taxonomy_access_role_edit_access($rid) {
 
   // Do not render the form for invalid role IDs.
   $roles = _taxonomy_access_user_roles();
-  if (empty($roles[$rid])) {
+  if (empty($roles[$role])) {
     return FALSE;
   }
 
@@ -206,16 +206,16 @@ function taxonomy_access_role_edit_access($rid) {
 /**
  * Access callback for role deletion form.
  */
-function taxonomy_access_role_delete_access($rid) {
+function taxonomy_access_role_delete_access($role) {
   if (!user_access('administer permissions')) {
     return FALSE;
   }
-  if (($rid == BACKDROP_ANONYMOUS_RID) || ($rid == BACKDROP_AUTHENTICATED_RID)) {
+  if (($role == BACKDROP_ANONYMOUS_ROLE) || ($role == BACKDROP_AUTHENTICATED_ROLE)) {
     return FALSE;
   }
 
   $roles = _taxonomy_access_user_roles();
-  if (empty($roles[$rid])) {
+  if (empty($roles[$role])) {
     return FALSE;
   }
 
@@ -227,14 +227,14 @@ function taxonomy_access_role_delete_access($rid) {
  */
 function taxonomy_access_user_role_delete($role) {
   // Do not update node access since the role will no longer exist.
-  taxonomy_access_delete_role_grants($role->rid, FALSE);
+  taxonomy_access_delete_role_grants($role->role, FALSE);
 }
 
 /**
  * Implements hook_taxonomy_vocabulary_delete().
  */
 function taxonomy_access_taxonomy_vocabulary_delete($vocab) {
-  taxonomy_access_delete_default_grants($vocab->vid);
+  taxonomy_access_delete_default_grants($vocab->vocabulary);
 }
 
 /**
@@ -249,9 +249,18 @@ function taxonomy_access_taxonomy_term_delete($term) {
  *
  * Gives access to taxonomies based on the taxonomy_access table.
  */
-function taxonomy_access_node_grants($user, $op) {
-  $roles = is_array($user->roles) ? array_keys($user->roles) : -1;
-  return array('taxonomy_access_role' => $roles);
+function taxonomy_access_node_grants($account, $op) {
+  debug($account->roles);
+  debug(__FUNCTION__);
+  $grants = array(
+    'taxonomy_access_role' => array(),
+  );
+  if (is_array($account->roles)) {
+    foreach($account->roles as $role) {
+      $grants['taxonomy_access_role'][] = _taxonomy_access_get_gid($role);
+    }
+  }
+  return $grants;
 }
 
 /**
@@ -395,8 +404,8 @@ function taxonomy_access_field_widget_form_alter(&$element, &$form_state, $conte
 /**
  * Enables access control for a given role.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  *
  * @return bool
  *   TRUE on success, or FALSE on failure.
@@ -404,19 +413,19 @@ function taxonomy_access_field_widget_form_alter(&$element, &$form_state, $conte
  * @todo
  *   Should we default to the authenticated user global default?
  */
-function taxonomy_access_enable_role($rid) {
-  $rid = intval($rid);
+function taxonomy_access_enable_role($role) {
+  $role = check_plain($role);
 
   // Take no action if the role is already enabled. All valid role IDs are > 0.
-  if (!$rid || taxonomy_access_role_enabled($rid)) {
+  if (!$role || taxonomy_access_role_enabled($role)) {
     return FALSE;
   }
 
   // If we are adding a role, no global default is set yet, so insert it now.
   // Assemble a $row object for Schema API.
   $row = new stdClass();
-  $row->vid = TAXONOMY_ACCESS_GLOBAL_DEFAULT;
-  $row->rid = $rid;
+  $row->vocabulary = TAXONOMY_ACCESS_GLOBAL_DEFAULT;
+  $row->role = $role;
 
   // Insert the row with defaults for all grants.
   return backdrop_write_record('taxonomy_access_default', $row);
@@ -425,45 +434,45 @@ function taxonomy_access_enable_role($rid) {
 /**
  * Indicates whether access control is enabled for a given role.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  *
  * @return bool
  *   TRUE if access control is enabled for the role, or FALSE otherwise.
  */
-function taxonomy_access_role_enabled($rid) {
+function taxonomy_access_role_enabled($role) {
   $role_status = &backdrop_static(__FUNCTION__, array());
-  if (!isset($role_status[$rid])) {
-    $role_status[$rid] =
+  if (!isset($role_status[$role])) {
+    $role_status[$role] =
       db_query(
         'SELECT 1
          FROM {taxonomy_access_default}
-         WHERE rid = :rid AND vid = :vid',
-        array(':rid' => $rid, ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
+         WHERE role = :role AND vocabulary = :vocabulary',
+        array(':role' => $role, ':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
       ->fetchField();
   }
-  return (bool) $role_status[$rid];
+  return (bool) $role_status[$role];
 }
 
 /**
  * Enables a vocabulary for the given role.
  *
- * @param int $vid
- *   The vocabulary ID to enable.
- * @param int $rid
- *   The role ID.
+ * @param varchar $vocabulary
+ *   The vocabulary to enable.
+ * @param varchar $role
+ *   The role name.
  *
  * @return bool
  *   TRUE on success, or FALSE on failure.
  *
  * @see taxnomomy_access_enable_role()
  */
-function taxonomy_access_enable_vocab($vid, $rid) {
-  $rid = intval($rid);
-  $vid = intval($vid);
+function taxonomy_access_enable_vocab($vocabulary, $role) {
+  $role = check_plain($role);
+  $vocabulary = check_plain($vocabulary);
 
   // All valid role IDs are > 0, and we do not enable the global default here.
-  if (!$rid || !$vid) {
+  if (!$role || !$vocabulary) {
     return FALSE;
   }
   // Take no action if the vocabulary is already enabled for the role.
@@ -471,8 +480,8 @@ function taxonomy_access_enable_vocab($vid, $rid) {
     db_query(
       'SELECT 1
        FROM {taxonomy_access_default}
-       WHERE rid = :rid AND vid = :vid',
-      array(':rid' => $rid, ':vid' => $vid))
+       WHERE role = :role AND vocabulary = :vocabulary',
+      array(':role' => $role, ':vocabulary' => $vocabulary))
     ->fetchField();
   if ($vocab_status) {
     return FALSE;
@@ -483,38 +492,38 @@ function taxonomy_access_enable_vocab($vid, $rid) {
     db_query(
       'SELECT grant_view, grant_update, grant_delete, grant_create, grant_list
        FROM {taxonomy_access_default}
-       WHERE vid = :vid AND rid = :rid',
-       array(':rid' => $rid, ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
+       WHERE vocabulary = :vocabulary AND role = :role',
+       array(':role' => $role, ':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
     ->fetchAssoc();
-  $record = _taxonomy_access_format_grant_record($vid, $rid, $global_default, TRUE);
-  return taxonomy_access_set_default_grants(array($vid => $record));
+  $record = _taxonomy_access_format_grant_record($vocabulary, $role, $global_default, TRUE);
+  return taxonomy_access_set_default_grants(array($vocabulary => $record));
 }
 
 /**
  * Disables a vocabulary for the given role.
  *
- * @param int $vid
- *   The vocabulary ID to enable.
- * @param int $rid
- *   The role ID.
+ * @param varchar $vocabulary
+ *   The vocabulary to enable.
+ * @param varchar $role
+ *   The role name.
  *
  * @return bool
  *   TRUE on success, or FALSE on failure.
  *
  * @see taxonomy_access_delete_role_grants()
  */
-function taxonomy_access_disable_vocab($vid, $rid) {
-  $rid = intval($rid);
-  $vid = intval($vid);
+function taxonomy_access_disable_vocab($vocabulary, $role) {
+  $role = check_plain($role);
+  $vocabulary = check_plain($vocabulary);
 
   // Do not allow the global default to be deleted this way.
   // Deleting the global default would disable the role.
-  if (!$vid || !$rid) {
+  if (!$vocabulary || !$role) {
     return FALSE;
   }
 
   // Delete the vocabulary default.
-  taxonomy_access_delete_default_grants($vid, $rid);
+  taxonomy_access_delete_default_grants($vocabulary, $role);
 
   // Delete the role's term access rules for the vocabulary.
   // First check which term records are enabled so we can update node access.
@@ -523,10 +532,10 @@ function taxonomy_access_disable_vocab($vid, $rid) {
       "SELECT ta.tid
        FROM {taxonomy_access_term} ta
        INNER JOIN {taxonomy_term_data} td ON ta.tid = td.tid
-       WHERE td.vid = :vid AND ta.rid = :rid",
-      array(':vid' => $vid, ':rid' => $rid))
+       WHERE td.vocabulary = :vocabulary AND ta.role = :role",
+      array(':vocabulary' => $vocabulary, ':role' => $role))
     ->fetchCol();
-  taxonomy_access_delete_term_grants($tids, $rid);
+  taxonomy_access_delete_term_grants($tids, $role);
 
   return TRUE;
 }
@@ -640,26 +649,26 @@ function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = F
 /**
  * Gets node IDs with controlled terms or vocabs for any of the given roles.
  *
- * @param int $rid
- *    A single role ID.
+ * @param varchar $role
+ *    A single role name.
  *
  * @return array
  *    An array of node IDs associated with terms or vocabularies that are
  *    controlled for the role.
  */
-function _taxonomy_access_get_controlled_nodes_for_role($rid) {
+function _taxonomy_access_get_controlled_nodes_for_role($role) {
   $query = db_select('taxonomy_index', 'ti')
     ->fields('ti', array('nid'))
     ->addTag('taxonomy_access_node');
   $query->leftJoin('taxonomy_term_data', 'td', 'ti.tid = td.tid');
   $query->leftJoin('taxonomy_access_term', 'ta', 'ti.tid = ta.tid');
-  $query->leftJoin('taxonomy_access_default', 'tad', 'tad.vid = td.vid');
+  $query->leftJoin('taxonomy_access_default', 'tad', 'tad.vocabulary = td.vocabulary');
 
   // The query builder will automatically use = or IN() as appropriate.
   $query->condition(
     db_or()
-    ->condition('ta.rid', $rid)
-    ->condition('tad.rid', $rid)
+    ->condition('ta.role', $role)
+    ->condition('tad.role', $role)
   );
 
   $nids = $query->execute()->fetchCol();
@@ -669,20 +678,20 @@ function _taxonomy_access_get_controlled_nodes_for_role($rid) {
 /**
  * Gets node IDs associated with the roles' global defaults.
  *
- * @param int $rid
- *   A single role ID.
+ * @param varchar $role
+ *   A single role name.
  *
  * @return array
  *    An array of node IDs associated with the global default.
  */
-function _taxonomy_access_get_nodes_for_global_default($rid) {
+function _taxonomy_access_get_nodes_for_global_default($role) {
   // Two kinds of nodes are governed by the global default:
   // 1. Nodes with terms controlled neither directly nor by vocab. defaults,
   // 2. Nodes with no terms.
 
   // Get a list of all terms controlled for the role, either directly or
   // by a vocabulary default.
-  $tids = _taxonomy_access_global_controlled_terms($rid);
+  $tids = _taxonomy_access_global_controlled_terms($role);
 
   $query =
     db_select('node', 'n')
@@ -710,15 +719,15 @@ function _taxonomy_access_get_nodes_for_global_default($rid) {
  *
  * @param int|array $vocab_ids
  *    A single vocabulary ID or an array of IDs.
- * @param int $rid.
- *    (optional) A single role ID.
+ * @param varchar $role.
+ *    (optional) A single role name.
  *    This argument has the effect of filtering out nodes in terms that
  *    are already controlled invidually for the role.  Defaults to NULL.
  *
  * @return array
  *    An array of node IDs associated with the given vocabulary.
  */
-function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
+function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $role = NULL) {
   // Accept either a single vocabulary ID or an array thereof.
   if (is_numeric($vocab_ids)) {
     $vocab_ids = array($vocab_ids);
@@ -728,13 +737,13 @@ function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
   }
 
   // If a role was passed, get terms controlled for that role.
-  if (!empty($rid)) {
-    $tids = _taxonomy_access_vocab_controlled_terms($vocab_ids, $rid);
+  if (!empty($role)) {
+    $tids = _taxonomy_access_vocab_controlled_terms($vocab_ids, $role);
   }
 
   $query =
     db_select('taxonomy_index', 'ti')
-    ->condition('td.vid', $vocab_ids)
+    ->condition('td.vocabulary', $vocab_ids)
     ->fields('ti', array('nid'))
     ->addTag('taxonomy_access_node');
   $query->join('taxonomy_term_data', 'td', 'td.tid = ti.tid');
@@ -751,7 +760,7 @@ function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
   // If the global default is in the list, fetch those nodes as well.
   if (in_array(TAXONOMY_ACCESS_GLOBAL_DEFAULT, $vocab_ids)) {
     $nids =
-      array_merge($nids, _taxonomy_access_get_nodes_for_global_default($rid));
+      array_merge($nids, _taxonomy_access_get_nodes_for_global_default($role));
   }
 
   return $nids;
@@ -760,21 +769,21 @@ function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
 /**
  * Retrieves a list of terms controlled by the global default for a role.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  *
  * @return array
  *   A list of term IDs.
  */
-function _taxonomy_access_global_controlled_terms($rid) {
+function _taxonomy_access_global_controlled_terms($role) {
   $tids =
     db_query(
       "SELECT td.tid
        FROM {taxonomy_term_data} td
        LEFT JOIN {taxonomy_access_term} ta ON td.tid = ta.tid
-       LEFT JOIN {taxonomy_access_default} tad ON td.vid = tad.vid
-       WHERE ta.rid = :rid OR tad.rid = :rid",
-      array(':rid' => $rid)
+       LEFT JOIN {taxonomy_access_default} tad ON td.vocabulary = tad.vocabulary
+       WHERE ta.role = :role OR tad.role = :role",
+      array(':role' => $role)
     )
     ->fetchCol();
 
@@ -784,16 +793,16 @@ function _taxonomy_access_global_controlled_terms($rid) {
 /**
  * Retrieves a list of terms controlled by the global default for a role.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  *
  * @return array
  *   A list of term IDs.
  */
-function _taxonomy_access_vocab_controlled_terms($vids, $rid) {
+function _taxonomy_access_vocab_controlled_terms($vocabularies, $role) {
   // Accept either a single vocabulary ID or an array thereof.
-  if (is_numeric($vids)) {
-    $vids = array($vids);
+  if (is_numeric($vocabularies)) {
+    $vocabularies = array($vocabularies);
   }
 
   $tids =
@@ -801,9 +810,9 @@ function _taxonomy_access_vocab_controlled_terms($vids, $rid) {
       "SELECT td.tid
        FROM {taxonomy_term_data} td
        INNER JOIN {taxonomy_access_term} ta ON td.tid = ta.tid
-       WHERE ta.rid = :rid
-       AND td.vid IN (:vids)",
-      array(':rid' => $rid, ':vids' => $vids)
+       WHERE ta.role = :role
+       AND td.vocabulary IN (:vocabularies)",
+      array(':role' => $role, ':vocabularies' => $vocabularies)
     )
     ->fetchCol();
 
@@ -859,7 +868,7 @@ function _taxonomy_access_get_descendants($tid) {
 
     $descendants[$tid] = array();
     $term = taxonomy_term_load($tid);
-    $tree = taxonomy_get_tree($term->vid, $tid);
+    $tree = taxonomy_get_tree($term->vocabulary, $tid);
 
     foreach ($tree as $term) {
       $descendants[$tid][] = $term->tid;
@@ -929,10 +938,10 @@ function _taxonomy_access_get_vocabulary_terms($vocab_id) {
 
 
 /**
- * Deletes module configurations for the given role IDs.
+ * Deletes module configurations for the given roles.
  *
- * @param int $rid
- *   A single role ID.
+ * @param varchar $role
+ *   A single role name.
  * @param bool $update_nodes
  *   (optional) A flag to determine whether nodes should be queued for update.
  *   Defaults to TRUE.
@@ -940,11 +949,11 @@ function _taxonomy_access_get_vocabulary_terms($vocab_id) {
  * @return bool
  *   TRUE on success, or FALSE on failure.
  */
-function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
-  if (empty($rid)) {
+function taxonomy_access_delete_role_grants($role, $update_nodes = TRUE) {
+  if (empty($role)) {
     return FALSE;
   }
-  if ($rid == BACKDROP_ANONYMOUS_RID || $rid == BACKDROP_AUTHENTICATED_RID) {
+  if ($role == BACKDROP_ANONYMOUS_ROLE || $role == BACKDROP_AUTHENTICATED_ROLE) {
     return FALSE;
   }
 
@@ -964,10 +973,11 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
 
     // Find the ones we need.
     foreach ($gd_records as $gd) {
-      if ($gd['gid'] == BACKDROP_AUTHENTICATED_RID) {
+      $authenticated_gid = _taxonomy_access_get_gid(BACKDROP_AUTHENTICATED_ROLE);
+      if ($gd['gid'] == $authenticated_gid) {
         $auth_gd = $gd;
       }
-      elseif ($gd['gid'] == $rid) {
+      elseif ($gd['gid'] == _taxonomy_access_get_gid($role)) {
         $role_gd = $gd;
       }
     }
@@ -1002,7 +1012,7 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
     // Otherwise, just get nodes controlled by specific configurations.
     else {
       $affected_nodes =
-        _taxonomy_access_get_controlled_nodes_for_role($rid);
+        _taxonomy_access_get_controlled_nodes_for_role($role);
     }
     taxonomy_access_affected_nodes($affected_nodes);
 
@@ -1010,11 +1020,11 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
   }
 
   db_delete('taxonomy_access_term')
-    ->condition('rid', $rid)
+    ->condition('role', $role)
     ->execute();
 
   db_delete('taxonomy_access_default')
-    ->condition('rid', $rid)
+    ->condition('role', $role)
     ->execute();
 
   return TRUE;
@@ -1025,7 +1035,7 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
  *
  * @param int|array $vocab_ids
  *   A single vocabulary ID or an array of vocabulary IDs.
- * @param int|null $rid
+ * @param varchar|null $role
  *   (optional) A single role ID.  Defaults to NULL.
  * @param bool $update_nodes
  *   (optional) A flag to determine whether nodes should be queued for update.
@@ -1034,7 +1044,7 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
  * @return bool
  *   TRUE on success, or FALSE on failure.
  */
-function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_nodes = TRUE) {
+function taxonomy_access_delete_default_grants($vocab_ids, $role = NULL, $update_nodes = TRUE) {
   // Accept either a single vocabulary ID or an array thereof.
   if ($vocab_ids !== TAXONOMY_ACCESS_GLOBAL_DEFAULT && empty($vocab_ids)) {
     return FALSE;
@@ -1043,7 +1053,7 @@ function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_
   if ($update_nodes) {
     // Cache the list of nodes that will be affected by this change.
     $affected_nodes =
-      _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid);
+      _taxonomy_access_get_nodes_for_defaults($vocab_ids, $role);
     taxonomy_access_affected_nodes($affected_nodes);
     unset($affected_nodes);
   }
@@ -1051,10 +1061,10 @@ function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_
   // The query builder will use = or IN() automatically as appropriate.
   $query =
     db_delete('taxonomy_access_default')
-    ->condition('vid', $vocab_ids);
+    ->condition('vocabulary', $vocab_ids);
 
-  if (!empty($rid)) {
-    $query->condition('rid', $rid);
+  if (!empty($role)) {
+    $query->condition('role', $role);
   }
 
   $query->execute();
@@ -1067,8 +1077,8 @@ function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_
  *
  * @param int|array $term_ids
  *   A single term ID or an array of term IDs.
- * @param int|null $rid
- *   (optional) A single role ID.  Defaults to NULL.
+ * @param varchar|null $role
+ *   (optional) A single role name.  Defaults to NULL.
  * @param bool $update_nodes
  *   (optional) A flag to determine whether nodes should be queued for update.
  *   Defaults to TRUE.
@@ -1076,7 +1086,7 @@ function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_
  * @return bool
  *   TRUE on success, or FALSE on failure.
  */
-function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_nodes = TRUE) {
+function taxonomy_access_delete_term_grants($term_ids, $role = NULL, $update_nodes = TRUE) {
   // Accept either a single term ID or an array thereof.
   if (is_numeric($term_ids)) {
     $term_ids = array($term_ids);
@@ -1098,8 +1108,8 @@ function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_node
     db_delete('taxonomy_access_term')
     ->condition('tid', $term_ids);
 
-  if (!empty($rid)) {
-    $query->condition('rid', $rid);
+  if (!empty($role)) {
+    $query->condition('role', $role);
   }
 
   $query->execute();
@@ -1113,8 +1123,8 @@ function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_node
  *
  * @param int $id
  *   The term or vocabulary ID.
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  * @param array $grants
  *   An array of grants to write, in the format grant_name => value.
  *   Allowed keys:
@@ -1130,15 +1140,15 @@ function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_node
  * @return object
  *   A grant row object formatted for Schema API.
  */
-function _taxonomy_access_format_grant_record($id, $rid, array $grants, $default = FALSE) {
+function _taxonomy_access_format_grant_record($id, $role, array $grants, $default = FALSE) {
   $row = new stdClass();
   if ($default) {
-    $row->vid = $id;
+    $row->vocabulary = $id;
   }
   else {
     $row->tid = $id;
   }
-  $row->rid = $rid;
+  $row->role = $role;
   foreach ($grants as $op => $value) {
     if (is_numeric($value)) {
       $grant_name = strpos($op, 'grant_') ? $op : "grant_$op";
@@ -1167,13 +1177,13 @@ function taxonomy_access_set_term_grants(array $grant_rows, $update_nodes = TRUE
   // Collect lists of term and role IDs in the list.
   $terms_for_roles = array();
   foreach ($grant_rows as $grant_row) {
-    $terms_for_roles[$grant_row->rid][] = $grant_row->tid;
+    $terms_for_roles[$grant_row->role][] = $grant_row->tid;
   }
 
   // Delete existing records for the roles and terms.
   // This will also cache a list of the affected nodes.
-  foreach ($terms_for_roles as $rid => $tids) {
-    taxonomy_access_delete_term_grants($tids, $rid, $update_nodes);
+  foreach ($terms_for_roles as $role => $tids) {
+    taxonomy_access_delete_term_grants($tids, $role, $update_nodes);
   }
 
   // Insert new entries.
@@ -1188,8 +1198,8 @@ function taxonomy_access_set_term_grants(array $grant_rows, $update_nodes = TRUE
 /**
  * Updates vocabulary default grants for a role.
  *
- * @param $rid
- *   The role ID to add the permission for.
+ * @param $role
+ *   The role name to add the permission for.
  * @param (array) $grant_rows
  *   An array of grant rows formatted for Schema API, keyed by vocabulary ID.
  * @param $update_nodes
@@ -1205,13 +1215,13 @@ function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = T
   // Collect lists of term and role IDs in the list.
   $vocabs_for_roles = array();
   foreach ($grant_rows as $grant_row) {
-    $vocabs_for_roles[$grant_row->rid][] = $grant_row->vid;
+    $vocabs_for_roles[$grant_row->role][] = $grant_row->vocabulary;
   }
 
   // Delete existing records for the roles and vocabularies.
   // This will also cache a list of the affected nodes.
-  foreach ($vocabs_for_roles as $rid => $vids) {
-    taxonomy_access_delete_default_grants($vids, $rid, $update_nodes);
+  foreach ($vocabs_for_roles as $role => $vocabularies) {
+    taxonomy_access_delete_default_grants($vocabularies, $role, $update_nodes);
   }
 
   // Insert new entries.
@@ -1239,10 +1249,6 @@ function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = T
  *
  * Callers should add conditions, groupings, and optionally fields.
  *
- * This query should work on D7's supported versions of MySQL and PostgreSQL;
- * patches may be needed for other databases. We add query tags to allow
- * other systems to manipulate the query as needed.
- *
  * @param array $grants
  *   Grants to select.
  *   Allowed values: 'view', 'update', 'delete', 'create', 'list'
@@ -1262,17 +1268,17 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
 
   $query->join(
     'taxonomy_access_default', 'tadg',
-    'tadg.vid = :vid',
-    array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT)
+    'tadg.vocabulary = :vocabulary',
+    array(':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT)
   );
   $query->leftJoin(
     'taxonomy_access_default', 'tad',
-    'tad.vid = td.vid AND tad.rid = tadg.rid'
+    'tad.vocabulary = td.vocabulary AND tad.role = tadg.role'
   );
   if (!$default) {
     $query->leftJoin(
       'taxonomy_access_term', 'ta',
-      'ta.tid = td.tid AND ta.rid = tadg.rid'
+      'ta.tid = td.tid AND ta.role = tadg.role'
     );
   }
 
@@ -1336,13 +1342,12 @@ function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
     'td.tid = ti.tid'
   );
   $query
-    ->fields('tadg', array('rid'))
+    ->fields('tadg', array('role'))
     ->condition('ti.nid', $node_nid)
-    ->groupBy('tadg.rid')
+    ->groupBy('tadg.role')
     ->addTag('taxonomy_access_node_access')
     ->addTag('taxonomy_access_node')
     ;
-
   // Fetch and format all grant records for the node.
   $grants = array();
   $records = $query->execute()->fetchAll();
@@ -1354,7 +1359,6 @@ function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
   foreach ($records as $record) {
     $grants[] = _taxonomy_access_format_node_access_record($record);
   }
-
   return $grants;
 }
 
@@ -1372,12 +1376,12 @@ function taxonomy_access_global_defaults($reset = FALSE) {
   if (empty($global_grants) || $reset) {
     $global_grants =
       db_query(
-        'SELECT rid, grant_view, grant_update, grant_delete, grant_create,
+        'SELECT role, grant_view, grant_update, grant_delete, grant_create,
            grant_list
          FROM {taxonomy_access_default}
-         WHERE vid = :vid',
-         array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
-      ->fetchAllAssoc('rid');
+         WHERE vocabulary = :vocabulary',
+         array(':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
+      ->fetchAllAssoc('role');
   }
   return $global_grants;
 }
@@ -1401,14 +1405,53 @@ function _taxonomy_access_format_node_access_record(stdClass $record) {
   // Only a value of 1 is considered an 'Allow';
   // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
   // If a 'Deny' is present, the value will then be 3 ('11' in binary).
+  $gid = _taxonomy_access_get_gid($record->role, TRUE);
+  if (empty($gid)) {
+    $gid = _taxonomy_access_get_gid('anonymous', TRUE);
+  }
   return array(
     'realm' => 'taxonomy_access_role',
-    'gid' => $record->rid,
+    'gid' => $gid,
     'grant_view' => ($record->grant_view == 1) ? 1 : 0,
     'grant_update' => ($record->grant_update == 1) ? 1 : 0,
     'grant_delete' => ($record->grant_delete == 1) ? 1 : 0,
     'priority' => 0,
   );
+}
+
+/**
+ * Returns an int value for gid based on role, from config.
+ *
+ * @param varchar $role
+ *   The role that we need a gid value for, defaults to anonymous.
+ * @param bool $create
+ *   Whether or not to create a gid if one does not exist. Default false.
+ *
+ * @return int
+ *   An integer pulled from config (and/or saved to config if needed).
+ *
+ */
+function _taxonomy_access_get_gid($role = 'anonymous', $create = 0) {
+  $config = config('taxonomy_access.settings');
+  $gid = $config->get('gid.' . $role);
+  if (empty($gid) && $create) {
+    $gids = $config->get('gid');
+    $max = 1;
+    foreach($gids as $gid) {
+      if ($gid > $max) {
+        $max = $gid;
+      }
+    }
+    $max++;
+    $config->set('gid.' . $role, $max++);
+    $config->save();
+  }
+  elseif ($gid) {
+    return $gid;
+  }
+  else {
+    return 0;
+  }
 }
 
 /**
@@ -1491,8 +1534,8 @@ function taxonomy_access_user_list_terms() {
  * @param bool $create
  *   (optional) Whether to fetch grants for create (TRUE) or list (FALSE).
  *   Defaults to FALSE.
- * @param array $vids
- *   (optional) An array of vids to limit the query.  Defaults to array().
+ * @param varchar $vocabularies
+ *   (optional) An array of vocabularies to limit the query.  Defaults to array().
  * @param object|null $account
  *   (optional) The account for which to retrieve grants.  If no account is
  *   passed, the current user will be used.  Defaults to NULL.
@@ -1500,7 +1543,7 @@ function taxonomy_access_user_list_terms() {
  * @return array|true
  *   An array of term IDs, or TRUE if the user has the grant for all terms.
  */
-function _taxonomy_access_user_term_grants($create = FALSE, array $vids = array(), $account = NULL) {
+function _taxonomy_access_user_term_grants($create = FALSE, array $vocabularies = array(), $account = NULL) {
   $grant_type = $create ? 'create' : 'list';
   $grant_field_name = 'grant_' . $grant_type;
 
@@ -1522,14 +1565,14 @@ function _taxonomy_access_user_term_grants($create = FALSE, array $vids = array(
   $query
     ->fields('td', array('tid'))
     ->groupBy('td.tid')
-    ->condition('tadg.rid', array_keys($account->roles), 'IN')
+    ->condition('tadg.role', array_keys($account->roles), 'IN')
     ;
 
-  // Filter by the indicated vids, if any.
-  if (!empty($vids)) {
+  // Filter by the indicated vocabularies, if any.
+  if (!empty($vocabularies)) {
     $query
-      ->fields('td', array('vid'))
-      ->condition('td.vid', $vids, 'IN')
+      ->fields('td', array('vocabulary'))
+      ->condition('td.vocabulary', $vocabularies, 'IN')
       ;
   }
 
@@ -1625,150 +1668,6 @@ function taxonomy_access_options_validate($element, &$form_state) {
 }
 
 /**
- * Implements hook_help().
- */
-function taxonomy_access_help($path, $arg) {
-  switch ($path) {
-    case 'admin/help#taxonomy_access':
-      $message = '';
-      $message .= ''
-        . '<p>' . t('The Taxonomy Access Control module allows users to specify how each category can be used by various roles.') . '</p>'
-        . '<p>' . t('Permissions can be set differently for each user role. Be aware that setting Taxonomy Access permissions works <em>only within one user role</em>.') . '</p>'
-        . '<p>' . t('(For users with multiple user roles, see section <a href="#good-to-know">Good to know</a> below.)') . '</p><hr /><br />'
-        . "<h3>" . t("On this page") . "</h3>"
-        . "<ol>"
-        . '<li><a href="#grant">' . t("Grant types") . '</a></li>'
-        . '<li><a href="#perm">' . t("Permission options") . '</a></li>'
-        . '<li><a href="#defaults">' . t("Global and vocabulary defaults") . '</a></li>'
-        . '<li><a href="#good-to-know">' . t("Good to know") . '</a></li>'
-        . "</ol><hr /><br />"
-        . '<h3 id="grant">' . t("Grant types") . '</h3>'
-        . '<p>' . t('On the category permissions page for each role, administrators can configure five types of permission for each term: <em>View, Update, Delete, Add Tag</em> (formerly <em>Create</em>), and <em>View Tag</em>: (formerly <em>List</em>') . '</p>'
-        . _taxonomy_access_grant_help_table()
-        . '<p>' . t('<em>View</em>, <em>Update</em>, and <em>Delete</em> control the node access system.  <em>View Tag</em> and <em>Add Tag</em> control the terms themselves.  (Note: In previous versions of Taxonomy Access Control, there was no <em>View Tag</em> permission its functionality was controlled by the <em>View</em> permission.)') . '</p><hr /><br />'
-        . '<h3 id="perm">' . t("Permission options") . "</h3>"
-        . '<p>' . t('<strong><em>View</em>, <em>Update</em>, and <em>Delete</em> have three options for each term:</strong> <em>Allow</em> (<acronym title="Allow">A</acronym>), <em>Ignore</em> (<acronym title="Ignore">I</acronym>), and <em>Deny</em> (<acronym title="Deny">D</acronym>).  Indicate which rights each role should have for each term.  If a node is tagged with multiple terms:') . '</p>'
-        . "<ul>\n"
-        . "<li>"
-        . t('<em>Deny</em> (<acronym title="Deny">D</acronym>) overrides <em>Allow</em> (<acronym title="Allow">A</acronym>) within a role.')
-        . "</li>"
-        . "<li>"
-        . t('Both <em>Allow</em> (<acronym title="Allow">A</acronym>) and <em>Deny</em> (<acronym title="Deny">D</acronym>) override <em>Ignore</em> (<acronym title="Ignore">I</acronym>) within a role.')
-        . "</li>"
-        . "<li>"
-        . t('If a user has <strong>multiple roles</strong>, an <em>Allow</em> (<acronym title="Allow">A</acronym>) from one role <strong>will</strong> override a <em>Deny</em> (<acronym title="Deny">D</acronym>) in another.  (For more information, see section <a href="#good-to-know">Good to know</a> below.)')
-        . "</li>"
-        . "</ul>\n\n"
-        . '<p>' . t('<strong><em>Add Tag</em> and <em>View Tag</em> have only two options for each term:</strong>  <em>Yes</em> (selected) or <em>No</em> (deselected).  Indicate what each role should be allowed to do with each term.') . '</p>'
-        . "<h4>" . t("Important notes") . "</h4>"
-        . "<ol>"
-        . "<li>"
-        . t('Custom roles <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure
-the authenticated user</a> properly.',
-          array("@url" => url(
-              TAXONOMY_ACCESS_CONFIG
-              . '/role/'
-              . BACKDROP_AUTHENTICATED_RID
-              . 'edit')))
-        . "</li>\n"
-        . '<li>'
-        . "<p>" . t('The <em>Deny</em> directives are processed after the <em>Allow</em> directives. (<strong><em>Deny</em> overrides <em>Allow</em></strong>.)</em>  So, if a multicategory node is in Categories "A" and "B" and a user has <em>Allow</em> permissions for <em>View</em> in Category "A" and <em>Deny</em> permissions for <em>View</em> in Category "B", then the user will NOT be permitted to <em>View</em> the node.') . '</p>'
-        . '<p>' . t('<em>Access is denied by default.</em> So, if a multicategory node is in Categories "C" and "D" and a user has <em>Ignore</em> permissions for <em>View</em> in both Category "C" and "D", then the user will <strong>not</strong> be permitted to view the node.') . '</p>'
-        . '<p>' . t('(If you are familiar with Apache mod_access, this permission system works similar to directive: <em>ORDER ALLOW, DENY</em>)') . '</p>'
-        . "</li>"
-        . "</ol>"
-        . "<hr /><br />"
-        . '<h3 id="defaults">' . t("Global and vocabulary defaults") . "</h3>"
-        . '<p>' . t('This option, just underneath the vocabulary title, <em>sets the permission that will automatically be given</em> to the role, <em>for any new terms</em> that are added within the vocabulary.  This includes terms that are added via free tagging.') . '</p><hr /><br />'
-        . '<h3 id="good-to-know">' . t('Good to know') . '</h3>'
-        . '<ol>'
-        . '<li>'
-        . '<p>' . t('<strong>Users with multiple user roles:</strong> Allow/Ignore/Deny options are interpreted <em>only within one user role</em>. When a user belongs to multiple user roles, then <strong>the user gets access if <em>any</em> of his/her user roles have the access granted.</strong>') . '</p>'
-        . '<p>' . t('In this case, permissions for the given user are calculated so that the <em>permissions of ALL of his user roles are "OR-ed" together</em>, which means that <em>Allow</em> in one role will take precedence over <em>Deny</em> in the other. This is different from how node access permissions (for multi-category nodes) are handled <em>within one user role</em>, as noted above.') . '</p>'
-        . '</li>'
-        . '<li>'
-        . '<p>' . t('<strong>Input formats:</strong>  <em>Node editing/deleting is blocked</em>, even when the user has <em>Update</em> or <em>Delete</em> permission to the node, <em>when the user is not allowed to use a filter format</em> that the node was saved at.') . '</p>'
-        . '</li>'
-        . '</ol>'
-        . '<hr /><br />'
-        ;
-      return $message;
-      break;
-  }
-}
-
-/**
- * Assembles a table explaining each grant type for use in help documentation.
- *
- * @return string
- *   Themed table.
- *
- * @todo
- *   We moved this here for drush.  Find a smarter way to include it on demand?
- */
-function _taxonomy_access_grant_help_table() {
-  $header = array();
-
-  $rows = array();
-  $rows[] = array(
-    array(
-      'header' => TRUE,
-      'data' => t("View"),
-    ),
-    "<p>"
-    . t('Grants this role the ability to view nodes with the term.  (Users must also have this permission to see <em class="perm">nodes</em> with the term listed in Views.)')
-    . "</p>"
-    . "<p>"
-    . t('The role must <strong>have</strong> <em class="perm">access content</em> permission on the <a href="@path">permissions administration form</a>.',
-      array('@path' => url('admin/people/permissions', array('fragment' => 'module-node')))),
-  );
-
-  $rows[] = array(
-    array(
-      'header' => TRUE,
-      'data' => t("Update") . ", " . t("Delete"),
-    ),
-    "<p>"
-    . t("Grants this role the ability to edit or delete nodes with the term, respectively.")
-    . "</p>"
-    . "<p>"
-    . t('The role must <strong>not</strong> have <em class="perm">edit any [type] content</em> or <em class="perm">delete any [type] content</em> permission on the <a href="@path">permissions administration form</a> if you wish to control them here.',
-      array('@path' => url('admin/people/permissions', array('fragment' => 'module-node'))))
-    . "</p>",
-  );
-
-  $rows[] = array(
-    array(
-      'header' => TRUE,
-      'data' => t("Add Tag"),
-    ),
-    "<p>"
-    . t("Grants this role the ability to add the term to a node when creating or updating it.")
-    . "</p>"
-    . "<p>"
-    . t('(Formerly <em>Create</em>).  This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
-      array('@path' => url('admin/people/permissions', array('fragment' => 'module-node'))))
-    . "</p>",
-  );
-
-  $rows[] = array(
-    array(
-      'header' => TRUE,
-      'data' => t("View Tag"),
-    ),
-    "<p>"
-    . t("(Formerly <em>List</em>.)  Whether this role can see the term listed on node pages and in lists, and whether the user can view the %taxonomy-term-page page for the term.",
-      array(
-      '%taxonomy-term-page' => "taxonomy/term/x",
-    ))
-    . "</p>"
-    . "<p>" . t("This does <strong>not</strong> control whether the role can see the <em>nodes</em> listed in Views, only the <em>term</em>.") . "</p>",
-  );
-
-  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('grant_help'))));
-}
-
-/**
  * Implements hook_disable().
  *
  * Removes all options_list callbacks during disabling of the module which were
@@ -1783,12 +1682,4 @@ function taxonomy_access_disable() {
       }
     }
   }
-}
-
-/**
- * Implements hook_autoload_info().
- */
-function taxonomy_access_autoload_info() {
-  return array(
-  );
 }

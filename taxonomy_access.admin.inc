@@ -12,22 +12,23 @@
  *   Form to render.
  *
  * @see taxonomy_access_menu()
+ *
  */
 function taxonomy_access_admin() {
   $roles = _taxonomy_access_user_roles();
-  $active_rids = db_query(
-    'SELECT rid FROM {taxonomy_access_default} WHERE vid = :vid',
-    array(':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT)
+  $active_roles = db_query(
+    'SELECT role FROM {taxonomy_access_default} WHERE vocabulary = :vocabulary',
+    array(':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT)
   )->fetchCol();
 
   $header = array(t('Role'), t('Status'), t('Operations'));
   $rows = array();
 
-  foreach ($roles as $rid => $name) {
+  foreach ($roles as $role => $name) {
     $row = array();
     $row[] = $name;
 
-    if (in_array($rid, $active_rids)) {
+    if (in_array($role, $active_roles)) {
       // Add edit operation link for active roles.
       $row[] = array('data' => t('Enabled'));
 
@@ -38,7 +39,7 @@ function taxonomy_access_admin() {
     }
     $row[] = array('data' => l(
       t("Configure"),
-      TAXONOMY_ACCESS_CONFIG . "/role/$rid/edit",
+      TAXONOMY_ACCESS_CONFIG . "/role/$role/edit",
       array('attributes' => array('class' => array('module-link', 'module-link-configure')))));
     $rows[] = $row;
   }
@@ -55,23 +56,23 @@ function taxonomy_access_admin() {
 /**
  * Form constructor for a form to to delete access rules for a particular role.
  *
- * @param int $rid
- *   The role ID to disable.
+ * @param varchar $role
+ *   The role to disable.
  *
  * @see taxonomy_access_role_delete_confirm_submit()
  * @see taxonomy_access_menu()
  * @ingroup forms
  */
-function taxonomy_access_role_delete_confirm($form, &$form_state, $rid) {
+function taxonomy_access_role_delete_confirm($form, &$form_state, $role) {
   $roles = _taxonomy_access_user_roles();
-  if (taxonomy_access_role_enabled($rid)) {
-    $form['rid'] = array(
+  if (taxonomy_access_role_enabled($role)) {
+    $form['role'] = array(
       '#type' => 'value',
-      '#value' => $rid,
+      '#value' => $role,
     );
     return confirm_form($form,
       t("Are you sure you want to delete all taxonomy access rules for the role %role?",
-        array('%role' => $roles[$rid])),
+        array('%role' => $roles[$role])),
       TAXONOMY_ACCESS_CONFIG . '/role/%/edit',
       t('This action cannot be undone.'),
       t('Delete all'),
@@ -84,15 +85,14 @@ function taxonomy_access_role_delete_confirm($form, &$form_state, $rid) {
  */
 function taxonomy_access_role_delete_confirm_submit($form, &$form_state) {
   $roles = _taxonomy_access_user_roles();
-  $rid = $form_state['values']['rid'];
-  if (is_numeric($rid)
-       && $rid != BACKDROP_ANONYMOUS_RID
-       && $rid != BACKDROP_AUTHENTICATED_RID) {
+  $role = $form_state['values']['role'];
+  if ($role != BACKDROP_ANONYMOUS_ROLE
+       && $role != BACKDROP_AUTHENTICATED_ROLE) {
     if ($form_state['values']['confirm']) {
       $form_state['redirect'] = TAXONOMY_ACCESS_CONFIG;
-      taxonomy_access_delete_role_grants($rid);
+      taxonomy_access_delete_role_grants($role);
       backdrop_set_message(t('All taxonomy access rules deleted for role %role.',
-          array('%role' => $roles[$rid])));
+          array('%role' => $roles[$role])));
     }
   }
 }
@@ -100,20 +100,20 @@ function taxonomy_access_role_delete_confirm_submit($form, &$form_state) {
 /**
  * Generates a URL to enable a role with a token for CSRF protection.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  *
  * @return string
  *   The full URL for the request path.
  */
-function taxonomy_access_enable_role_url($rid) {
+function taxonomy_access_enable_role_url($role) {
   // Create a query array with a token to validate the sumbission.
   $query = backdrop_get_destination();
-  $query['token'] = backdrop_get_token($rid);
+  $query['token'] = backdrop_get_token($role);
 
   // Build and return the URL with the token and destination.
   return url(
-    TAXONOMY_ACCESS_CONFIG . "/role/$rid/enable",
+    TAXONOMY_ACCESS_CONFIG . "/role/$role/enable",
     array('query' => $query)
   );
 }
@@ -121,30 +121,30 @@ function taxonomy_access_enable_role_url($rid) {
 /**
  * Page callback: Enables a role if the proper token is provided.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  */
-function taxonomy_access_enable_role_validate($rid) {
-  $rid = intval($rid);
+function taxonomy_access_enable_role_validate($role) {
+  $role = check_plain($role);
   // If a valid token is not provided, return a 403.
   $query = backdrop_get_query_parameters();
-  if (empty($query['token']) || !backdrop_valid_token($query['token'], $rid)) {
+  if (empty($query['token']) || !backdrop_valid_token($query['token'], $role)) {
     return MENU_ACCESS_DENIED;
   }
   // Return a 404 for the anonymous or authenticated roles.
-  if (in_array($rid, array(BACKDROP_ANONYMOUS_RID, BACKDROP_AUTHENTICATED_RID))) {
+  if (in_array($role, array(BACKDROP_ANONYMOUS_ROLE, BACKDROP_AUTHENTICATED_ROLE))) {
     return MENU_NOT_FOUND;
   }
   // Return a 404 for invalid role IDs.
   $roles = _taxonomy_access_user_roles();
-  if (empty($roles[$rid])) {
+  if (empty($roles[$role])) {
     return MENU_NOT_FOUND;
   }
 
   // If the parameters pass validation, enable the role and complete redirect.
-  if (taxonomy_access_enable_role($rid)) {
+  if (taxonomy_access_enable_role($role)) {
     backdrop_set_message(t('Role %name enabled successfully.',
-      array('%name' => $roles[$rid])));
+      array('%name' => $roles[$role])));
   }
   backdrop_goto();
 }
@@ -152,34 +152,31 @@ function taxonomy_access_enable_role_validate($rid) {
 /**
  * Form constructor for a form to manage grants by role.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  *
- * @see taxonomy_access_admin_form_submit()
- * @see taxonomy_access_menu()
- * @ingroup forms
  */
-function taxonomy_access_admin_role($form, $form_state, $rid) {
+function taxonomy_access_admin_role($form, $form_state, $role) {
   // Always include the role ID in the form.
-  $rid = intval($rid);
-  $form['rid'] = array(
+  $role = check_plain($role);
+  $form['role'] = array(
     '#type' => 'value',
-    '#value' => $rid,
+    '#value' => $role,
   );
 
   // For custom roles, allow the user to enable or disable grants for the role.
-  if (!in_array($rid, array(BACKDROP_ANONYMOUS_RID, BACKDROP_AUTHENTICATED_RID))) {
+  if (!in_array($role, array(BACKDROP_ANONYMOUS_ROLE, BACKDROP_AUTHENTICATED_ROLE))) {
     $roles = _taxonomy_access_user_roles();
 
     // If the role is not enabled, return only a link to enable it.
-    if (!taxonomy_access_role_enabled($rid)) {
+    if (!taxonomy_access_role_enabled($role)) {
       $form['status'] = array(
         '#markup' => '<p>' . t(
           'Access control for the %name role is disabled. <a href="@url">Enable @name</a>.',
           array(
-          '%name' => $roles[$rid],
-          '@name' => $roles[$rid],
-          '@url' => taxonomy_access_enable_role_url($rid),
+          '%name' => $roles[$role],
+          '@name' => $roles[$role],
+          '@url' => taxonomy_access_enable_role_url($role),
         )) . '</p>',
       );
       return $form;
@@ -187,13 +184,13 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
     // Otherwise, add a link to disable and build the rest of the form.
     else {
       $disable_url = url(
-        TAXONOMY_ACCESS_CONFIG . "/role/$rid/delete",
+        TAXONOMY_ACCESS_CONFIG . "/role/$role/delete",
         array('query' => backdrop_get_destination())
       );
       $form['status'] = array(
         '#markup' => '<p>' . t(
           'Access control for the %name role is enabled. <a href="@url">Disable @name</a>.',
-          array('@name' => $roles[$rid], '%name' => $roles[$rid], '@url' => $disable_url)) . '</p>',
+          array('@name' => $roles[$role], '%name' => $roles[$role], '@url' => $disable_url)) . '</p>',
       );
     }
   }
@@ -205,25 +202,25 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
   // Fetch all grants for the role.
   $defaults =
     db_query(
-      'SELECT vid, grant_view, grant_update, grant_delete, grant_create,
+      'SELECT vocabulary, grant_view, grant_update, grant_delete, grant_create,
               grant_list
        FROM {taxonomy_access_default}
-       WHERE rid = :rid',
-      array(':rid' => $rid))
-    ->fetchAllAssoc('vid', PDO::FETCH_ASSOC);
+       WHERE role = :role',
+      array(':role' => $role))
+    ->fetchAllAssoc('vocabulary', PDO::FETCH_ASSOC);
 
   $records =
     db_query(
-      'SELECT ta.tid, td.vid, ta.grant_view, ta.grant_update, ta.grant_delete,
+      'SELECT ta.tid, td.vocabulary, ta.grant_view, ta.grant_update, ta.grant_delete,
               ta.grant_create, ta.grant_list
        FROM {taxonomy_access_term} ta
        INNER JOIN {taxonomy_term_data} td ON ta.tid = td.tid
-       WHERE rid = :rid',
-      array(':rid' => $rid))
+       WHERE role = :role',
+      array(':role' => $role))
     ->fetchAllAssoc('tid', PDO::FETCH_ASSOC);
   $term_grants = array();
   foreach ($records as $record) {
-    $term_grants[$record['vid']][$record['tid']] = $record;
+    $term_grants[$record['vocabulary']][$record['tid']] = $record;
   }
 
   // Add a fieldset for the global default.
@@ -236,15 +233,15 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
     '#collapsed' => (sizeof($defaults) > 1),
   );
   // Print term grant table.
-  $form['global_default']['grants'] = taxonomy_access_grant_add_table($defaults[TAXONOMY_ACCESS_GLOBAL_DEFAULT], TAXONOMY_ACCESS_VOCABULARY_DEFAULT);
+  $form['global_default']['grants'] = taxonomy_access_grant_add_table($defaults[TAXONOMY_ACCESS_GLOBAL_DEFAULT], TAXONOMY_ACCESS_GLOBAL_DEFAULT);
 
   // Fetch all vocabularies and determine which are enabled for the role.
   $vocabs = array();
   $disabled = array();
   foreach (taxonomy_get_vocabularies() as $vocab) {
-    $vocabs[$vocab->vid] = $vocab;
-    if (!isset($defaults[$vocab->vid])) {
-      $disabled[$vocab->vid] = $vocab->name;
+    $vocabs[$vocab->machine_name] = $vocab;
+    if (!isset($defaults[$vocab->machine_name])) {
+      $disabled[$vocab->machine_name] = $vocab->name;
     }
   }
 
@@ -270,31 +267,31 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
   }
 
   // Add a fieldset for each enabled vocabulary.
-  foreach ($defaults as $vid => $vocab_default) {
-    if (!empty($vocabs[$vid])) {
-      $vocab = $vocabs[$vid];
+  foreach ($defaults as $vocabulary => $vocab_default) {
+    if (!empty($vocabs[$vocabulary])) {
+      $vocab = $vocabs[$vocabulary];
       $name = $vocab->machine_name;
 
       // Fetch unconfigured terms and reorder term records by hierarchy.
       $sort = array();
       $add_options = array();
-      if ($tree = taxonomy_get_tree($vid)) {
+      if ($tree = taxonomy_get_tree($vocabulary)) {
         foreach ($tree as $term) {
-          if (empty($term_grants[$vid][$term->tid])) {
+          if (empty($term_grants[$vocabulary][$term->tid])) {
             $add_options["term $term->tid"] = str_repeat('-', $term->depth) . ' ' . check_plain($term->name);
           }
           else {
-            $sort[$term->tid] = $term_grants[$vid][$term->tid];
+            $sort[$term->tid] = $term_grants[$vocabulary][$term->tid];
             $sort[$term->tid]['name'] =  str_repeat('-', $term->depth) . ' ' . check_plain($term->name);
           }
         }
-        $term_grants[$vid] = $sort;
+        $term_grants[$vocabulary] = $sort;
       }
 
       $grants = array(TAXONOMY_ACCESS_VOCABULARY_DEFAULT => $vocab_default);
       $grants[TAXONOMY_ACCESS_VOCABULARY_DEFAULT]['name'] = t('Default');
-      if (!empty($term_grants[$vid])) {
-        $grants += $term_grants[$vid];
+      if (!empty($term_grants[$vocabulary])) {
+        $grants += $term_grants[$vocabulary];
       }
       $form[$name] = array(
         '#type' => 'fieldset',
@@ -306,7 +303,7 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
       );
       // Term grant table.
       $form[$name]['grants'] =
-        taxonomy_access_grant_table($grants, $vocab->vid, t('Term'), !empty($term_grants[$vid]));
+        taxonomy_access_grant_table($grants, $vocab->machine_name, t('Term'), !empty($term_grants[$vocabulary]));
       // Fieldset to add a new term if there are any.
       if (!empty($add_options)) {
         $form[$name]['new'] = array(
@@ -317,26 +314,26 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
           '#tree' => TRUE,
           '#attributes' => array('class' => array('container-inline', 'taxonomy-access-add')),
         );
-        $form[$name]['new'][$vid]['item'] = array(
+        $form[$name]['new'][$vocabulary]['item'] = array(
           '#type' => 'select',
           '#title' => t('Term'),
           '#options' => $add_options,
         );
-        $form[$name]['new'][$vid]['recursive'] = array(
+        $form[$name]['new'][$vocabulary]['recursive'] = array(
           '#type' => 'checkbox',
           '#title' => t('with descendants'),
         );
-        $form[$name]['new'][$vid]['grants'] =
-          taxonomy_access_grant_add_table($vocab_default, $vid);
-        $form[$name]['new'][$vid]['add'] = array(
+        $form[$name]['new'][$vocabulary]['grants'] =
+          taxonomy_access_grant_add_table($vocab_default, $vocabulary);
+        $form[$name]['new'][$vocabulary]['add'] = array(
           '#type' => 'submit',
-          '#name' => $vid,
+          '#name' => $vocabulary,
           '#submit' => array('taxonomy_access_add_term_submit'),
           '#value' => t('Add'),
         );
       }
       $disable_url = url(
-        TAXONOMY_ACCESS_CONFIG . "/role/$rid/disable/$vid",
+        TAXONOMY_ACCESS_CONFIG . "/role/$role/disable/$vocabulary",
         array('query' => backdrop_get_destination())
       );
       $form[$name]['disable'] = array(
@@ -376,9 +373,8 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
  *   - delete: The Delete grant value select box for the element.
  *   - create: The Add tag grant value select box for the element.
  *   - list: The View tag grant value select box for the element.
- * @param int $parent_vid
- *   The parent ID for the table in the form tree structure (typically a
- *   vocabulary id).
+ * @param varchar $parent_vocabulary
+ *   The parent vocabulary for the table in the form tree structure.
  * @param string $first_col
  *   The header for the first column (in the 'name' key for each row).
  * @param bool $delete
@@ -391,7 +387,7 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
  *
  * @see taxonomy_access_grant_table()
  */
-function taxonomy_access_grant_table(array $rows, $parent_vid, $first_col, $delete = TRUE) {
+function taxonomy_access_grant_table(array $rows, $parent_vocabulary, $first_col, $delete = TRUE) {
   $header = taxonomy_access_grant_table_header();
   if ($first_col) {
     array_unshift(
@@ -400,7 +396,7 @@ function taxonomy_access_grant_table(array $rows, $parent_vid, $first_col, $dele
     );
   }
   if ($delete) {
-    backdrop_add_js('misc/tableselect.js');
+    backdrop_add_js('core/misc/tableselect.js');
     array_unshift($header, array('class' => array('select-all')));
   }
   $table = array(
@@ -409,11 +405,11 @@ function taxonomy_access_grant_table(array $rows, $parent_vid, $first_col, $dele
     '#header' => $header,
   );
   foreach ($rows as $id => $row) {
-    $table[$parent_vid][$id] = taxonomy_access_admin_build_row($row, 'name', $delete);
+    $table[$parent_vocabulary][$id] = taxonomy_access_admin_build_row($row, 'name', $delete);
   }
   // Disable the delete checkbox for the default.
-  if ($delete && isset($table[$parent_vid][TAXONOMY_ACCESS_VOCABULARY_DEFAULT])) {
-    $table[$parent_vid][TAXONOMY_ACCESS_VOCABULARY_DEFAULT]['remove']['#disabled'] = TRUE;
+  if ($delete && isset($table[$parent_vocabulary][TAXONOMY_ACCESS_VOCABULARY_DEFAULT])) {
+    $table[$parent_vocabulary][TAXONOMY_ACCESS_VOCABULARY_DEFAULT]['remove']['#disabled'] = TRUE;
   }
 
   return $table;
@@ -429,8 +425,8 @@ function taxonomy_access_grant_table(array $rows, $parent_vid, $first_col, $dele
  *   - delete: The Delete grant value select box for the element.
  *   - create: The Add tag grant value select box for the element.
  *   - list: The View tag grant value select box for the element.
- * @param int $id
- *   The ID for this set (e.g., a vocabulary ID).
+ * @param varchar $id
+ *   The ID for this set (e.g., a vocabulary name).
  *
  * @return
  *   Renderable array containing the table.
@@ -594,16 +590,16 @@ function _taxonomy_access_grant_field_label($grant, $for = NULL) {
  * Processes submissions for the vocabulary 'Add' button.
  */
 function taxonomy_access_enable_vocab_submit($form, &$form_state) {
-  $rid = $form_state['values']['rid'];
-  $vid = $form_state['values']['enable_vocab'];
+  $role = $form_state['values']['role'];
+  $vocabulary = $form_state['values']['enable_vocab'];
   $roles = _taxonomy_access_user_roles();
-  $vocab = taxonomy_vocabulary_load($vid);
-  if (taxonomy_access_enable_vocab($vid, $rid)) {
+  $vocab = taxonomy_vocabulary_load($vocabulary);
+  if (taxonomy_access_enable_vocab($vocabulary, $role)) {
     backdrop_set_message(t(
       'Vocabulary %vocab enabled successfully for the %role role.',
       array(
       '%vocab' => $vocab->name,
-      '%role' => $roles[$rid],
+      '%role' => $roles[$role],
     )));
   }
   else {
@@ -617,21 +613,21 @@ function taxonomy_access_enable_vocab_submit($form, &$form_state) {
  * Processes submissions for the term 'Add' button.
  */
 function taxonomy_access_add_term_submit($form, &$form_state) {
-  $vid = $form_state['clicked_button']['#name'];
-  $new = $form_state['values']['new'][$vid];
-  $rid = $form_state['values']['rid'];
+  $vocabulary = $form_state['clicked_button']['#name'];
+  $new = $form_state['values']['new'][$vocabulary];
+  $role = $form_state['values']['role'];
   list($type, $id) = explode(' ', $new['item']);
   $rows = array();
 
   $rows[$id] =
-    _taxonomy_access_format_grant_record($id, $rid, $new['grants'][$vid][TAXONOMY_ACCESS_VOCABULARY_DEFAULT]);
+    _taxonomy_access_format_grant_record($id, $role, $new['grants'][$vocabulary][TAXONOMY_ACCESS_VOCABULARY_DEFAULT]);
 
   // If we are adding children recursively, add those as well.
   if ($new['recursive'] == 1) {
     $children = _taxonomy_access_get_descendants($id);
     foreach ($children as $tid) {
       $rows[$tid] =
-        _taxonomy_access_format_grant_record($tid, $rid, $new['grants'][$vid][TAXONOMY_ACCESS_VOCABULARY_DEFAULT]);
+        _taxonomy_access_format_grant_record($tid, $role, $new['grants'][$vocabulary][TAXONOMY_ACCESS_VOCABULARY_DEFAULT]);
     }
   }
 
@@ -642,8 +638,8 @@ function taxonomy_access_add_term_submit($form, &$form_state) {
 /**
  * Page callback: Returns a confirmation form to disable a vocabulary.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  * @param object $vocab
  *   The vocabulary object.
  *
@@ -654,22 +650,22 @@ function taxonomy_access_add_term_submit($form, &$form_state) {
  * @see taxonomy_access_admin_role().
  * @see taxonomy_access_disable_vocab_confirm_page()
  */
-function taxonomy_access_disable_vocab_confirm_page($rid, $vocab) {
-  $rid = intval($rid);
+function taxonomy_access_disable_vocab_confirm_page($role, $vocab) {
+  $role = check_plain($role);
 
-  // Return a 404 on invalid vid or rid.
-  if (!$vocab->vid || !$rid) {
+  // Return a 404 on invalid vocabulary or role.
+  if (!$vocab->machine_name || !$role) {
     return MENU_NOT_FOUND;
   }
 
-  return backdrop_get_form('taxonomy_access_disable_vocab_confirm', $rid, $vocab);
+  return backdrop_get_form('taxonomy_access_disable_vocab_confirm', $role, $vocab);
 }
 
 /**
  * Returns a confirmation form for disabling a vocabulary for a role.
  *
- * @param int $rid
- *   The role ID.
+ * @param varchar $role
+ *   The role name.
  * @param object $vocab
  *   The vocabulary object.
  *
@@ -677,16 +673,16 @@ function taxonomy_access_disable_vocab_confirm_page($rid, $vocab) {
  * @see taxonomy_access_disable_vocab_confirm_submit()
  * @ingroup forms
  */
-function taxonomy_access_disable_vocab_confirm($form, &$form_state, $rid, $vocab) {
+function taxonomy_access_disable_vocab_confirm($form, &$form_state, $role, $vocab) {
   $roles = _taxonomy_access_user_roles();
-  if (taxonomy_access_role_enabled($rid)) {
-    $form['rid'] = array(
+  if (taxonomy_access_role_enabled($role)) {
+    $form['role'] = array(
       '#type' => 'value',
-      '#value' => $rid,
+      '#value' => $role,
     );
-    $form['vid'] = array(
+    $form['vocabulary'] = array(
       '#type' => 'value',
-      '#value' => $vocab->vid,
+      '#value' => $vocab->machine_name,
     );
     $form['vocab_name'] = array(
       '#type' => 'value',
@@ -694,7 +690,7 @@ function taxonomy_access_disable_vocab_confirm($form, &$form_state, $rid, $vocab
     );
     return confirm_form($form,
       t("Are you sure you want to delete all Taxonomy access rules for %vocab in the %role role?",
-        array('%role' => $roles[$rid], '%vocab' => $vocab->name)),
+        array('%role' => $roles[$role], '%vocab' => $vocab->name)),
       TAXONOMY_ACCESS_CONFIG . '/role/%/edit',
       t('This action cannot be undone.'),
       t('Delete all'),
@@ -705,30 +701,30 @@ function taxonomy_access_disable_vocab_confirm($form, &$form_state, $rid, $vocab
 /**
  * Form submission handler for taxonomy_access_disable_vocab_confirm().
  *
- * @param int $rid
- *   The role ID to disable.
+ * @param varchar $role
+ *   The role name to disable.
  *
  * @todo
- *   Set a message on invalid $rid or $vid?
+ *   Set a message on invalid $role or $vocabulary?
  */
 function taxonomy_access_disable_vocab_confirm_submit($form, &$form_state) {
   $roles = _taxonomy_access_user_roles();
-  $rid = intval($form_state['values']['rid']);
-  $vid = intval($form_state['values']['vid']);
+  $role = check_plain($form_state['values']['role']);
+  $vocabulary = check_plain($form_state['values']['vocabulary']);
   // Do not proceed for invalid role IDs, and do not allow the global default
   // to be deleted.
-  if (!$vid || !$rid || empty($roles[$rid])) {
+  if (!$vocabulary || !$role || empty($roles[$role])) {
     return FALSE;
   }
 
   if ($form_state['values']['confirm']) {
     $form_state['redirect'] = TAXONOMY_ACCESS_CONFIG;
-    if (taxonomy_access_disable_vocab($vid, $rid)) {
+    if (taxonomy_access_disable_vocab($vocabulary, $role)) {
       backdrop_set_message(
         t('All Taxonomy access rules deleted for %vocab in role %role.',
           array(
         '%vocab' => $form_state['values']['vocab_name'],
-        '%role' => $roles[$rid],
+        '%role' => $roles[$role],
       )
          ));
       return TRUE;
@@ -747,17 +743,17 @@ function taxonomy_access_disable_vocab_confirm_submit($form, &$form_state) {
  *   taxonomy_access_grant_table() and taxonomy_access_build_row().
  */
 function taxonomy_access_delete_selected_submit($form, &$form_state) {
-  $rid = intval($form_state['values']['rid']);
+  $role = check_plain($form_state['values']['role']);
   $delete_tids = array();
-  foreach ($form_state['values']['grants'] as $vid => $tids) {
+  foreach ($form_state['values']['grants'] as $vocabulary => $tids) {
     foreach ($tids as $tid => $record) {
       if (!empty($record['remove'])) {
         $delete_tids[] = $tid;
       }
     }
   }
-  if ($rid) {
-    if (taxonomy_access_delete_term_grants($delete_tids, $rid)) {
+  if ($role) {
+    if (taxonomy_access_delete_term_grants($delete_tids, $role)) {
       backdrop_set_message(format_plural(
           sizeof($delete_tids),
           '1 term access rule was deleted.',
@@ -769,14 +765,13 @@ function taxonomy_access_delete_selected_submit($form, &$form_state) {
   }
 }
 /**
- * Form submission handler for taxonomy_access_admin_form().
+ * Form submission handler for taxonomy_access_admin_role().
  *
  * Processes submissions for the 'Save all' button.
  */
 function taxonomy_access_save_all_submit($form, &$form_state) {
   $values = $form_state['values'];
-  $rid = $values['rid'];
-  $vocabs = taxonomy_get_vocabularies();
+  $role = $values['role'];
 
   // Create four lists of records to update.
   $update_terms = array();
@@ -784,13 +779,12 @@ function taxonomy_access_save_all_submit($form, &$form_state) {
   $update_defaults = array();
   $skip_defaults = array();
 
-  foreach ($values['grants'] as $vid => $rows) {
-    if ($vid == TAXONOMY_ACCESS_GLOBAL_DEFAULT) {
+  foreach ($values['grants'] as $vocabulary => $rows) {
+    if ($vocabulary === TAXONOMY_ACCESS_GLOBAL_DEFAULT) {
       $element = $form['global_default'];
     }
     else {
-      $vocab = $vocabs[$vid];
-      $element = $form[$vocab->machine_name];
+      $element = $form[$vocabulary];
     }
     foreach ($rows as $tid => $row) {
       // Check the default values for this row.
@@ -799,7 +793,7 @@ function taxonomy_access_save_all_submit($form, &$form_state) {
       foreach (array('view', 'update', 'delete', 'create', 'list') as $grant_name) {
         $grants[$grant_name] = $row[$grant_name];
         $defaults[$grant_name] =
-          $element['grants'][$vid][$tid][$grant_name]['#default_value'];
+          $element['grants'][$vocabulary][$tid][$grant_name]['#default_value'];
       }
 
       // Proceed if the user changed the row (values differ from defaults).
@@ -818,29 +812,30 @@ function taxonomy_access_save_all_submit($form, &$form_state) {
           // Term record with node grant changes.
           case ($tid && $update_nodes):
             $update_terms[$tid] =
-              _taxonomy_access_format_grant_record($tid, $rid, $grants);
+              _taxonomy_access_format_grant_record($tid, $role, $grants);
             break;
 
             // Term record and no node grant changes.
           case ($tid && !$update_nodes):
             $skip_terms[$tid] =
-              _taxonomy_access_format_grant_record($tid, $rid, $grants);
+              _taxonomy_access_format_grant_record($tid, $role, $grants);
             break;
 
             // Vocab record with node grant changes.
           case (!$tid && $update_nodes):
-            $update_defaults[$vid] =
-              _taxonomy_access_format_grant_record($vid, $rid, $grants, TRUE);
+            $update_defaults[$vocabulary] =
+              _taxonomy_access_format_grant_record($vocabulary, $role, $grants, TRUE);
             break;
 
             // Vocab record and no node grant changes.
           case (!$tid && !$update_nodes):
-            $skip_defaults[$vid] =
-              _taxonomy_access_format_grant_record($vid, $rid, $grants, TRUE);
+            $skip_defaults[$vocabulary] =
+              _taxonomy_access_format_grant_record($vocabulary, $role, $grants, TRUE);
             break;
         }
       }
     }
+    backdrop_set_message(t('Access rules saved.'), 'status', FALSE);
   }
 
   // Process each set.
@@ -887,7 +882,7 @@ function _taxonomy_access_admin_instructions_html() {
     . "</li>"
     . "</ul>\n\n"
     ;
-  if (arg(4) != BACKDROP_ANONYMOUS_RID && arg(4) != BACKDROP_AUTHENTICATED_RID) {
+  if (arg(4) != BACKDROP_ANONYMOUS_ROLE && arg(4) != BACKDROP_AUTHENTICATED_ROLE) {
     // Role other than Anonymous or Authenticated
     $instructions .= ''
       . "<p>"
@@ -895,7 +890,7 @@ function _taxonomy_access_admin_instructions_html() {
         array("@url" => url(
             TAXONOMY_ACCESS_CONFIG
             . "/role/"
-            .  BACKDROP_AUTHENTICATED_RID
+            .  BACKDROP_AUTHENTICATED_ROLE
             . '/edit')))
       . "</p>\n\n"
       ;
