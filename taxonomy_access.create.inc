@@ -50,16 +50,16 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   }
 
   // Assemble a list of all vocabularies for the field.
-  $vocabularys = array();
+  $vocabularies = array();
   foreach ($context['field']['settings']['allowed_values'] as $tree) {
     if ($vocab = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
-      $vocabularys[] = $vocab->vocabulary;
+      $vocabularies[] = $vocab->vocabulary;
     }
   }
 
   // Determine whether the user has create for any terms in the given vocabs.
   $allowed_terms = FALSE;
-  foreach ($vocabularys as $vocabulary) {
+  foreach ($vocabularies as $vocabulary) {
     $terms = taxonomy_access_user_create_terms_by_vocab($vocabulary);
     if (!empty($terms)) {
       $allowed_terms = TRUE;
@@ -67,8 +67,8 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
     }
   }
 
-  // Filter the vocabularys to vocabs in which the user may create new terms.
-  $allowed_vocabularys = taxonomy_access_create_default_allowed($vocabularys);
+  // Filter the vocabularies to vocabs in which the user may create new terms.
+  $allowed_vocabularies = taxonomy_access_create_default_allowed($vocabularies);
 
   // If the field already has the maximum number of values, and all of these
   // values are disallowed, deny access to the field.
@@ -79,7 +79,7 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   }
 
   // If the user may not create any terms on this field, deny access.
-  if (empty($allowed_vocabularys) && !$allowed_terms) {
+  if (empty($allowed_vocabularies) && !$allowed_terms) {
     $element['#access'] = FALSE;
   }
 
@@ -90,7 +90,7 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   // Custom validation.  Set values for the validator indicating:
   // 1. Whether the user can autocreate terms in this field (vocab. default).
   // 2. Which tids were removed due to create restrictions.
-  $element['#allow_autocreate'] = empty($allowed_vocabularys) ? FALSE : TRUE;
+  $element['#allow_autocreate'] = empty($allowed_vocabularies) ? FALSE : TRUE;
   $element['#disallowed_defaults'] = $disallowed_defaults;
   $element['#element_validate'] =
     array('taxonomy_access_autocomplete_validate');
@@ -259,11 +259,11 @@ function taxonomy_access_user_create_terms_by_vocab($vocabulary) {
  */
 function taxonomy_access_user_create_defaults() {
   // Cache the terms the current user can create.
-  static $vocabularys = NULL;
-  if (is_null($vocabularys)) {
-    $vocabularys = _taxonomy_access_create_defaults();
+  static $vocabularies = NULL;
+  if (is_null($vocabularies)) {
+    $vocabularies = _taxonomy_access_create_defaults();
   }
-  return $vocabularys;
+  return $vocabularies;
 }
 
 /**
@@ -309,21 +309,21 @@ function taxonomy_access_create_allowed(array $tids) {
 /**
  * Filter a list of vocab IDs to those in which the user may create by default.
  *
- * @param array $vocabularys
+ * @param array $vocabularies
  *   The array of vocabulary IDs.
  *
  * @return array
  *   An array of disallowed vocabulary IDs.
  */
-function taxonomy_access_create_default_allowed(array $vocabularys) {
+function taxonomy_access_create_default_allowed(array $vocabularies) {
   $all_allowed = taxonomy_access_user_create_defaults();
 
   // If the user's create grant info is exactly TRUE, all terms are allowed.
   if ($all_allowed === TRUE) {
-    return $vocabularys;
+    return $vocabularies;
   }
 
-  return array_intersect($vocabularys, $all_allowed);
+  return array_intersect($vocabularies, $all_allowed);
 }
 
 
@@ -382,7 +382,7 @@ function _taxonomy_access_create_defaults($account = NULL) {
     return TRUE;
   }
 
-  return $vocabularys;
+  return $vocabularies;
 }
 
 /**
@@ -408,10 +408,10 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
   if ($tag_last != '') {
 
     // Part of the criteria for the query come from the field's own settings.
-    $vocabularys = array();
+    $vocabularies = array();
     $vocabularies = taxonomy_vocabulary_get_names();
     foreach ($field['settings']['allowed_values'] as $tree) {
-      $vocabularys[] = $vocabularies[$tree['vocabulary']]->vocabulary;
+      $vocabularies[] = $vocabularies[$tree['vocabulary']]->vocabulary;
     }
 
     $query = db_select('taxonomy_term_data', 't');
@@ -425,7 +425,7 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
     // Select rows that match by term name.
     $tags_return = $query
       ->fields('t', array('tid', 'name'))
-      ->condition('t.vocabulary', $vocabularys)
+      ->condition('t.vocabulary', $vocabularies)
       ->condition('t.name', '%' . db_like($tag_last) . '%', 'LIKE')
       ->range(0, 10)
       ->execute()
