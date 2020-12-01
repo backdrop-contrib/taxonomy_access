@@ -1,168 +1,45 @@
------------------------
-GENERAL DESCRIPTION
------------------------
-This module allows you to set access permissions for various taxonomy 
-categories based on user role.  
+# Taxonomy Access Control
 
-There are permissions to VIEW, UPDATE, and DELETE nodes in each category.
-Additionally, the ADD TAG permission control whether the user can add a 
-taxonomy term to a node, and the VIEW TAG permission controls whether the user
+This module allows you to set access permissions for various taxonomy 
+categories based on user role.
+
+There are permissions to `view`, `update`, and `delete` nodes in each category.
+Additionally, the `add tag` permission control whether the user can add a 
+taxonomy term to a node, and the `view tag` permission controls whether the user
 can see the taxonomy term listed on the node.
 
+### IMPORTANT NOTES: 
 
+ - This is a complicated module. When you first learn to use this module, 
+   always try it first on a test site.
+ - If you want to use two or more access-related modules at the same time,
+   test them carefully as they can conflict.
 
+## Installation and Usage
 
+- Install this module using the [official Backdrop CMS instructions](https://backdropcms.org/guide/modules)
 
+- Usage instructions can be [viewed and edited in the Wiki](https://github.com/backdrop-contrib/taxonomy_access/wiki).
 
+## Issues
 
-TO INSTALL, simply install and enable the module, in these steps.
+ - Bugs and Feature requests should be reported in the [Issue Queue](https://github.com/backdrop-contrib/taxonomy_access/issues).
 
-PLEASE CHECK that you use the right version of Taxonomy Access for your 
-  version of DRUPAL.
+## Current Maintainers
 
-IMPORTANT: This is a complicated module. When you first learn to use this 
-  module, ALWAYS TRY IT FIRST ON A TEST SITE.
+ - [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
 
-NOTE: If you want to USE TWO OR MORE "ACCESS" MODULES AT THE SAME TIME, TEST 
-  THEM CAREFULLY. (e.g: OG, node_privacy_by_role, taxonomy access, etc.)
+## Credits
 
-TO UPDATE from previous versions of taxonomy_access: PLEASE READ UPDATE.TXT!
-  WHEN UPDATING, ALWAYS disable the module first before uploading the new 
-  module, on the page:
-  "Administration >> Modules"
-  (http://www.example.com/admin/modules).
+ - Ported to BackdropCMS by [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
 
------------------------
-INSTALLATION
------------------------
+ - Maintainers on drupal.org
+    - [berdir](https://www.drupal.org/u/berdir)
+    - [miro_dietiker](https://www.drupal.org/u/miro_dietiker)
+    - [primsi](https://www.drupal.org/u/primsi)
+    - [jeroenb](https://www.drupal.org/u/jeroenb)
 
-1. COPY the taxonomy_access directory to your Drupal 
-   installation's module directory.
-   (By default: sites/all/modules/taxonomy_access/ in your Drupal directory.)
+## License
 
-2. ENABLE THE MODULE on page: 
-   "Administration >> Modules"
-   (http://www.example.com/admin/modules).
-
-3. REBUILD YOUR NODE ACCESS PERMISSIONS on page:
-   "Administration >> Reports >> Status report >> Node Access Permissions"
-   (http://www.example.com/admin/reports/status/rebuild).
-
-4. GRANT ADMINISTRATORS CONTROL of Taxonomy Access on page:
-   "Administration >> People >> Permissions"
-   (http://www.example.com/admin/people/permissions).
-
-   To administer Taxonomy Access, administrators must have "access 
-   administration pages" checked (under "system module") and "administer 
-   permissions" checked (under "user module"). 
-
-5. CONFIGURE ACCESS GRANTS to the various categories at: 
-   "Administration >> Configuration >> Taxonomy access control"
-   (http://www.example.com/admin/config/people/taxonomy_access).
-
-   Be sure to configure the authenticated role, as users with custom roles 
-   also have the authenticated user role.
-
-NOTE: DATABASE TABLES are automatically added to database. Module creates two 
-   database tables: 'taxonomy_access_term' and 'taxonomy_access_default'.
-
-
-
-
-
-
-
------------------------
-HELP PAGES
------------------------
-For more information about how to control access permissions with the Taxonomy
-access control module (TAC), see the module's help page at:
-"Administration >> Help >> Taxonomy access control"
-(admin/help/taxonomy_access).
-
-Also see the help pages at drupal.org: http://drupal.org/node/31601
-
-
------------------------
-DATABASE TABLES
------------------------
-Module creates two tables in database: 'taxonomy_access_term' and
-'taxonomy_access_default'
-
-
------------------------
-TROUBLESHOOTING
------------------------
-
-If users can view or edit pages that they do not have permission for:
-
-1. Make sure the user role does not have "administer nodes" permission.  This 
-   permission will override any settings from Taxonomy Access.
-
-2. Check whether the user role has "edit any [type] content" permissions 
-   under "node module" on the page: 
-   "Administration >> People >> Permissions"
-   (http://www.example.com/admin/people/permissions).
-
-   Granting this permission overrides TAC's "Update" permissions for the given 
-   content type, so you will not be able to deny the role edit access to any 
-   nodes in that type.  (The same is true of "delete any [type] content" 
-   permissions.)
-
-3. Check to see if the user has other roles that may be granting other 
-   permissions. Remember: Deny overrides Allow within a role, but Allow from 
-   one role can override Deny from another.
-
-4. Review the configuration for the authenticated user role on page:
-   "Administration >> People >> Permissions"
-   (http://www.example.com/admin/people/permissions).
-
-   Remember that users with custom roles also have the authenticated role, so 
-   they gain any permissions granted that role.
-
-5. Check whether you have ANY OTHER node access modules installed.
-   Other modules can override TAC's grants.
-
-6. Do a General Database Housekeeping
-  (Tables: 'node_access','taxonomy_access_term' and 'taxonomy_access_default'):
-
-   First DISABLE, then RE-ENABLE the Taxonomy access module on page:
-   "Administration >> Modules"
-   (http://www.example.com/admin/modules).
-    
-  This will force the complete rebuild of the 'node_access' table.
-  
-7. For debugging, install devel_node_access module (Devel project).
-   This can show you some information about node_access values in 
-   the database when viewing a node page.
-
-8. Force rebuilding of the permissions cache (table 'node_access'):
-   "Rebuild permissions" button on page:
-   "Administration >> Reports >> Status report >> Node Access Permissions"
-   (http://www.example.com/admin/reports/status/rebuild).
-
-   If the site is experiencing problems with permissions to content, you may
-   have to rebuild the permissions cache. Possible causes for permission
-   problems are disabling modules or configuration changes to permissions.
-   Rebuilding will remove all privileges to posts, and replace them with
-   permissions based on the current modules and settings.
-
------------------------
-UNINSTALLING
------------------------
-
-1. First DISABLE the Taxonomy access module on page:
-   "Administration >> Modules"
-   (http://www.example.com/admin/modules).
-
-2. After disabling, you can uninstall completely by choosing Taxonomy
-   Access on page: 
-   "Administration >> Modules >> Uninstall"
-   (http://www.example.com/admin/modules/uninstall).
-
-   This will remove all your settings of Taxonomy Access: variables and tables
-   ('taxonomy_access_term' and 'taxonomy_access_default').
-
-3. After uninstalling, if the site is experiencing problems with permissions to
-   content, you can rebuild the permission cache.
-   See "Troubleshooting" #8.
+This project is GPL v2 software. See the LICENSE.txt file in this directory for
+complete text.
