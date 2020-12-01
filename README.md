@@ -33,11 +33,10 @@ can see the taxonomy term listed on the node.
 
  - Ported to BackdropCMS by [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
 
- - Maintainers on drupal.org
-    - [berdir](https://www.drupal.org/u/berdir)
-    - [miro_dietiker](https://www.drupal.org/u/miro_dietiker)
-    - [primsi](https://www.drupal.org/u/primsi)
-    - [jeroenb](https://www.drupal.org/u/jeroenb)
+ - Maintainers on drupal.org: [fizk](https://www.drupal.org/u/fizk), [xjm](https://www.drupal.org/u/xjm), 
+   [keve](https://www.drupal.org/u/keve), [cpugeniusmv](https://www.drupal.org/u/cpugeniusmv), 
+   [edrex](https://www.drupal.org/u/edrex)
+ - The Drupal 7 version was sponsored originally by the Austrian school system BIFIE.
 
 ## License
 
