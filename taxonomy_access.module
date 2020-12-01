@@ -249,9 +249,18 @@ function taxonomy_access_taxonomy_term_delete($term) {
  *
  * Gives access to taxonomies based on the taxonomy_access table.
  */
-function taxonomy_access_node_grants($user, $op) {
-  $roles = is_array($user->roles) ? array_keys($user->roles) : -1;
-  return array('taxonomy_access_role' => $roles);
+function taxonomy_access_node_grants($account, $op) {
+  debug($account->roles);
+  debug(__FUNCTION__);
+  $grants = array(
+    'taxonomy_access_role' => array(),
+  );
+  if (is_array($account->roles)) {
+    foreach($account->roles as $role) {
+      $grants['taxonomy_access_role'][] = _taxonomy_access_get_gid($role);
+    }
+  }
+  return $grants;
 }
 
 /**
@@ -929,7 +938,7 @@ function _taxonomy_access_get_vocabulary_terms($vocab_id) {
 
 
 /**
- * Deletes module configurations for the given role IDs.
+ * Deletes module configurations for the given roles.
  *
  * @param varchar $role
  *   A single role name.
@@ -964,10 +973,11 @@ function taxonomy_access_delete_role_grants($role, $update_nodes = TRUE) {
 
     // Find the ones we need.
     foreach ($gd_records as $gd) {
-      if ($gd['gid'] == BACKDROP_AUTHENTICATED_ROLE) {
+      $authenticated_gid = _taxonomy_access_get_gid(BACKDROP_AUTHENTICATED_ROLE);
+      if ($gd['gid'] == $authenticated_gid) {
         $auth_gd = $gd;
       }
-      elseif ($gd['gid'] == $role) {
+      elseif ($gd['gid'] == _taxonomy_access_get_gid($role)) {
         $role_gd = $gd;
       }
     }
@@ -1239,10 +1249,6 @@ function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = T
  *
  * Callers should add conditions, groupings, and optionally fields.
  *
- * This query should work on D7's supported versions of MySQL and PostgreSQL;
- * patches may be needed for other databases. We add query tags to allow
- * other systems to manipulate the query as needed.
- *
  * @param array $grants
  *   Grants to select.
  *   Allowed values: 'view', 'update', 'delete', 'create', 'list'
@@ -1342,7 +1348,6 @@ function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
     ->addTag('taxonomy_access_node_access')
     ->addTag('taxonomy_access_node')
     ;
-
   // Fetch and format all grant records for the node.
   $grants = array();
   $records = $query->execute()->fetchAll();
@@ -1354,7 +1359,6 @@ function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
   foreach ($records as $record) {
     $grants[] = _taxonomy_access_format_node_access_record($record);
   }
-
   return $grants;
 }
 

@@ -124,7 +124,7 @@ function taxonomy_access_schema() {
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
-        'default' => TAXONOMY_ACCESS_VOCABULARY_DEFAULT,
+        'default' => TAXONOMY_ACCESS_GLOBAL_DEFAULT,
       ),
       'role' => array(
         'description' => "The role a user must possess to gain this row's privileges on nodes for terms in this vocabulary.",
