@@ -86,12 +86,12 @@ function taxonomy_access_role_delete_confirm_submit($form, &$form_state) {
   $roles = _taxonomy_access_user_roles();
   $rid = $form_state['values']['rid'];
   if (is_numeric($rid)
-      && $rid != DRUPAL_ANONYMOUS_RID
-      && $rid != DRUPAL_AUTHENTICATED_RID) {
+       && $rid != BACKDROP_ANONYMOUS_RID
+       && $rid != BACKDROP_AUTHENTICATED_RID) {
     if ($form_state['values']['confirm']) {
       $form_state['redirect'] = TAXONOMY_ACCESS_CONFIG;
       taxonomy_access_delete_role_grants($rid);
-      drupal_set_message(t('All taxonomy access rules deleted for role %role.',
+      backdrop_set_message(t('All taxonomy access rules deleted for role %role.',
           array('%role' => $roles[$rid])));
     }
   }
@@ -108,8 +108,8 @@ function taxonomy_access_role_delete_confirm_submit($form, &$form_state) {
  */
 function taxonomy_access_enable_role_url($rid) {
   // Create a query array with a token to validate the sumbission.
-  $query = drupal_get_destination();
-  $query['token'] = drupal_get_token($rid);
+  $query = backdrop_get_destination();
+  $query['token'] = backdrop_get_token($rid);
 
   // Build and return the URL with the token and destination.
   return url(
@@ -127,12 +127,12 @@ function taxonomy_access_enable_role_url($rid) {
 function taxonomy_access_enable_role_validate($rid) {
   $rid = intval($rid);
   // If a valid token is not provided, return a 403.
-  $query = drupal_get_query_parameters();
-  if (empty($query['token']) || !drupal_valid_token($query['token'], $rid)) {
+  $query = backdrop_get_query_parameters();
+  if (empty($query['token']) || !backdrop_valid_token($query['token'], $rid)) {
     return MENU_ACCESS_DENIED;
   }
   // Return a 404 for the anonymous or authenticated roles.
-  if (in_array($rid, array(DRUPAL_ANONYMOUS_RID, DRUPAL_AUTHENTICATED_RID))) {
+  if (in_array($rid, array(BACKDROP_ANONYMOUS_RID, BACKDROP_AUTHENTICATED_RID))) {
     return MENU_NOT_FOUND;
   }
   // Return a 404 for invalid role IDs.
@@ -143,10 +143,10 @@ function taxonomy_access_enable_role_validate($rid) {
 
   // If the parameters pass validation, enable the role and complete redirect.
   if (taxonomy_access_enable_role($rid)) {
-    drupal_set_message(t('Role %name enabled successfully.',
+    backdrop_set_message(t('Role %name enabled successfully.',
       array('%name' => $roles[$rid])));
   }
-  drupal_goto();
+  backdrop_goto();
 }
 
 /**
@@ -162,10 +162,13 @@ function taxonomy_access_enable_role_validate($rid) {
 function taxonomy_access_admin_role($form, $form_state, $rid) {
   // Always include the role ID in the form.
   $rid = intval($rid);
-  $form['rid'] = array('#type' => 'value', '#value' => $rid);
+  $form['rid'] = array(
+    '#type' => 'value',
+    '#value' => $rid,
+  );
 
   // For custom roles, allow the user to enable or disable grants for the role.
-  if (!in_array($rid, array(DRUPAL_ANONYMOUS_RID, DRUPAL_AUTHENTICATED_RID))) {
+  if (!in_array($rid, array(BACKDROP_ANONYMOUS_RID, BACKDROP_AUTHENTICATED_RID))) {
     $roles = _taxonomy_access_user_roles();
 
     // If the role is not enabled, return only a link to enable it.
@@ -174,9 +177,10 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
         '#markup' => '<p>' . t(
           'Access control for the %name role is disabled. <a href="@url">Enable @name</a>.',
           array(
-            '%name' => $roles[$rid],
-            '@name' => $roles[$rid],
-            '@url' => taxonomy_access_enable_role_url($rid))) . '</p>'
+          '%name' => $roles[$rid],
+          '@name' => $roles[$rid],
+          '@url' => taxonomy_access_enable_role_url($rid),
+        )) . '</p>',
       );
       return $form;
     }
@@ -184,12 +188,12 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
     else {
       $disable_url = url(
         TAXONOMY_ACCESS_CONFIG . "/role/$rid/delete",
-        array('query' => drupal_get_destination())
+        array('query' => backdrop_get_destination())
       );
       $form['status'] = array(
         '#markup' => '<p>' . t(
           'Access control for the %name role is enabled. <a href="@url">Disable @name</a>.',
-          array('@name' => $roles[$rid], '%name' => $roles[$rid], '@url' => $disable_url)) . '</p>'
+          array('@name' => $roles[$rid], '%name' => $roles[$rid], '@url' => $disable_url)) . '</p>',
       );
     }
   }
@@ -277,7 +281,7 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
       if ($tree = taxonomy_get_tree($vid)) {
         foreach ($tree as $term) {
           if (empty($term_grants[$vid][$term->tid])) {
-            $add_options["term $term->tid"] = str_repeat('-', $term->depth) . ' ' .check_plain($term->name);
+            $add_options["term $term->tid"] = str_repeat('-', $term->depth) . ' ' . check_plain($term->name);
           }
           else {
             $sort[$term->tid] = $term_grants[$vid][$term->tid];
@@ -333,12 +337,12 @@ function taxonomy_access_admin_role($form, $form_state, $rid) {
       }
       $disable_url = url(
         TAXONOMY_ACCESS_CONFIG . "/role/$rid/disable/$vid",
-        array('query' => drupal_get_destination())
+        array('query' => backdrop_get_destination())
       );
       $form[$name]['disable'] = array(
-          '#markup' => '<p>' . t(
+        '#markup' => '<p>' . t(
             'To disable the %vocab vocabulary, <a href="@url">delete all @vocab access rules</a>.',
-            array('%vocab' => $vocab->name, '@vocab' => $vocab->name, '@url' => $disable_url)) . '</p>'
+            array('%vocab' => $vocab->name, '@vocab' => $vocab->name, '@url' => $disable_url)) . '</p>',
       );
     }
   }
@@ -396,7 +400,7 @@ function taxonomy_access_grant_table(array $rows, $parent_vid, $first_col, $dele
     );
   }
   if ($delete) {
-    drupal_add_js('misc/tableselect.js');
+    backdrop_add_js('misc/tableselect.js');
     array_unshift($header, array('class' => array('select-all')));
   }
   $table = array(
@@ -581,7 +585,7 @@ function _taxonomy_access_grant_field_label($grant, $for = NULL) {
     );
   }
 
- return $titles[$grant];
+  return $titles[$grant];
 }
 
 /**
@@ -595,14 +599,15 @@ function taxonomy_access_enable_vocab_submit($form, &$form_state) {
   $roles = _taxonomy_access_user_roles();
   $vocab = taxonomy_vocabulary_load($vid);
   if (taxonomy_access_enable_vocab($vid, $rid)) {
-    drupal_set_message(t(
+    backdrop_set_message(t(
       'Vocabulary %vocab enabled successfully for the %role role.',
       array(
-        '%vocab' => $vocab->name,
-        '%role' => $roles[$rid])));
+      '%vocab' => $vocab->name,
+      '%role' => $roles[$rid],
+    )));
   }
   else {
-    drupal_set_message(t('The vocabulary could not be enabled.'), 'error');
+    backdrop_set_message(t('The vocabulary could not be enabled.'), 'error');
   }
 }
 
@@ -657,7 +662,7 @@ function taxonomy_access_disable_vocab_confirm_page($rid, $vocab) {
     return MENU_NOT_FOUND;
   }
 
-  return drupal_get_form('taxonomy_access_disable_vocab_confirm', $rid, $vocab);
+  return backdrop_get_form('taxonomy_access_disable_vocab_confirm', $rid, $vocab);
 }
 
 /**
@@ -719,11 +724,12 @@ function taxonomy_access_disable_vocab_confirm_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     $form_state['redirect'] = TAXONOMY_ACCESS_CONFIG;
     if (taxonomy_access_disable_vocab($vid, $rid)) {
-      drupal_set_message(
+      backdrop_set_message(
         t('All Taxonomy access rules deleted for %vocab in role %role.',
           array(
-            '%vocab' => $form_state['values']['vocab_name'],
-            '%role' => $roles[$rid])
+        '%vocab' => $form_state['values']['vocab_name'],
+        '%role' => $roles[$rid],
+      )
          ));
       return TRUE;
     }
@@ -752,13 +758,13 @@ function taxonomy_access_delete_selected_submit($form, &$form_state) {
   }
   if ($rid) {
     if (taxonomy_access_delete_term_grants($delete_tids, $rid)) {
-      drupal_set_message(format_plural(
+      backdrop_set_message(format_plural(
           sizeof($delete_tids),
           '1 term access rule was deleted.',
           '@count term access rules were deleted.'));
     }
     else {
-      drupal_set_message(t('The records could not be deleted.'), 'warning');
+      backdrop_set_message(t('The records could not be deleted.'), 'warning');
     }
   }
 }
@@ -815,19 +821,19 @@ function taxonomy_access_save_all_submit($form, &$form_state) {
               _taxonomy_access_format_grant_record($tid, $rid, $grants);
             break;
 
-          // Term record and no node grant changes.
+            // Term record and no node grant changes.
           case ($tid && !$update_nodes):
             $skip_terms[$tid] =
               _taxonomy_access_format_grant_record($tid, $rid, $grants);
             break;
 
-          // Vocab record with node grant changes.
+            // Vocab record with node grant changes.
           case (!$tid && $update_nodes):
             $update_defaults[$vid] =
               _taxonomy_access_format_grant_record($vid, $rid, $grants, TRUE);
             break;
 
-          // Vocab record and no node grant changes.
+            // Vocab record and no node grant changes.
           case (!$tid && !$update_nodes):
             $skip_defaults[$vid] =
               _taxonomy_access_format_grant_record($vid, $rid, $grants, TRUE);
@@ -881,7 +887,7 @@ function _taxonomy_access_admin_instructions_html() {
     . "</li>"
     . "</ul>\n\n"
     ;
-  if (arg(4) != DRUPAL_ANONYMOUS_RID && arg(4) != DRUPAL_AUTHENTICATED_RID) {
+  if (arg(4) != BACKDROP_ANONYMOUS_RID && arg(4) != BACKDROP_AUTHENTICATED_RID) {
     // Role other than Anonymous or Authenticated
     $instructions .= ''
       . "<p>"
@@ -889,7 +895,7 @@ function _taxonomy_access_admin_instructions_html() {
         array("@url" => url(
             TAXONOMY_ACCESS_CONFIG
             . "/role/"
-            .  DRUPAL_AUTHENTICATED_RID
+            .  BACKDROP_AUTHENTICATED_RID
             . '/edit')))
       . "</p>\n\n"
       ;
@@ -898,9 +904,9 @@ function _taxonomy_access_admin_instructions_html() {
     . "<p>"
     . t('For more information and for troubleshooting guidelines, see the <a href="@help">help page</a> and the !readme.',
       array(
-        '@help' => url('admin/help/taxonomy_access'),
-        '!readme' => "<code>README.txt</code>"
-      ))
+    '@help' => url('admin/help/taxonomy_access'),
+    '!readme' => "<code>README.txt</code>",
+  ))
     . "</p>\n\n"
     . "</div>\n\n"
     ;

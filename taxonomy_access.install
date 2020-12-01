@@ -27,11 +27,12 @@ function taxonomy_access_install() {
     VALUES
     (:vid, :rid, :node_allow, :ignore, :ignore, :term_allow, :term_allow)',
     array(
-      ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT,
-      ':rid' => DRUPAL_ANONYMOUS_RID,
-      ':node_allow' => TAXONOMY_ACCESS_NODE_ALLOW,
-      ':ignore' => TAXONOMY_ACCESS_NODE_IGNORE,
-      ':term_allow' => TAXONOMY_ACCESS_TERM_ALLOW)
+    ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT,
+    ':rid' => BACKDROP_ANONYMOUS_RID,
+    ':node_allow' => TAXONOMY_ACCESS_NODE_ALLOW,
+    ':ignore' => TAXONOMY_ACCESS_NODE_IGNORE,
+    ':term_allow' => TAXONOMY_ACCESS_TERM_ALLOW,
+  )
   );
   db_query(
     'INSERT INTO {taxonomy_access_default}
@@ -39,11 +40,12 @@ function taxonomy_access_install() {
     VALUES
     (:vid, :rid, :node_allow, :ignore, :ignore, :term_allow, :term_allow)',
     array(
-      ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT,
-      ':rid' => DRUPAL_AUTHENTICATED_RID,
-      ':node_allow' => TAXONOMY_ACCESS_NODE_ALLOW,
-      ':ignore' => TAXONOMY_ACCESS_NODE_IGNORE,
-      ':term_allow' => TAXONOMY_ACCESS_TERM_ALLOW)
+    ':vid' => TAXONOMY_ACCESS_GLOBAL_DEFAULT,
+    ':rid' => BACKDROP_AUTHENTICATED_RID,
+    ':node_allow' => TAXONOMY_ACCESS_NODE_ALLOW,
+    ':ignore' => TAXONOMY_ACCESS_NODE_IGNORE,
+    ':term_allow' => TAXONOMY_ACCESS_TERM_ALLOW,
+  )
   );
 }
 
@@ -178,59 +180,14 @@ function taxonomy_access_schema() {
   return $schema;
 }
 
-/**
- * Add vocabulary defaults for all configured vocabularies.
- */
-function taxonomy_access_update_7002() {
-  // Get a list of all vocabularies with any term configurations for each role.
-  $ta_configs = db_query(
-    "SELECT td.vid, ta.rid
-     FROM {taxonomy_access_term} ta
-     INNER JOIN {taxonomy_term_data} td ON ta.tid = td.tid
-     GROUP BY td.vid, ta.rid"
-  )->fetchAll();
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function taxonomy_access_update_7002() { }
 
-  // Get a list of all configured vocabularies.
-  $td_configs = db_query(
-    "SELECT vid, rid
-     FROM {taxonomy_access_default}"
-  )->fetchAll();
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function taxonomy_access_update_7001() { }
 
-  $records = array();
-  $global_defaults = taxonomy_access_global_defaults();
-
-  foreach ($ta_configs as $config) {
-    if (!in_array($config, $td_configs)) {
-      $record = (array) $global_defaults[$config->rid];
-      $records[] = _taxonomy_access_format_grant_record($config->vid, $config->rid, $record, TRUE);
-    }
-  }
-
-  if (taxonomy_access_set_default_grants($records)) {
-    return t('Update completed successfully.');
-  }
-  else {
-    return t('Update failed.');
-  }
-}
-
-/**
- * Rename grant realm.
- */
-function taxonomy_access_update_7001() {
-  db_query(
-    "UPDATE {node_access} SET realm = 'taxonomy_access_role'
-    WHERE realm = 'term_access'"
-  );
-}
-
-/**
- * Rename database tables to follow Drupal 7 standards.
- */
-function taxonomy_access_update_7000() {
-  db_rename_table('term_access', 'taxonomy_access_term');
-  db_rename_table('term_access_defaults', 'taxonomy_access_default');
-}
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function taxonomy_access_update_7000() { }
 
 /**
  * Implements hook_enable().

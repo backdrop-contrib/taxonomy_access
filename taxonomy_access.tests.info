@@ -1,0 +1,42 @@
+[TaxonomyAccessTestCase]
+name = TaxonomyAccessTestCase
+description = TaxonomyAccessTestCase
+group = taxonomy_access
+file = taxonomy_access.test
+
+[TaxonomyAccessExternalChanges]
+name = External changes
+description = Test the module's response to changes from other modules.
+group = Taxonomy Access Control
+file = taxonomy_access.test
+
+[TaxonomyAccessConfigTest]
+name = Configuration forms
+description = Test module configuration forms.
+group = Taxonomy Access Control
+file = taxonomy_access.test
+
+[TaxonomyAccessNodeGrantTest]
+name = Node access
+description = Test node access for various grant configurations.
+group = Taxonomy Access Control
+file = taxonomy_access.test
+
+[TaxonomyAccessTermGrantTest]
+name = Term grants
+description = Test node access for View tag (create) and Add tag (list) grants.
+group = Taxonomy Access Control
+file = taxonomy_access.test
+
+[TaxonomyAccessWeightTest]
+name = Weight
+description = Test module weight.
+group = Taxonomy Access Control
+file = taxonomy_access.test
+
+[TaxonomyAccessCallbackCleanupTest]
+name = Callback Cleanup
+description = Test callback cleanup during disabling of module works.
+group = Taxonomy Access Control
+file = taxonomy_access.test
+

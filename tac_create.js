@@ -10,12 +10,12 @@
  * @todo
  *   Use clearer coding standards.
  * @see
- *   http://jsdemystified.drupalgardens.com/
+ *   http://jsdemystified.backdropgardens.com/
  */
-Drupal.behaviors.tac_create = {};
-Drupal.behaviors.tac_create.attach = function(context, settings) {
+Backdrop.behaviors.tac_create = {};
+Backdrop.behaviors.tac_create.attach = function(context, settings) {
   var $ = jQuery;
-  var $fields = $(Drupal.settings.taxonomy_access);
+  var $fields = $(Backdrop.settings.taxonomy_access);
 
   // For each controlled field, disable disallowed terms.
   $.each($fields, function(i, field) {

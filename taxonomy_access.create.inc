@@ -199,7 +199,7 @@ function _taxonomy_access_options_alter(&$element, &$form_state, $context) {
       'disallowed_defaults' => $disallowed_defaults,
     );
     $element['#attached']['js'][] =
-      drupal_get_path('module', 'taxonomy_access') . '/tac_create.js';
+      backdrop_get_path('module', 'taxonomy_access') . '/tac_create.js';
     $element['#attached']['js'][] = array(
       'data' => array('taxonomy_access' => $settings),
       'type' => 'setting',
@@ -221,7 +221,7 @@ function _taxonomy_access_options_alter(&$element, &$form_state, $context) {
  */
 function taxonomy_access_user_create_terms() {
   // Cache the terms the current user can create.
-  $terms = &drupal_static(__FUNCTION__, NULL);
+  $terms = &backdrop_static(__FUNCTION__, NULL);
   if (is_null($terms)) {
     $terms = _taxonomy_access_user_term_grants(TRUE);
   }
@@ -389,7 +389,7 @@ function _taxonomy_access_create_defaults($account = NULL) {
  * Autocomplete menu callback: filter allowed terms by create, not list.
  *
  * For now we essentially duplicate the code from taxonomy.module, because
- * it calls drupal_json_output without providing the logic separately.
+ * it calls backdrop_json_output without providing the logic separately.
  *
  * @see http://drupal.org/node/1169964
  * @see taxonomy_autocomplete()
@@ -401,8 +401,8 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
   $field = field_info_field($field_name);
 
   // The user enters a comma-separated list of tags. We only autocomplete the last tag.
-  $tags_typed = drupal_explode_tags($tags_typed);
-  $tag_last = drupal_strtolower(array_pop($tags_typed));
+  $tags_typed = backdrop_explode_tags($tags_typed);
+  $tag_last = backdrop_strtolower(array_pop($tags_typed));
 
   $matches = array();
   if ($tag_last != '') {
@@ -437,7 +437,7 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
       unset($tags_return[$tid]);
     }
 
-    $prefix = count($tags_typed) ? drupal_implode_tags($tags_typed) . ', ' : '';
+    $prefix = count($tags_typed) ? backdrop_implode_tags($tags_typed) . ', ' : '';
 
     $term_matches = array();
     foreach ($tags_return as $tid => $name) {
@@ -450,7 +450,7 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
     }
   }
 
-  drupal_json_output($term_matches);
+  backdrop_json_output($term_matches);
 }
 
 /**
@@ -485,7 +485,7 @@ function _taxonomy_access_autocomplete_validate($element, &$form_state) {
     }
 
     // Translate term names into actual terms.
-    $typed_terms = drupal_explode_tags($tags);
+    $typed_terms = backdrop_explode_tags($tags);
     foreach ($typed_terms as $typed_term) {
       // See if the term exists in the chosen vocabulary and return the tid;
       // otherwise, create a new 'autocreate' term for insert/update.
@@ -792,12 +792,12 @@ function _taxonomy_access_compare_fields($new, $old = FALSE) {
       foreach ($all_langcodes as $langcode) {
         $new_values = array();
         if (isset($new['field_list'][$field_name])
-          && isset($new['data'][$field_name][$langcode])) {
+           && isset($new['data'][$field_name][$langcode])) {
           $new_values = $new['data'][$field_name][$langcode];
         }
         $old_values = array();
         if (isset($old['field_list'][$field_name])
-          && isset($old['data'][$field_name][$langcode])) {
+           && isset($old['data'][$field_name][$langcode])) {
           $old_values = $old['data'][$field_name][$langcode];
         }
         $changes = _taxonomy_access_disallowed_changes($new_values, $old_values);

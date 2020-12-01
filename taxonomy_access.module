@@ -67,7 +67,7 @@ define('TAXONOMY_ACCESS_TERM_DENY', 0);
  *   Replace this function once http://drupal.org/node/6463 is backported.
  */
 function _taxonomy_access_user_roles($permission = NULL) {
-  $roles = &drupal_static(__FUNCTION__, array());
+  $roles = &backdrop_static(__FUNCTION__, array());
   if (!isset($roles[$permission])) {
     $roles[$permission] = user_roles(FALSE, $permission);
   }
@@ -78,11 +78,11 @@ function _taxonomy_access_user_roles($permission = NULL) {
  * Implements hook_init().
  */
 function taxonomy_access_init() {
-  $path = drupal_get_path('module', 'taxonomy_access');
-  drupal_add_css($path . '/taxonomy_access.css');
+  $path = backdrop_get_path('module', 'taxonomy_access');
+  backdrop_add_css($path . '/taxonomy_access.css');
 
   // Register our shutdown function.
-  drupal_register_shutdown_function('taxonomy_access_shutdown');
+  backdrop_register_shutdown_function('taxonomy_access_shutdown');
 }
 
 /**
@@ -137,7 +137,7 @@ function taxonomy_access_menu() {
   $items[TAXONOMY_ACCESS_CONFIG . '/role/%/edit'] = array(
     'title callback' => 'taxonomy_access_role_edit_title',
     'title arguments' => array(5),
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('taxonomy_access_admin_role', 5),
     'access callback' => 'taxonomy_access_role_edit_access',
     'access arguments' => array(5),
@@ -150,7 +150,7 @@ function taxonomy_access_menu() {
     'file' => 'taxonomy_access.admin.inc',
   );
   $items[TAXONOMY_ACCESS_CONFIG . '/role/%/delete'] = array(
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('taxonomy_access_role_delete_confirm', 5),
     'access callback' => 'taxonomy_access_role_delete_access',
     'access arguments' => array(5),
@@ -210,7 +210,7 @@ function taxonomy_access_role_delete_access($rid) {
   if (!user_access('administer permissions')) {
     return FALSE;
   }
-  if (($rid == DRUPAL_ANONYMOUS_RID) || ($rid == DRUPAL_AUTHENTICATED_RID)) {
+  if (($rid == BACKDROP_ANONYMOUS_RID) || ($rid == BACKDROP_AUTHENTICATED_RID)) {
     return FALSE;
   }
 
@@ -299,7 +299,7 @@ function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) 
 }
 
 /**
- * Implements hook_query_TAG_alter() for 'term_access'.
+ * Implements hook_query_TAG_alter() for 'term_access'().
  *
  * Provides sitewide list grant filtering, as well as create grant filtering
  * for autocomplete paths.
@@ -318,7 +318,7 @@ function taxonomy_access_query_term_access_alter($query) {
 
   // Take no action if there is no term table in the query.
   $alias = '';
-  $tables =& $query->getTables();
+  $tables = &$query->getTables();
   foreach ($tables as $i => $table) {
     if (strpos($table['table'], 'taxonomy_term_') === 0) {
       $alias = $table['alias'];
@@ -329,7 +329,7 @@ function taxonomy_access_query_term_access_alter($query) {
   }
 
   // Fetch a list of all terms the user may list.
-  $tids = &drupal_static(__FUNCTION__, taxonomy_access_user_list_terms());
+  $tids = &backdrop_static(__FUNCTION__, taxonomy_access_user_list_terms());
 
   // If exactly TRUE was returned, the user can list all terms.
   if ($tids === TRUE) {
@@ -419,7 +419,7 @@ function taxonomy_access_enable_role($rid) {
   $row->rid = $rid;
 
   // Insert the row with defaults for all grants.
-  return drupal_write_record('taxonomy_access_default', $row);
+  return backdrop_write_record('taxonomy_access_default', $row);
 }
 
 /**
@@ -432,7 +432,7 @@ function taxonomy_access_enable_role($rid) {
  *   TRUE if access control is enabled for the role, or FALSE otherwise.
  */
 function taxonomy_access_role_enabled($rid) {
-  $role_status = &drupal_static(__FUNCTION__, array());
+  $role_status = &backdrop_static(__FUNCTION__, array());
   if (!isset($role_status[$rid])) {
     $role_status[$rid] =
       db_query(
@@ -557,7 +557,7 @@ function taxonomy_access_shutdown() {
  * Flags node access for rebuild with a message for administrators.
  */
 function _taxonomy_access_flag_rebuild() {
-  drupal_set_message(t("Taxonomy Access Control is updating node access... If you see a message that content access permissions need to be rebuilt, you may wait until after you have completed your configuration changes."), 'status');
+  backdrop_set_message(t("Taxonomy Access Control is updating node access... If you see a message that content access permissions need to be rebuilt, you may wait until after you have completed your configuration changes."), 'status');
   node_access_needs_rebuild(TRUE);
 }
 
@@ -737,7 +737,6 @@ function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
     ->condition('td.vid', $vocab_ids)
     ->fields('ti', array('nid'))
     ->addTag('taxonomy_access_node');
-    ;
   $query->join('taxonomy_term_data', 'td', 'td.tid = ti.tid');
 
   // Exclude records with controlled terms from the results.
@@ -849,7 +848,7 @@ function _taxonomy_access_get_nodes_for_terms($term_ids) {
  *    An array of the IDs of the term's descendants.
  */
 function _taxonomy_access_get_descendants($tid) {
-  $descendants = &drupal_static(__FUNCTION__, array());
+  $descendants = &backdrop_static(__FUNCTION__, array());
 
   if (!isset($descendants[$tid])) {
     // Preserve the original state of the list flag.
@@ -945,7 +944,7 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
   if (empty($rid)) {
     return FALSE;
   }
-  if ($rid == DRUPAL_ANONYMOUS_RID || $rid == DRUPAL_AUTHENTICATED_RID) {
+  if ($rid == BACKDROP_ANONYMOUS_RID || $rid == BACKDROP_AUTHENTICATED_RID) {
     return FALSE;
   }
 
@@ -965,7 +964,7 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
 
     // Find the ones we need.
     foreach ($gd_records as $gd) {
-      if ($gd['gid'] == DRUPAL_AUTHENTICATED_RID) {
+      if ($gd['gid'] == BACKDROP_AUTHENTICATED_RID) {
         $auth_gd = $gd;
       }
       elseif ($gd['gid'] == $rid) {
@@ -981,12 +980,12 @@ function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
         // If the authenticated user has a Deny grant, then either Allow or
         // Ignore for the role is more permissive.
         case TAXONOMY_ACCESS_NODE_DENY:
-          if (($role_gd[$op] == TAXONOMY_ACCESS_NODE_IGNORE) || ($role_gd[$op] == TAXONOMY_ACCESS_NODE_ALLOW)){
+          if (($role_gd[$op] == TAXONOMY_ACCESS_NODE_IGNORE) || ($role_gd[$op] == TAXONOMY_ACCESS_NODE_ALLOW)) {
             $all_nodes = TRUE;
           }
           break 2;
 
-        // If the authenticated user has Ignore, Allow is more permissive.
+          // If the authenticated user has Ignore, Allow is more permissive.
         case TAXONOMY_ACCESS_NODE_IGNORE:
           if ($role_gd[$op] == TAXONOMY_ACCESS_NODE_ALLOW) {
             $all_nodes = TRUE;
@@ -1179,7 +1178,7 @@ function taxonomy_access_set_term_grants(array $grant_rows, $update_nodes = TRUE
 
   // Insert new entries.
   foreach ($grant_rows as $row) {
-    drupal_write_record('taxonomy_access_term', $row);
+    backdrop_write_record('taxonomy_access_term', $row);
   }
 
   // Later we will refactor; for now return TRUE when this is called.
@@ -1217,7 +1216,7 @@ function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = T
 
   // Insert new entries.
   foreach ($grant_rows as $row) {
-    drupal_write_record('taxonomy_access_default', $row);
+    backdrop_write_record('taxonomy_access_default', $row);
   }
 
   // Later we will refactor; for now return TRUE when this is called.
@@ -1369,7 +1368,7 @@ function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
  *   An array of global defaults for each role.
  */
 function taxonomy_access_global_defaults($reset = FALSE) {
-  $global_grants = &drupal_static(__FUNCTION__, array());
+  $global_grants = &backdrop_static(__FUNCTION__, array());
   if (empty($global_grants) || $reset) {
     $global_grants =
       db_query(
@@ -1397,11 +1396,11 @@ function taxonomy_access_global_defaults($reset = FALSE) {
  */
 function _taxonomy_access_format_node_access_record(stdClass $record) {
 
-   // TAXONOMY_ACCESS_NODE_IGNORE => 0, TAXONOMY_ACCESS_NODE_ALLOW => 1,
-   // TAXONOMY_ACCESS_NODE_DENY => 2 ('10' in binary).
-   // Only a value of 1 is considered an 'Allow';
-   // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
-   // If a 'Deny' is present, the value will then be 3 ('11' in binary).
+  // TAXONOMY_ACCESS_NODE_IGNORE => 0, TAXONOMY_ACCESS_NODE_ALLOW => 1,
+  // TAXONOMY_ACCESS_NODE_DENY => 2 ('10' in binary).
+  // Only a value of 1 is considered an 'Allow';
+  // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
+  // If a 'Deny' is present, the value will then be 3 ('11' in binary).
   return array(
     'realm' => 'taxonomy_access_role',
     'gid' => $record->rid,
@@ -1669,7 +1668,7 @@ the authenticated user</a> properly.',
           array("@url" => url(
               TAXONOMY_ACCESS_CONFIG
               . '/role/'
-              . DRUPAL_AUTHENTICATED_RID
+              . BACKDROP_AUTHENTICATED_RID
               . 'edit')))
         . "</li>\n"
         . '<li>'
@@ -1712,7 +1711,10 @@ function _taxonomy_access_grant_help_table() {
 
   $rows = array();
   $rows[] = array(
-    array('header' => TRUE, 'data' => t("View")),
+    array(
+      'header' => TRUE,
+      'data' => t("View"),
+    ),
     "<p>"
     . t('Grants this role the ability to view nodes with the term.  (Users must also have this permission to see <em class="perm">nodes</em> with the term listed in Views.)')
     . "</p>"
@@ -1722,7 +1724,10 @@ function _taxonomy_access_grant_help_table() {
   );
 
   $rows[] = array(
-    array('header' => TRUE, 'data' => t("Update") . ", " . t("Delete")),
+    array(
+      'header' => TRUE,
+      'data' => t("Update") . ", " . t("Delete"),
+    ),
     "<p>"
     . t("Grants this role the ability to edit or delete nodes with the term, respectively.")
     . "</p>"
@@ -1733,7 +1738,10 @@ function _taxonomy_access_grant_help_table() {
   );
 
   $rows[] = array(
-    array('header' => TRUE, 'data' => t("Add Tag")),
+    array(
+      'header' => TRUE,
+      'data' => t("Add Tag"),
+    ),
     "<p>"
     . t("Grants this role the ability to add the term to a node when creating or updating it.")
     . "</p>"
@@ -1744,12 +1752,15 @@ function _taxonomy_access_grant_help_table() {
   );
 
   $rows[] = array(
-    array('header' => TRUE, 'data' => t("View Tag")),
+    array(
+      'header' => TRUE,
+      'data' => t("View Tag"),
+    ),
     "<p>"
     . t("(Formerly <em>List</em>.)  Whether this role can see the term listed on node pages and in lists, and whether the user can view the %taxonomy-term-page page for the term.",
       array(
-        '%taxonomy-term-page' => "taxonomy/term/x"
-      ))
+      '%taxonomy-term-page' => "taxonomy/term/x",
+    ))
     . "</p>"
     . "<p>" . t("This does <strong>not</strong> control whether the role can see the <em>nodes</em> listed in Views, only the <em>term</em>.") . "</p>",
   );
@@ -1772,4 +1783,12 @@ function taxonomy_access_disable() {
       }
     }
   }
+}
+
+/**
+ * Implements hook_autoload_info().
+ */
+function taxonomy_access_autoload_info() {
+  return array(
+  );
 }
