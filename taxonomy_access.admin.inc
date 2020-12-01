@@ -155,9 +155,6 @@ function taxonomy_access_enable_role_validate($role) {
  * @param varchar $role
  *   The role name.
  *
- * @see taxonomy_access_admin_form_submit()
- * @see taxonomy_access_menu()
- * @ingroup forms
  */
 function taxonomy_access_admin_role($form, $form_state, $role) {
   // Always include the role ID in the form.
@@ -236,7 +233,7 @@ function taxonomy_access_admin_role($form, $form_state, $role) {
     '#collapsed' => (sizeof($defaults) > 1),
   );
   // Print term grant table.
-  $form['global_default']['grants'] = taxonomy_access_grant_add_table($defaults[TAXONOMY_ACCESS_GLOBAL_DEFAULT], TAXONOMY_ACCESS_VOCABULARY_DEFAULT);
+  $form['global_default']['grants'] = taxonomy_access_grant_add_table($defaults[TAXONOMY_ACCESS_GLOBAL_DEFAULT], TAXONOMY_ACCESS_GLOBAL_DEFAULT);
 
   // Fetch all vocabularies and determine which are enabled for the role.
   $vocabs = array();
@@ -399,7 +396,7 @@ function taxonomy_access_grant_table(array $rows, $parent_vocabulary, $first_col
     );
   }
   if ($delete) {
-    backdrop_add_js('misc/tableselect.js');
+    backdrop_add_js('core/misc/tableselect.js');
     array_unshift($header, array('class' => array('select-all')));
   }
   $table = array(
@@ -428,8 +425,8 @@ function taxonomy_access_grant_table(array $rows, $parent_vocabulary, $first_col
  *   - delete: The Delete grant value select box for the element.
  *   - create: The Add tag grant value select box for the element.
  *   - list: The View tag grant value select box for the element.
- * @param int $id
- *   The ID for this set (e.g., a vocabulary ID).
+ * @param varchar $id
+ *   The ID for this set (e.g., a vocabulary name).
  *
  * @return
  *   Renderable array containing the table.
@@ -768,14 +765,13 @@ function taxonomy_access_delete_selected_submit($form, &$form_state) {
   }
 }
 /**
- * Form submission handler for taxonomy_access_admin_form().
+ * Form submission handler for taxonomy_access_admin_role().
  *
  * Processes submissions for the 'Save all' button.
  */
 function taxonomy_access_save_all_submit($form, &$form_state) {
   $values = $form_state['values'];
   $role = $values['role'];
-  $vocabs = taxonomy_get_vocabularies();
 
   // Create four lists of records to update.
   $update_terms = array();
@@ -784,12 +780,11 @@ function taxonomy_access_save_all_submit($form, &$form_state) {
   $skip_defaults = array();
 
   foreach ($values['grants'] as $vocabulary => $rows) {
-    if ($vocabulary == TAXONOMY_ACCESS_GLOBAL_DEFAULT) {
+    if ($vocabulary === TAXONOMY_ACCESS_GLOBAL_DEFAULT) {
       $element = $form['global_default'];
     }
     else {
-      $vocab = $vocabs[$vocabulary];
-      $element = $form[$vocab->machine_name];
+      $element = $form[$vocabulary];
     }
     foreach ($rows as $tid => $row) {
       // Check the default values for this row.
@@ -840,6 +835,7 @@ function taxonomy_access_save_all_submit($form, &$form_state) {
         }
       }
     }
+    backdrop_set_message(t('Access rules saved.'), 'status', FALSE);
   }
 
   // Process each set.

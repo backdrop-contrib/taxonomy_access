@@ -185,7 +185,7 @@ function _taxonomy_access_options_alter(&$element, &$form_state, $context) {
 
   // If there are disallowed, terms, add CSS and JS for jQuery.
   // We use jQuery because FAPI does not currently support attributes
-  // for indivocabularyual options.
+  // for individual options.
   if (!empty($disallowed_tids)) {
 
     // Add a css class to the field that we can use in jQuery.
@@ -389,7 +389,7 @@ function _taxonomy_access_create_defaults($account = NULL) {
  * Autocomplete menu callback: filter allowed terms by create, not list.
  *
  * For now we essentially duplicate the code from taxonomy.module, because
- * it calls backdrop_json_output without provocabularying the logic separately.
+ * it calls backdrop_json_output without providing the logic separately.
  *
  * @see http://drupal.org/node/1169964
  * @see taxonomy_autocomplete()
@@ -457,7 +457,7 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
  * Validates taxonomy autocomplete values for create grants.
  *
  * For now we essentially duplicate the code from taxonomy.module, because
- * it calls form_set_value() without provocabularying the logic separately.
+ * it calls form_set_value() without providing the logic separately.
  *
  * We use two properties set in hook_field_widget_form_alter():
  *  - $element['#allow_autocreate']

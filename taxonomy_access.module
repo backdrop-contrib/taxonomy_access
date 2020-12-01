@@ -21,10 +21,10 @@ define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
 /**
  * Global default.
  */
-define('TAXONOMY_ACCESS_GLOBAL_DEFAULT', 0);
+define('TAXONOMY_ACCESS_GLOBAL_DEFAULT', 'taxonomy_access_global_default');
 
 /**
- * Vocabulary default.
+ * Vocabulary term ID default.
  */
 define('TAXONOMY_ACCESS_VOCABULARY_DEFAULT', 0);
 
@@ -1438,6 +1438,7 @@ function _taxonomy_access_get_gid($role = 'anonymous', $create = 0) {
         $max = $gid;
       }
     }
+    $max++;
     $config->set('gid.' . $role, $max++);
     $config->save();
   }

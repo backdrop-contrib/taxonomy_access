@@ -20,7 +20,7 @@ function taxonomy_access_last_removed() {
  */
 function taxonomy_access_install() {
 
-  // Default global perms for roles 1 (anonymous) and 2 (authenticated).
+  // Default global perms for anonymous and authenticated roles.
   db_query(
     'INSERT INTO {taxonomy_access_default}
     (vocabulary, role, grant_view, grant_update, grant_delete, grant_create, grant_list)
