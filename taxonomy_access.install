@@ -256,7 +256,8 @@ function taxonomy_access_enable() {
 }
 
 /**
- * Update Taxonomy Access Control schema to store role names instead of IDs.
+ * Update schema to store role names instead of Role IDs and vocabulary names
+ * instead of vocabulary IDs.
  */
 function taxonomy_access_update_1000() {
   db_drop_primary_key('taxonomy_access_term');
@@ -324,4 +325,24 @@ function taxonomy_access_update_1000() {
     SET role = :role
     WHERE role = :rid
     ', array(':rid' => 2, ':role' => BACKDROP_AUTHENTICATED_ROLE));
+    
+  // Convert the vocabularies.
+  if (db_table_exists('taxonomy_vocabulary')) {
+    $result = db_query("SELECT vid, machine_name FROM {taxonomy_vocabulary}");
+    foreach ($result as $row) {
+      $vocabulary_data = (array) $row;
+      $vid = $vocabulary_data['vid'];
+      $machine_name = $vocabulary_data['machine_name'];
+      db_query('
+        UPDATE {taxonomy_access_default}
+        SET vocabulary = :machine_name
+        WHERE vocabulary = :vid
+        ', array(':vid' => $vid, ':machine_name' => $machine_name));
+    }
+    db_query('
+      UPDATE {taxonomy_access_default}
+      SET vocabulary = :machine_name
+      WHERE vocabulary = :vid
+      ', array(':vid' => 0, ':machine_name' => TAXONOMY_ACCESS_GLOBAL_DEFAULT));
+  }
 }
