@@ -258,7 +258,7 @@ function taxonomy_access_enable() {
 /**
  * Update Taxonomy Access Control schema to store role names instead of IDs.
  */
-function taxonomy_access_update_1100() {
+function taxonomy_access_update_1000() {
   db_drop_primary_key('taxonomy_access_term');
   db_change_field('taxonomy_access_term', 'rid', 'role',
     array(
@@ -276,6 +276,17 @@ function taxonomy_access_update_1100() {
       )
     )
   );
+  db_query('
+    UPDATE {taxonomy_access_term}
+    SET role = :role
+    WHERE role = :rid
+    ', array(':rid' => 1, ':role' => BACKDROP_ANONYMOUS_ROLE));
+  db_query('
+    UPDATE {taxonomy_access_term}
+    SET role = :role
+    WHERE role = :rid
+    ', array(':rid' => 2, ':role' => BACKDROP_AUTHENTICATED_ROLE));
+
   db_drop_primary_key('taxonomy_access_default');
   db_change_field('taxonomy_access_default', 'rid', 'role',
     array(
@@ -303,4 +314,14 @@ function taxonomy_access_update_1100() {
       )
     )
   );
+  db_query('
+    UPDATE {taxonomy_access_default}
+    SET role = :role
+    WHERE role = :rid
+    ', array(':rid' => 1, ':role' => BACKDROP_ANONYMOUS_ROLE));
+  db_query('
+    UPDATE {taxonomy_access_default}
+    SET role = :role
+    WHERE role = :rid
+    ', array(':rid' => 2, ':role' => BACKDROP_AUTHENTICATED_ROLE));
 }
