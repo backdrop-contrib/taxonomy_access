@@ -1257,41 +1257,32 @@ function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = T
  *    Query object.
  */
 function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
-  $table = $default ? 'taxonomy_vocabulary' : 'taxonomy_term_data';
-  $query =
-    db_select($table, 'td')
-    ->addTag('taxonomy_access')
-    ->addTag('taxonomy_access_grants')
-    ;
-
-  $query->join(
-    'taxonomy_access_default', 'tadg',
-    'tadg.vocabulary = :vocabulary',
-    array(':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT)
-  );
-  $query->leftJoin(
-    'taxonomy_access_default', 'tad',
-    'tad.vocabulary = td.vocabulary AND tad.role = tadg.role'
-  );
-  if (!$default) {
+  if ($default) {
+    // Select default grants only.
+    
+    $query =
+      db_select('taxonomy_access_default', 'tadg',)
+      ->addTag('taxonomy_access')
+      ->addTag('taxonomy_access_grants')
+      ;
+  
+    $query->condition('tadg.vocabulary', TAXONOMY_ACCESS_GLOBAL_DEFAULT,'=');
     $query->leftJoin(
-      'taxonomy_access_term', 'ta',
-      'ta.tid = td.tid AND ta.role = tadg.role'
+      'taxonomy_access_default', 'tad',
+      'tad.vocabulary = tadg.vocabulary AND tad.role = tadg.role'
     );
-  }
-
-  // We add grant fields this way to reduce the risk of future vulnerabilities.
-  $grant_fields = array(
-    'view' => 'grant_view',
-    'update' => 'grant_update',
-    'delete' => 'grant_delete',
-    'create' => 'grant_create',
-    'list' => 'grant_list',
-  );
-
-  foreach ($grant_fields as $name => $grant) {
-    if (in_array($name, $grants)) {
-      if ($default) {
+  
+    // We add grant fields this way to reduce the risk of future vulnerabilities.
+    $grant_fields = array(
+      'view' => 'grant_view',
+      'update' => 'grant_update',
+      'delete' => 'grant_delete',
+      'create' => 'grant_create',
+      'list' => 'grant_list',
+    );
+  
+    foreach ($grant_fields as $name => $grant) {
+      if (in_array($name, $grants)) {
         $query->addExpression(
           'BIT_OR(COALESCE('
           . 'tad.' . db_escape_table($grant) . ', '
@@ -1300,7 +1291,43 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
           $grant
         );
       }
-      else {
+    }
+  }
+  else {
+    // Select specific grants.
+    
+    $table = 'taxonomy_term_data';
+    $query =
+      db_select($table, 'td')
+      ->addTag('taxonomy_access')
+      ->addTag('taxonomy_access_grants')
+      ;
+  
+    $query->join(
+      'taxonomy_access_default', 'tadg',
+      'tadg.vocabulary = :vocabulary',
+      array(':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT)
+    );
+    $query->leftJoin(
+      'taxonomy_access_default', 'tad',
+      'tad.vocabulary = td.vocabulary AND tad.role = tadg.role'
+    );
+    $query->leftJoin(
+      'taxonomy_access_term', 'ta',
+      'ta.tid = td.tid AND ta.role = tadg.role'
+    );
+  
+    // We add grant fields this way to reduce the risk of future vulnerabilities.
+    $grant_fields = array(
+      'view' => 'grant_view',
+      'update' => 'grant_update',
+      'delete' => 'grant_delete',
+      'create' => 'grant_create',
+      'list' => 'grant_list',
+    );
+  
+    foreach ($grant_fields as $name => $grant) {
+      if (in_array($name, $grants)) {
         $query->addExpression(
           'BIT_OR(COALESCE('
           . 'ta.' . db_escape_table($grant) . ', '
