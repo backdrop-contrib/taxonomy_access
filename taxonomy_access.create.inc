@@ -52,9 +52,7 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   // Assemble a list of all vocabularies for the field.
   $vocabularies = array();
   foreach ($context['field']['settings']['allowed_values'] as $tree) {
-    if ($vocab = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
-      $vocabularies[] = $vocab->vocabulary;
-    }
+    $vocabularies[] = $tree['vocabulary'];
   }
 
   // Determine whether the user has create for any terms in the given vocabs.
@@ -86,7 +84,7 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   // Set the default value from the filtered item list.
   $element['#default_value'] =
     taxonomy_access_autocomplete_default_value($filtered);
-
+    
   // Custom validation.  Set values for the validator indicating:
   // 1. Whether the user can autocreate terms in this field (vocab. default).
   // 2. Which tids were removed due to create restrictions.
@@ -231,7 +229,7 @@ function taxonomy_access_user_create_terms() {
 /**
  * Retrieve terms that the current user may create in specific vocabularies.
  *
- * @param int $vocabulary
+ * @param varchar $vocabulary
  *   A vocabulary to use as a filter.
  *
  * @return array|true
@@ -353,8 +351,8 @@ function _taxonomy_access_create_defaults($account = NULL) {
     $account = $user;
   }
   $query
-    ->fields('td', array('vocabulary'))
-    ->groupBy('td.vocabulary')
+    ->fields('tadg', array('vocabulary'))
+    ->groupBy('tadg.vocabulary')
     ->condition('tadg.role', array_keys($account->roles), 'IN')
     ;
 
@@ -411,7 +409,7 @@ function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
     $vocabularies = array();
     $vocabularies = taxonomy_vocabulary_get_names();
     foreach ($field['settings']['allowed_values'] as $tree) {
-      $vocabularies[] = $vocabularies[$tree['vocabulary']]->vocabulary;
+      $vocabularies[] = $vocabularies[$tree['vocabulary']]->name;
     }
 
     $query = db_select('taxonomy_term_data', 't');
@@ -479,9 +477,7 @@ function _taxonomy_access_autocomplete_validate($element, &$form_state) {
     $field = field_widget_field($element, $form_state);
     $vocabularies = array();
     foreach ($field['settings']['allowed_values'] as $tree) {
-      if ($vocabulary = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
-        $vocabularies[$vocabulary->vocabulary] = $vocabulary;
-      }
+      $vocabularies[$tree['vocabulary']] = $tree['vocabulary'];
     }
 
     // Translate term names into actual terms.
@@ -497,9 +493,9 @@ function _taxonomy_access_autocomplete_validate($element, &$form_state) {
         $vocabulary = reset($vocabularies);
         $term = array(
           'tid' => 'autocreate',
-          'vocabulary' => $vocabulary->vocabulary,
+          'vocabulary' => $vocabulary,
           'name' => $typed_term,
-          'vocabulary_machine_name' => $vocabulary->machine_name,
+          'vocabulary_machine_name' => $vocabulary,
         );
       }
       // If they cannot autocreate and this is a new term, set an error.
