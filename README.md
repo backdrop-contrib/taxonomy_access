@@ -28,14 +28,15 @@ can see the taxonomy term listed on the node.
 ## Current Maintainers
 
  - [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
+ - Collaboration and co-maintainers welcome!
 
 ## Credits
 
- - Ported to BackdropCMS by [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
+ - Ported to Backdrop CMS by [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
 
  - Maintainers on drupal.org: [fizk](https://www.drupal.org/u/fizk), [xjm](https://www.drupal.org/u/xjm), 
    [keve](https://www.drupal.org/u/keve), [cpugeniusmv](https://www.drupal.org/u/cpugeniusmv), 
-   [edrex](https://www.drupal.org/u/edrex)
+   [edrex](https://www.drupal.org/u/edrex).
  - The Drupal 7 version was sponsored originally by the Austrian school system BIFIE.
 
 ## License
