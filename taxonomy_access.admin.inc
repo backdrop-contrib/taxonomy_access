@@ -233,7 +233,7 @@ function taxonomy_access_admin_role($form, $form_state, $role) {
     '#collapsed' => (sizeof($defaults) > 1),
   );
   // Print term grant table.
-  $form['global_default']['grants'] = taxonomy_access_grant_add_table($defaults[TAXONOMY_ACCESS_GLOBAL_DEFAULT], TAXONOMY_ACCESS_GLOBAL_DEFAULT);
+  $form['global_default']['grants'] = taxonomy_access_grant_add_table($defaults[TAXONOMY_ACCESS_GLOBAL_DEFAULT], TAXONOMY_ACCESS_VOCABULARY_DEFAULT);
 
   // Fetch all vocabularies and determine which are enabled for the role.
   $vocabs = array();
@@ -379,7 +379,7 @@ function taxonomy_access_admin_role($form, $form_state, $role) {
  *   The header for the first column (in the 'name' key for each row).
  * @param bool $delete
  *   (optional) Whether to add a deletion checkbox to each row along with a
- *   "Check all" box in the table header. The checbox is automatically disabled
+ *   "Check all" box in the table header. The checkbox is automatically disabled
  *   for TAXONOMY_ACCESS_VOCABULARY_DEFAULT. Defaults to TRUE.
  *
  * @return

@@ -86,7 +86,7 @@ function _taxonomy_access_autocomplete_alter(&$element, &$form_state, $context) 
   // Set the default value from the filtered item list.
   $element['#default_value'] =
     taxonomy_access_autocomplete_default_value($filtered);
-
+    
   // Custom validation.  Set values for the validator indicating:
   // 1. Whether the user can autocreate terms in this field (vocab. default).
   // 2. Which tids were removed due to create restrictions.
@@ -310,10 +310,10 @@ function taxonomy_access_create_allowed(array $tids) {
  * Filter a list of vocab IDs to those in which the user may create by default.
  *
  * @param array $vocabularies
- *   The array of vocabulary IDs.
+ *   The array of vocabulary names.
  *
  * @return array
- *   An array of disallowed vocabulary IDs.
+ *   An array of disallowed vocabulary names.
  */
 function taxonomy_access_create_default_allowed(array $vocabularies) {
   $all_allowed = taxonomy_access_user_create_defaults();
@@ -353,8 +353,8 @@ function _taxonomy_access_create_defaults($account = NULL) {
     $account = $user;
   }
   $query
-    ->fields('td', array('vocabulary'))
-    ->groupBy('td.vocabulary')
+    ->fields('tadg', array('vocabulary'))
+    ->groupBy('tadg.vocabulary')
     ->condition('tadg.role', array_keys($account->roles), 'IN')
     ;
 

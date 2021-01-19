@@ -189,8 +189,7 @@ function taxonomy_access_schema() {
  * 3: Delete ta rows for missing terms.
  * 4: Delete tad rows for missing vocabs.
  */
-function taxonomy_access_enable() {
-
+function taxonomy_access_enable() {  
   // Weight this module below the Taxonomy module.
   $tax_weight =
     db_query(
@@ -204,18 +203,6 @@ function taxonomy_access_enable() {
   ->fields(array('weight' => ($tax_weight + 1)))
   ->condition('name', 'taxonomy_access')
   ->execute();
-
-  // Delete any records for roles not in {roles}.
-  $roles = _taxonomy_access_user_roles();
-  $config_roles =
-    db_query("SELECT DISTINCT role FROM {taxonomy_access_default}")
-    ->fetchCol();
-  $missing_roles = array_diff($config_roles, array_keys($roles));
-
-  // Core flags node access for rebuild on enable, so skip node updates.
-  foreach ($missing_roles as $role) {
-    taxonomy_access_delete_role_grants($role, FALSE);
-  }
 
   // Delete any term configurations not in {taxonomy_term_data}.
   $term_ids =
@@ -232,22 +219,130 @@ function taxonomy_access_enable() {
   taxonomy_access_delete_term_grants($term_ids, NULL, FALSE);
   unset($term_ids);
 
-  // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
-  // TODO
-  /*
-  $vocab_ids =
-    db_query(
-      "SELECT tad.vocabulary
-      FROM {taxonomy_access_default} tad
-      LEFT JOIN {taxonomy_vocabulary} tv ON tad.vocabulary = tv.vocabulary
-      WHERE tad.vocabulary <> :vocabulary AND tv.vocabulary IS NULL",
-      array(':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
-    ->fetchCol()
-    ;
+  $schema_version = backdrop_get_installed_schema_version('taxonomy_access');
+  // For upgrades, only do this if the upgrade process is complete since it
+  // involves tables with a schema change.
+  if ($schema_version < 7000) {
+    // Delete any records for roles not in {roles}.
+    $roles = _taxonomy_access_user_roles();
+    $config_roles =
+      db_query("SELECT DISTINCT role FROM {taxonomy_access_default}")
+      ->fetchCol();
+    $missing_roles = array_diff($config_roles, array_keys($roles));
+  
+    // Core flags node access for rebuild on enable, so skip node updates.
+    foreach ($missing_roles as $role) {
+      taxonomy_access_delete_role_grants($role, FALSE);
+    }
+    
+    // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
+    // TODO
+    /*
+    $vocab_ids =
+      db_query(
+        "SELECT tad.vocabulary
+        FROM {taxonomy_access_default} tad
+        LEFT JOIN {taxonomy_vocabulary} tv ON tad.vocabulary = tv.vocabulary
+        WHERE tad.vocabulary <> :vocabulary AND tv.vocabulary IS NULL",
+        array(':vocabulary' => TAXONOMY_ACCESS_GLOBAL_DEFAULT))
+      ->fetchCol()
+      ;
+  
+    // Core flags node access for rebuild on enable, so skip node updates.
+    taxonomy_access_delete_default_grants($vocab_ids, FALSE);
+    unset($vocab_ids);
+    */
+  }
+}
 
-  // Core flags node access for rebuild on enable, so skip node updates.
-  taxonomy_access_delete_default_grants($vocab_ids, FALSE);
-  unset($vocab_ids);
-  */
+/**
+ * Update schema to store role names instead of Role IDs and vocabulary names
+ * instead of vocabulary IDs.
+ */
+function taxonomy_access_update_1000() {
+  db_drop_primary_key('taxonomy_access_term');
+  db_change_field('taxonomy_access_term', 'rid', 'role',
+    array(
+      'type' => 'varchar',
+      'not null' => TRUE,
+      'description' => "The role a user must possess to gain this row's privileges on nodes for this term.",
+      'default' => '',
+      'length' => 64,
+      'unsigned' => NULL,
+    ),
+    array(
+      'primary key' => array(
+        'role',
+        'tid',
+      )
+    )
+  );
+  db_query('
+    UPDATE {taxonomy_access_term}
+    SET role = :role
+    WHERE role = :rid
+    ', array(':rid' => 1, ':role' => BACKDROP_ANONYMOUS_ROLE));
+  db_query('
+    UPDATE {taxonomy_access_term}
+    SET role = :role
+    WHERE role = :rid
+    ', array(':rid' => 2, ':role' => BACKDROP_AUTHENTICATED_ROLE));
 
+  db_drop_primary_key('taxonomy_access_default');
+  db_change_field('taxonomy_access_default', 'rid', 'role',
+    array(
+      'type' => 'varchar',
+      'not null' => TRUE,
+      'description' => "The role a user must possess to gain this row's privileges on nodes for terms in this vocabulary.",
+      'default' => '',
+      'length' => 64,
+      'unsigned' => NULL,
+    ),
+  );
+  db_change_field('taxonomy_access_default', 'vid', 'vocabulary',
+    array(
+      'type' => 'varchar',
+      'not null' => TRUE,
+      'description' => "The vocabulary for which this row sets defaults.",
+      'default' => TAXONOMY_ACCESS_GLOBAL_DEFAULT,
+      'length' => 255,
+      'unsigned' => NULL,
+    ),
+    array(
+      'primary key' => array(
+        'vocabulary',
+        'role',
+      )
+    )
+  );
+  db_query('
+    UPDATE {taxonomy_access_default}
+    SET role = :role
+    WHERE role = :rid
+    ', array(':rid' => 1, ':role' => BACKDROP_ANONYMOUS_ROLE));
+  db_query('
+    UPDATE {taxonomy_access_default}
+    SET role = :role
+    WHERE role = :rid
+    ', array(':rid' => 2, ':role' => BACKDROP_AUTHENTICATED_ROLE));
+    
+  // Convert the vocabularies.
+  if (db_table_exists('taxonomy_vocabulary')) {
+    $result = db_query("SELECT vid, machine_name FROM {taxonomy_vocabulary}");
+    foreach ($result as $row) {
+      $vocabulary_data = (array) $row;
+      $vid = $vocabulary_data['vid'];
+      $machine_name = $vocabulary_data['machine_name'];
+      db_query('
+        UPDATE {taxonomy_access_default}
+        SET vocabulary = :machine_name
+        WHERE vocabulary = :vid
+        ', array(':vid' => $vid, ':machine_name' => $machine_name));
+    }
+    db_query('
+      UPDATE {taxonomy_access_default}
+      SET vocabulary = :machine_name
+      WHERE vocabulary = :vid
+      ', array(':vid' => 0, ':machine_name' => TAXONOMY_ACCESS_GLOBAL_DEFAULT));
+  }
 }
