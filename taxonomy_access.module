@@ -166,6 +166,7 @@ function taxonomy_access_menu() {
   );
   $items['taxonomy_access/autocomplete'] = array(
     'title' => 'Autocomplete taxonomy',
+    'delivery callback' => 'backdrop_json_deliver',
     'page callback' => 'taxonomy_access_autocomplete',
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
@@ -250,8 +251,6 @@ function taxonomy_access_taxonomy_term_delete($term) {
  * Gives access to taxonomies based on the taxonomy_access table.
  */
 function taxonomy_access_node_grants($account, $op) {
-  debug($account->roles);
-  debug(__FUNCTION__);
   $grants = array(
     'taxonomy_access_role' => array(),
   );
