@@ -166,6 +166,7 @@ function taxonomy_access_menu() {
   );
   $items['taxonomy_access/autocomplete'] = array(
     'title' => 'Autocomplete taxonomy',
+    'delivery callback' => 'backdrop_json_deliver',
     'page callback' => 'taxonomy_access_autocomplete',
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
