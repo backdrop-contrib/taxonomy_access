@@ -258,6 +258,9 @@ function taxonomy_access_node_grants($account, $op) {
       $grants['taxonomy_access_role'][] = _taxonomy_access_get_gid($role);
     }
   }
+  else {
+    $grants['taxonomy_access_role'][] = -1;
+  }
   return $grants;
 }
 
@@ -1444,7 +1447,8 @@ function _taxonomy_access_format_node_access_record(stdClass $record) {
 }
 
 /**
- * Returns an int value for gid based on role, from config.
+ * Returns an int value for gid based on role, from config. 
+ * Anonymous is always 0 and authenticated is always 1.
  *
  * @param varchar $role
  *   The role that we need a gid value for, defaults to anonymous.
@@ -1456,8 +1460,9 @@ function _taxonomy_access_format_node_access_record(stdClass $record) {
  *
  */
 function _taxonomy_access_get_gid($role = BACKDROP_ANONYMOUS_ROLE, $create = 0) {
+  $default_gid = 0;
   if ($role == BACKDROP_ANONYMOUS_ROLE) {
-    return 0;
+    return $default_gid;
   }
   else if ($role == BACKDROP_AUTHENTICATED_ROLE) {
     return 1;
@@ -1466,7 +1471,7 @@ function _taxonomy_access_get_gid($role = BACKDROP_ANONYMOUS_ROLE, $create = 0) 
   $gid = $config->get('gid.' . $role);
   if (empty($gid) && $create) {
     $gids = $config->get('gid');
-    $max = 1;
+    $max = 2;
     if (is_array($gids)) {
       foreach($gids as $role => $gid) {
         if ($gid > $max) {
@@ -1476,15 +1481,13 @@ function _taxonomy_access_get_gid($role = BACKDROP_ANONYMOUS_ROLE, $create = 0) 
       $max++;
     }
     $config->set('gid.' . $role, $max);
-    $newgid = $max;
     $config->save();
-    return $newgid;
+    return $max;
   }
-  elseif ($gid) {
+  else if (is_numeric($gid)) {
     return $gid;
   }
-  // Last resort: return Anonymous gid
-  return 0;
+  return $default_gid;
 }
 
 /**
@@ -1598,7 +1601,7 @@ function _taxonomy_access_user_term_grants($create = FALSE, array $vocabularies 
   $query
     ->fields('td', array('tid'))
     ->groupBy('td.tid')
-    ->condition('tadg.role', array_keys($account->roles), 'IN')
+    ->condition('tadg.role', $account->roles, 'IN')
     ;
 
   // Filter by the indicated vocabularies, if any.
