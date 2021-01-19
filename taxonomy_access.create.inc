@@ -308,10 +308,10 @@ function taxonomy_access_create_allowed(array $tids) {
  * Filter a list of vocab IDs to those in which the user may create by default.
  *
  * @param array $vocabularies
- *   The array of vocabulary IDs.
+ *   The array of vocabulary names.
  *
  * @return array
- *   An array of disallowed vocabulary IDs.
+ *   An array of disallowed vocabulary names.
  */
 function taxonomy_access_create_default_allowed(array $vocabularies) {
   $all_allowed = taxonomy_access_user_create_defaults();
