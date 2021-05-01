@@ -235,7 +235,7 @@ function taxonomy_access_admin_role($form, $form_state, $role) {
     '#collapsed' => (sizeof($defaults) > 1),
   );
   // Print term grant table.
-  $form['global_default']['grants'] = taxonomy_access_grant_add_table($defaults[TAXONOMY_ACCESS_GLOBAL_DEFAULT], TAXONOMY_ACCESS_VOCABULARY_DEFAULT);
+  $form['global_default']['grants'] = taxonomy_access_grant_add_table($defaults[TAXONOMY_ACCESS_GLOBAL_DEFAULT], TAXONOMY_ACCESS_GLOBAL_DEFAULT);
 
   // Fetch all vocabularies and determine which are enabled for the role.
   $vocabs = array();
@@ -780,7 +780,6 @@ function taxonomy_access_save_all_submit($form, &$form_state) {
   $skip_terms = array();
   $update_defaults = array();
   $skip_defaults = array();
-
   foreach ($values['grants'] as $vocabulary => $rows) {
     if ($vocabulary === TAXONOMY_ACCESS_GLOBAL_DEFAULT) {
       $element = $form['global_default'];
