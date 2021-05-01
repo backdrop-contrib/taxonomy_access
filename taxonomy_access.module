@@ -1265,19 +1265,19 @@ function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = T
 function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
   if ($default) {
     // Select default grants only.
-    
+
     $query =
       db_select('taxonomy_access_default', 'tadg',)
       ->addTag('taxonomy_access')
       ->addTag('taxonomy_access_grants')
       ;
-  
+
     $query->condition('tadg.vocabulary', TAXONOMY_ACCESS_GLOBAL_DEFAULT,'=');
     $query->leftJoin(
       'taxonomy_access_default', 'tad',
       'tad.vocabulary = tadg.vocabulary AND tad.role = tadg.role'
     );
-  
+
     // We add grant fields this way to reduce the risk of future vulnerabilities.
     $grant_fields = array(
       'view' => 'grant_view',
@@ -1286,7 +1286,7 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
       'create' => 'grant_create',
       'list' => 'grant_list',
     );
-  
+
     foreach ($grant_fields as $name => $grant) {
       if (in_array($name, $grants)) {
         $query->addExpression(
@@ -1301,14 +1301,14 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
   }
   else {
     // Select specific grants.
-    
+
     $table = 'taxonomy_term_data';
     $query =
       db_select($table, 'td')
       ->addTag('taxonomy_access')
       ->addTag('taxonomy_access_grants')
       ;
-  
+
     $query->join(
       'taxonomy_access_default', 'tadg',
       'tadg.vocabulary = :vocabulary',
@@ -1322,7 +1322,7 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
       'taxonomy_access_term', 'ta',
       'ta.tid = td.tid AND ta.role = tadg.role'
     );
-  
+
     // We add grant fields this way to reduce the risk of future vulnerabilities.
     $grant_fields = array(
       'view' => 'grant_view',
@@ -1331,7 +1331,7 @@ function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
       'create' => 'grant_create',
       'list' => 'grant_list',
     );
-  
+
     foreach ($grant_fields as $name => $grant) {
       if (in_array($name, $grants)) {
         $query->addExpression(
@@ -1448,7 +1448,7 @@ function _taxonomy_access_format_node_access_record(stdClass $record) {
 }
 
 /**
- * Returns an int value for gid based on role, from config. 
+ * Returns an int value for gid based on role, from config.
  * Anonymous is always 0 and authenticated is always 1.
  *
  * @param varchar $role
@@ -1474,7 +1474,7 @@ function _taxonomy_access_get_gid($role = BACKDROP_ANONYMOUS_ROLE, $create = 0) 
     $gids = $config->get('gid');
     $max = 2;
     if (is_array($gids)) {
-      foreach($gids as $role => $gid) {
+      foreach($gids as $gidrole => $gid) {
         if ($gid > $max) {
           $max = $gid;
         }
@@ -1594,7 +1594,7 @@ function _taxonomy_access_user_term_grants($create = FALSE, array $vocabularies 
   if (user_access('administer taxonomy', $account)) {
     return TRUE;
   }
-  
+
   // Build a term grant query.
   $query = _taxonomy_access_grant_query(array($grant_type));
 

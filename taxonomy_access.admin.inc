@@ -145,6 +145,8 @@ function taxonomy_access_enable_role_validate($role) {
   if (taxonomy_access_enable_role($role)) {
     backdrop_set_message(t('Role %name enabled successfully.',
       array('%name' => $roles[$role])));
+    // Ensure a gid is created in the config for this role.
+    $gid = _taxonomy_access_get_gid($role, TRUE);
   }
   backdrop_goto();
 }
