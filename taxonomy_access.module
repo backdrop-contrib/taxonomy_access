@@ -266,6 +266,24 @@ function taxonomy_access_node_grants($account, $op) {
 }
 
 /**
+ * Implements hook_node_insert().
+ *
+ * Make sure new nodes have access grants checked upon saving.
+ */
+function taxonomy_access_node_insert($node) {
+  _taxonomy_access_node_access_update(array($node->nid));
+}
+
+/**
+ * Implements hook_node_update().
+ *
+ * Make sure updated nodes have access grants checked upon saving.
+ */
+function taxonomy_access_node_update($node) {
+  _taxonomy_access_node_access_update(array($node->nid));
+}
+
+/**
  * Implements hook_node_access_records().
  *
  * @ingroup tac_node_access
@@ -573,7 +591,6 @@ function _taxonomy_access_flag_rebuild() {
   backdrop_set_message(t("Taxonomy Access Control is updating node access... If you see a message that content access permissions need to be rebuilt, you may wait until after you have completed your configuration changes."), 'status');
   node_access_needs_rebuild(TRUE);
 }
-
 
 /**
  * Updates node access grants for a set of nodes.
