@@ -271,7 +271,7 @@ function taxonomy_access_node_grants($account, $op) {
  * Make sure new nodes have access grants checked upon saving.
  */
 function taxonomy_access_node_insert($node) {
-  _taxonomy_access_node_access_update(array($node->nid));
+  _taxonomy_access_node_access_update_single($node->nid);
 }
 
 /**
@@ -280,7 +280,7 @@ function taxonomy_access_node_insert($node) {
  * Make sure updated nodes have access grants checked upon saving.
  */
 function taxonomy_access_node_update($node) {
-  _taxonomy_access_node_access_update(array($node->nid));
+  _taxonomy_access_node_access_update_single($node->nid);
 }
 
 /**
@@ -614,10 +614,7 @@ function _taxonomy_access_node_access_update(array $nids) {
     // If the number of nodes is small enough, update node access for each.
     if (sizeof($nids) < TAXONOMY_ACCESS_MAX_UPDATE) {
       foreach ($nids as $node) {
-        $loaded_node = node_load($node, NULL, TRUE);
-        if (!empty($loaded_node)) {
-          node_access_acquire_grants($loaded_node);
-        }
+        _taxonomy_access_node_access_update_single($node);
       }
 
       // If we make it here our update was successful; unflag rebuild.
@@ -625,6 +622,23 @@ function _taxonomy_access_node_access_update(array $nids) {
     }
   }
   return TRUE;
+}
+
+/**
+ * Updates node access grants for a single node.
+ * Use _taxonomy_access_node_access_update() for multiple nodes.
+ *
+ * @param int $nid
+ *   An node ID for which to acquire access permissions.
+ *
+ */
+function _taxonomy_access_node_access_update_single(int $nid) {
+  $loaded_node = node_load($nid, NULL, TRUE);
+  if (!empty($loaded_node)) {
+    node_access_acquire_grants($loaded_node);
+    return TRUE;
+  }
+  return FALSE;
 }
 
 /**
