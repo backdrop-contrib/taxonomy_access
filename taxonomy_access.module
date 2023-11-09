@@ -228,7 +228,7 @@ function taxonomy_access_role_delete_access($role) {
  */
 function taxonomy_access_user_role_delete($role) {
   // Do not update node access since the role will no longer exist.
-  taxonomy_access_delete_role_grants($role->role, FALSE);
+  taxonomy_access_delete_role_grants($role->name, FALSE);
 }
 
 /**
