@@ -177,6 +177,17 @@ function taxonomy_access_menu() {
 }
 
 /**
+ * Implements hook_config_info().
+ */
+function taxonomy_access_config_info() {
+  $prefixes['taxonomy_access.settings'] = array(
+    'label' => t('Taxonomy Access settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}
+
+/**
  * Title callback: Returns the title for the role edit form.
  */
 function taxonomy_access_role_edit_title($role) {
