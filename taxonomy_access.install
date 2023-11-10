@@ -256,6 +256,17 @@ function taxonomy_access_enable() {
 }
 
 /**
+ * Implements hook_update_dependencies().
+ */
+function taxonomy_access_update_dependencies {
+  // Attempt to run the table updates before taxonomy_vocabulary table is dropped.
+  $dependencies['taxonomy'][1002] = array(
+    'taxonomy_access' => 1000,
+  );
+  return $dependencies;
+}
+
+/**
  * Update schema to store role names instead of Role IDs and vocabulary names
  * instead of vocabulary IDs.
  */
@@ -339,10 +350,37 @@ function taxonomy_access_update_1000() {
         WHERE vocabulary = :vid
         ', array(':vid' => $vid, ':machine_name' => $machine_name));
     }
-    db_query('
-      UPDATE {taxonomy_access_default}
-      SET vocabulary = :machine_name
-      WHERE vocabulary = :vid
-      ', array(':vid' => 0, ':machine_name' => TAXONOMY_ACCESS_GLOBAL_DEFAULT));
+  }
+
+  db_query('
+    UPDATE {taxonomy_access_default}
+    SET vocabulary = :machine_name
+    WHERE vocabulary = :vid
+    ', array(':vid' => 0, ':machine_name' => TAXONOMY_ACCESS_GLOBAL_DEFAULT));
+}
+
+/**
+ * Create a gid for each role.
+ */
+function taxonomy_access_update_1001() {
+  $roles = user_roles(TRUE);
+  unset($roles[BACKDROP_AUTHENTICATED_ROLE]);
+  $config = config('taxonomy_access.settings');
+  foreach ($roles as $role => $label) {
+    $gid = $config->get('gid.' . $role);
+    if (empty($gid)) {
+      $gids = $config->get('gid');
+      $max = 2;
+      if (is_array($gids)) {
+        foreach($gids as $gidrole => $gid) {
+          if ($gid > $max) {
+            $max = $gid;
+          }
+        }
+        $max++;
+      }
+      $config->set('gid.' . $role, $max);
+      $config->save();
+    }
   }
 }
