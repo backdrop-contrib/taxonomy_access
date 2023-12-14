@@ -258,7 +258,7 @@ function taxonomy_access_enable() {
 /**
  * Implements hook_update_dependencies().
  */
-function taxonomy_access_update_dependencies {
+function taxonomy_access_update_dependencies() {
   // Attempt to run the table updates before taxonomy_vocabulary table is dropped.
   $dependencies['taxonomy'][1002] = array(
     'taxonomy_access' => 1000,
