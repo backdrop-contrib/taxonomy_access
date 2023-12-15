@@ -1,16 +1,16 @@
 # Taxonomy Access Control
 
-This module allows you to set access permissions for various taxonomy 
+This module allows you to set access permissions for various taxonomy
 categories based on user role.
 
 There are permissions to `view`, `update`, and `delete` nodes in each category.
-Additionally, the `add tag` permission control whether the user can add a 
+Additionally, the `add tag` permission control whether the user can add a
 taxonomy term to a node, and the `view tag` permission controls whether the user
 can see the taxonomy term listed on the node.
 
-### IMPORTANT NOTES: 
+### IMPORTANT NOTES:
 
- - This is a complicated module. When you first learn to use this module, 
+ - This is a complicated module. When you first learn to use this module,
    always try it first on a test site.
  - If you want to use two or more access-related modules at the same time,
    test them carefully as they can conflict.
@@ -27,16 +27,16 @@ can see the taxonomy term listed on the node.
 
 ## Current Maintainers
 
- - [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
+ - [Laryn Kragt Bakker](https://github.com/laryn)
  - Collaboration and co-maintainers welcome!
 
 ## Credits
 
- - Ported to Backdrop CMS by [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
-
- - Maintainers on drupal.org: [fizk](https://www.drupal.org/u/fizk), [xjm](https://www.drupal.org/u/xjm), 
-   [keve](https://www.drupal.org/u/keve), [cpugeniusmv](https://www.drupal.org/u/cpugeniusmv), 
+ - Ported to Backdrop CMS by [Laryn Kragt Bakker](https://github.com/laryn)
+ - Maintainers on drupal.org: [fizk](https://www.drupal.org/u/fizk), [xjm](https://www.drupal.org/u/xjm),
+   [keve](https://www.drupal.org/u/keve), [cpugeniusmv](https://www.drupal.org/u/cpugeniusmv),
    [edrex](https://www.drupal.org/u/edrex).
+ - The Backdrop port was initially sponsored by [CEDC.org](https://cedc.org).
  - The Drupal 7 version was sponsored originally by the Austrian school system BIFIE.
 
 ## License
